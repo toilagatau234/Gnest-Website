@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dtl-red: #E31E24;
+  --color-dtl-red-dark: #C01519;
+  --color-dtl-navy: #1B3A6B;
+  --color-dtl-navy-dark: #0d1f3c;
+  --color-dtl-dark: #1a1a1a;
+  --color-dtl-gray: #666666;
+  --color-dtl-bg-alt: #f5f6f8;
+  --color-dtl-border: #e2e5ea;
+  
+  --font-sans: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
+
+  --animate-ring: ring 2.5s ease-in-out infinite;
+  
+  @keyframes ring {
+    0%, 100% { transform: scale(1); }
+    10% { transform: scale(1.12) rotate(-8deg); }
+    20% { transform: scale(1.12) rotate(8deg); }
+    30% { transform: scale(1.12) rotate(-5deg); }
+    40% { transform: scale(1.12) rotate(5deg); }
+    50% { transform: scale(1); }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth !important;
+  }
+  body {
+    @apply text-[14px] leading-relaxed;
+  }
+}
