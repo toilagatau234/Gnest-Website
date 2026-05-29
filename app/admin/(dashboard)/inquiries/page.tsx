@@ -12,7 +12,7 @@ export default async function AdminInquiriesPage() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Yêu cầu báo giá</h1>
-        <p className="text-gray-600 mt-2">Manage customer inquiries and quote requests</p>
+        <p className="text-gray-600 mt-2">Quản lý yêu cầu báo giá từ khách hàng</p>
       </div>
 
       {/* Error State */}
@@ -20,11 +20,11 @@ export default async function AdminInquiriesPage() {
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-red-900">Failed to load inquiries</p>
+            <p className="font-medium text-red-900">Không thể tải yêu cầu báo giá</p>
             <p className="text-sm text-red-700 mt-1">{error}</p>
             <button className="mt-3 flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm">
               <RefreshCw className="w-4 h-4" />
-              Try Again
+              Thử lại
             </button>
           </div>
         </div>
@@ -38,9 +38,9 @@ export default async function AdminInquiriesPage() {
               <AlertCircle className="w-6 h-6 text-gray-400" />
             </div>
           </div>
-          <p className="text-gray-600">No inquiries found</p>
+          <p className="text-gray-600">Chưa có yêu cầu báo giá nào</p>
           <p className="text-sm text-gray-500 mt-2">
-            Customer inquiries will appear here when they submit quote requests
+            Yêu cầu báo giá từ khách hàng sẽ xuất hiện ở đây
           </p>
         </div>
       )}

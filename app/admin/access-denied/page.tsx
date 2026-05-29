@@ -37,10 +37,10 @@ export default function AccessDeniedPage() {
           </div>
 
           {/* Message */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">Access Denied</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">Truy cập bị từ chối</h1>
           <p className="text-gray-600 mb-6">
-            You don&apos;t have permission to access this page. Contact your administrator if you
-            believe this is a mistake.
+            Bạn không có quyền truy cập trang này. Liên hệ quản trị viên nếu bạn nghĩ đây là
+            một lỗi.
           </p>
 
           {/* Actions */}
@@ -49,14 +49,14 @@ export default function AccessDeniedPage() {
               href="/"
               className="block w-full px-4 py-2.5 bg-gray-200 text-gray-900 rounded-lg font-medium hover:bg-gray-300 transition-colors"
             >
-              Back to Home
+              Quay về trang chủ
             </Link>
             <button
               onClick={handleLogout}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
             >
               <LogOut className="w-4 h-4" />
-              <span>Sign Out</span>
+              <span>Đăng xuất</span>
             </button>
           </div>
         </div>

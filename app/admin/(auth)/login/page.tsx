@@ -34,8 +34,8 @@ export default function AdminLoginPage() {
         <div className="bg-white rounded-lg shadow-lg p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-            <p className="text-gray-600">Sign in to manage your content</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Đăng nhập quản trị</h1>
+            <p className="text-gray-600">Đăng nhập để quản lý nội dung của bạn</p>
           </div>
 
           {/* Error Message */}
@@ -62,25 +62,25 @@ export default function AdminLoginPage() {
             {isLoading ? (
               <>
                 <Loader className="w-5 h-5 animate-spin" />
-                <span>Signing in...</span>
+                <span>Đang đăng nhập...</span>
               </>
             ) : (
               <>
                 <Mail className="w-5 h-5" />
-                <span>Sign in with Google</span>
+                <span>Đăng nhập bằng Google</span>
               </>
             )}
           </button>
 
           {/* Info */}
           <p className="text-center text-xs text-gray-500 mt-6">
-            Contact your administrator for access
+            Liên hệ quản trị viên để được cấp quyền truy cập
           </p>
         </div>
 
         {/* Footer */}
         <p className="text-center text-xs text-gray-500 mt-8">
-          © Đại Tài Lợi. All rights reserved.
+          © Đại Tài Lợi. Bảo lưu mọi quyền.
         </p>
       </div>
     </div>

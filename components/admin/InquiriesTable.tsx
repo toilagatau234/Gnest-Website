@@ -10,10 +10,10 @@ interface InquiriesTableProps {
 }
 
 const statusConfig: Record<InquiryStatus, { label: string; variant: BadgeVariant }> = {
-  new: { label: 'New', variant: 'default' },
-  contacted: { label: 'Contacted', variant: 'secondary' },
-  quoted: { label: 'Quoted', variant: 'outline' },
-  closed: { label: 'Closed', variant: 'secondary' },
+  new: { label: 'Mới', variant: 'default' },
+  contacted: { label: 'Đã liên hệ', variant: 'secondary' },
+  quoted: { label: 'Đã báo giá', variant: 'outline' },
+  closed: { label: 'Đóng', variant: 'secondary' },
   spam: { label: 'Spam', variant: 'destructive' },
 };
 
@@ -41,22 +41,22 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Customer
+              Khách hàng
             </th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Phone
+              Số điện thoại
             </th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
               Email
             </th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Message
+              Nội dung
             </th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Status
+              Trạng thái
             </th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Date
+              Ngày tạo
             </th>
           </tr>
         </thead>

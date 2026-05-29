@@ -14,9 +14,9 @@ export default function CategoriesPage() {
             <AlertCircle className="w-6 h-6 text-yellow-600" />
           </div>
         </div>
-        <p className="text-gray-600 text-lg font-medium">Coming Soon</p>
+        <p className="text-gray-600 text-lg font-medium">Sắp ra mắt</p>
         <p className="text-sm text-gray-500 mt-2">
-          Category management features are under development
+          Tính năng quản lý danh mục đang được phát triển
         </p>
       </div>
     </div>

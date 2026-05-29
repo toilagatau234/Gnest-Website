@@ -39,8 +39,8 @@ export default function AdminDashboardPage() {
     <div>
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Welcome back to your admin panel</p>
+        <h1 className="text-3xl font-bold text-gray-900">Tổng quan</h1>
+        <p className="text-gray-600 mt-2">Chào mừng quay lại bảng điều khiển quản trị</p>
       </div>
 
       {/* Stats Grid */}
@@ -63,15 +63,15 @@ export default function AdminDashboardPage() {
 
       {/* Welcome Section */}
       <div className="mt-12 bg-white rounded-lg border border-gray-200 p-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Getting Started</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Bắt đầu</h2>
         <p className="text-gray-600 mb-6">
-          Use the navigation menu on the left to manage your website content. Start with:
+          Sử dụng menu điều hướng bên trái để quản lý nội dung website. Bắt đầu với:
         </p>
         <ul className="space-y-2 text-gray-600">
-          <li>• View and respond to customer inquiries</li>
-          <li>• Manage product categories and items</li>
-          <li>• Update contact information and job postings</li>
-          <li>• Modify website content and settings</li>
+          <li>• Xem và phản hồi yêu cầu báo giá của khách hàng</li>
+          <li>• Quản lý danh mục sản phẩm và dịch vụ</li>
+          <li>• Cập nhật thông tin liên hệ và tuyển dụng</li>
+          <li>• Sửa đổi nội dung website và cài đặt</li>
         </ul>
       </div>
     </div>
