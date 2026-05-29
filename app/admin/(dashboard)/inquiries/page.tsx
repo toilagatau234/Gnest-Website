@@ -1,4 +1,5 @@
 import { AlertCircle } from 'lucide-react';
+
 import { InquiriesTable } from '@/components/admin/InquiriesTable';
 import { getInquiries } from '@/lib/services/admin/inquiries';
 
@@ -10,35 +11,35 @@ export default async function AdminInquiriesPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Yêu cầu báo giá</h1>
-        <p className="text-gray-600 mt-2">Quản lý yêu cầu báo giá từ khách hàng</p>
+        <h1 className="text-3xl font-bold text-[#1B3A6B]">Yêu cầu báo giá</h1>
+        <p className="mt-2 text-slate-600">Theo dõi và xử lý các yêu cầu gửi từ khách hàng.</p>
       </div>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+      {error ? (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#F2C5C7] bg-[#FFF5F5] p-4">
+          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#E31E24]" />
           <div>
-            <p className="font-medium text-red-900">Không thể tải yêu cầu báo giá</p>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
+            <p className="font-medium text-[#7A271A]">Không thể tải yêu cầu báo giá</p>
+            <p className="mt-1 text-sm text-[#B42318]">{error}</p>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {!error && (!inquiries || inquiries.length === 0) && (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-gray-100 rounded-full p-3">
-              <AlertCircle className="w-6 h-6 text-gray-400" />
+      {!error && (!inquiries || inquiries.length === 0) ? (
+        <div className="rounded-2xl border border-[#D7E0EC] bg-white p-12 text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="rounded-full bg-[#F4F7FB] p-3">
+              <AlertCircle className="h-6 w-6 text-[#1B3A6B]" />
             </div>
           </div>
-          <p className="text-gray-600">Chưa có yêu cầu báo giá nào</p>
-          <p className="text-sm text-gray-500 mt-2">
-            Yêu cầu báo giá từ khách hàng sẽ xuất hiện tại đây.
+          <p className="text-slate-700">Chưa có yêu cầu báo giá nào</p>
+          <p className="mt-2 text-sm text-slate-500">
+            Khi khách hàng gửi form, dữ liệu sẽ hiển thị tại đây.
           </p>
         </div>
-      )}
+      ) : null}
 
-      {!error && inquiries && inquiries.length > 0 && <InquiriesTable inquiries={inquiries} />}
+      {!error && inquiries && inquiries.length > 0 ? <InquiriesTable inquiries={inquiries} /> : null}
     </div>
   );
 }

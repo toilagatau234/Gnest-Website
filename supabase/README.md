@@ -11,7 +11,7 @@ Follow these instructions to set up the database and bootstrap your first admini
 Administrative users are validated against the `public.admin_users` table. Because of RLS and server guards, we do not hardcode admin credentials.
 
 To create your first admin user:
-1. **Sign up/Login**: Launch the Gnest-Website locally or in production, and log in through the application's login portal (using Google OAuth or standard Supabase Auth methods).
+1. **Create auth account**: In Supabase Authentication, create a user with email/password or sign up through the admin login form after enabling email/password auth.
 2. **Find User ID**:
    - Go to your Supabase project dashboard.
    - Navigate to **Authentication** -> **Users**.
@@ -24,7 +24,7 @@ To create your first admin user:
      INSERT INTO public.admin_users (id, email, role, is_active)
      VALUES (
        'YOUR_USER_UUID_HERE',
-       'admin@example.com',
+       'your-admin-email@example.com',
        'super_admin',
        true
      );

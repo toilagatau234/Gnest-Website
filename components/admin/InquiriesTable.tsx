@@ -1,9 +1,9 @@
 'use client';
 
+import type { BadgeVariant } from '@/components/ui/badge';
 import { Badge } from '@/components/ui/badge';
 import type { Inquiry } from '@/lib/services/admin/inquiries';
 import type { InquiryStatus } from '@/lib/types/database';
-import type { BadgeVariant } from '@/components/ui/badge';
 
 interface InquiriesTableProps {
   inquiries: Inquiry[];
@@ -26,59 +26,63 @@ function formatDate(dateString: string) {
 }
 
 function truncateText(text: string | null | undefined, maxLength = 60) {
-  if (!text) return '-';
+  if (!text) {
+    return '-';
+  }
+
   if (text.length > maxLength) {
     return text.substring(0, maxLength) + '...';
   }
+
   return text;
 }
 
 export function InquiriesTable({ inquiries }: InquiriesTableProps) {
   return (
-    <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
+    <div className="overflow-x-auto rounded-2xl border border-[#D7E0EC] bg-white">
       <table className="w-full">
-        <thead className="bg-gray-50 border-b border-gray-200">
+        <thead className="border-b border-[#D7E0EC] bg-[#F4F7FB]">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#1B3A6B]">
               Khách hàng
             </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#1B3A6B]">
               Số điện thoại
             </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#1B3A6B]">
               Email
             </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#1B3A6B]">
               Nội dung
             </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#1B3A6B]">
               Trạng thái
             </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#1B3A6B]">
               Ngày tạo
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200">
+        <tbody className="divide-y divide-[#EEF2F6]">
           {inquiries.map((inquiry) => {
             const status = inquiry.status as InquiryStatus;
             const currentStatus = statusConfig[status] || statusConfig.new;
 
             return (
-              <tr key={inquiry.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">
+              <tr key={inquiry.id} className="transition-colors hover:bg-[#FFF9F9]">
+                <td className="px-6 py-4 text-sm font-medium text-slate-900">
                   {inquiry.customer_name}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600">
-                  <a href={`tel:${inquiry.phone}`} className="text-blue-600 hover:underline">
+                <td className="px-6 py-4 text-sm text-slate-600">
+                  <a href={`tel:${inquiry.phone}`} className="text-[#E31E24] hover:underline">
                     {inquiry.phone}
                   </a>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600">
+                <td className="px-6 py-4 text-sm text-slate-600">
                   {inquiry.email ? (
                     <a
                       href={`mailto:${inquiry.email}`}
-                      className="text-blue-600 hover:underline break-all"
+                      className="break-all text-[#1B3A6B] hover:underline"
                     >
                       {inquiry.email}
                     </a>
@@ -86,7 +90,7 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
                     '-'
                   )}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600">
+                <td className="px-6 py-4 text-sm text-slate-600">
                   <span title={inquiry.message || ''}>{truncateText(inquiry.message, 50)}</span>
                 </td>
                 <td className="px-6 py-4 text-sm">
@@ -94,7 +98,7 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
                     {currentStatus.label}
                   </Badge>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                <td className="px-6 py-4 text-sm whitespace-nowrap text-slate-600">
                   {formatDate(inquiry.created_at)}
                 </td>
               </tr>

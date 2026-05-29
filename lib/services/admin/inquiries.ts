@@ -1,5 +1,9 @@
-import { createClient } from '@/lib/supabase/server';
-import type { Tables, InquiryStatus } from '@/lib/types/database';
+import 'server-only';
+
+import { createServiceRoleClient } from '@/lib/supabase/server';
+import type { InquiryStatus, Tables } from '@/lib/types/database';
+
+import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 export type Inquiry = Tables<'inquiries'>;
 
@@ -11,12 +15,10 @@ export interface GetInquiriesOptions {
 
 export async function getInquiries(options?: GetInquiriesOptions) {
   try {
-    const supabase = await createClient();
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
 
-    let query = supabase
-      .from('inquiries')
-      .select('*')
-      .order('created_at', { ascending: false });
+    let query = supabase.from('inquiries').select('*').order('created_at', { ascending: false });
 
     if (options?.status) {
       query = query.eq('status', options.status);
@@ -27,7 +29,7 @@ export async function getInquiries(options?: GetInquiriesOptions) {
     }
 
     if (options?.offset) {
-      query = query.range(options.offset, (options.offset + (options.limit || 10)) - 1);
+      query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
     }
 
     const { data, error } = await query;
@@ -47,11 +49,10 @@ export async function getInquiries(options?: GetInquiriesOptions) {
 
 export async function getInquiryCount() {
   try {
-    const supabase = await createClient();
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
 
-    const { count, error } = await supabase
-      .from('inquiries')
-      .select('*', { count: 'exact', head: true });
+    const { count, error } = await supabase.from('inquiries').select('*', { count: 'exact', head: true });
 
     if (error) {
       console.error('Error counting inquiries:', error.message);
@@ -68,7 +69,8 @@ export async function getInquiryCount() {
 
 export async function getNewInquiriesCount() {
   try {
-    const supabase = await createClient();
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
 
     const { count, error } = await supabase
       .from('inquiries')

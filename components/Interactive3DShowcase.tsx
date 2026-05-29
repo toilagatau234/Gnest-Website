@@ -85,13 +85,13 @@ export function Interactive3DShowcase() {
         <div className="text-center mb-12">
           <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-dtl-red/30 to-rose-500/10 border border-dtl-red/40 text-rose-300 text-xs font-black tracking-widest uppercase px-4 py-1.5 rounded-full mb-4 animate-pulse">
             <Sparkles className="w-3.5 h-3.5 text-dtl-red" />
-            STUDIO THIẾT KẾ 3D PHÁT QUANG
+            GIAO DIỆN TRÌNH DIỄN TƯƠNG TÁC
           </span>
           <h2 className="text-3xl md:text-[38px] font-black leading-tight tracking-tight uppercase">
-            TỰ THIẾT KẾ <em className="text-dtl-red not-italic">IN THƯƠNG HIỆU</em> 3D
+            Giao diện hiện đại với <em className="text-dtl-red not-italic">hiệu ứng 3D tương tác</em>
           </h2>
           <p className="text-sm text-slate-400 mt-2 max-w-xl mx-auto font-sans leading-relaxed">
-            Mô phỏng 3D thời gian thực cực kỳ sắc nét. Xoay chuột trên chai thủy tinh để trải nghiệm phản chiếu ánh sáng và kiểm tra bản in sấy lụa nổi độc quyền!
+            Hiệu ứng chiều sâu và phản chiếu giúp trình bày sản phẩm trực quan hơn, không mang nghĩa dịch vụ thiết kế sản phẩm 3D riêng.
           </p>
           <div className="w-[80px] h-[3.5px] bg-dtl-red mx-auto mt-4 rounded-full shadow-[0_2px_10px_rgba(227,30,36,0.6)]"></div>
         </div>
@@ -457,14 +457,14 @@ export function Interactive3DShowcase() {
                   <Zap className="w-3.5 h-3.5 text-dtl-red fill-dtl-red animate-pulse" /> CHIẾT KHẤU ĐẶC BIỆT
                 </span>
                 <p className="text-[11px] text-slate-300 leading-relaxed font-sans mt-1">
-                  Xưởng ĐTL miễn phí 100% bản vẽ thiết kế marquette 3D và tặng gói khuôn in trị giá 3.000.000đ cho đơn đặt hàng sỉ trong hôm nay.
+                  ĐTL hỗ trợ trình bày mẫu trực quan, giúp khách hàng hình dung bao bì tốt hơn trước khi chốt phương án in ấn và gia công.
                 </p>
               </div>
               <a 
                 href="#lien-he"
                 className="w-full bg-dtl-red hover:bg-dtl-red-dark text-white font-extrabold text-xs tracking-wider uppercase py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-dtl-red/20 hover:-translate-y-0.5"
               >
-                Nhận Báo Giá Đơn In 3D Sỉ Ngay →
+                Nhận báo giá sản xuất sỉ ngay →
               </a>
             </div>
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AdminTopbar } from '@/components/admin/AdminTopbar';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
-import type { AdminUser } from '@/lib/services/admin/auth';
+import type { AdminUser } from '@/lib/types/admin';
 
 interface AdminShellProps {
   children: React.ReactNode;

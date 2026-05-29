@@ -1,50 +1,26 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { AuthError, User } from '@supabase/supabase-js';
 
 import { createClient } from '@/lib/supabase/client';
-import type { AdminRole, Database } from '@/lib/types/database';
+
+interface SignInWithPasswordInput {
+  email: string;
+  password: string;
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  isAdmin: boolean;
-  role: AdminRole | null;
-  login: () => Promise<void>;
+  signInWithPassword: (credentials: SignInWithPasswordInput) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const ADMIN_ROLES = new Set<AdminRole>(['super_admin', 'admin', 'editor', 'viewer']);
-
-async function fetchAdminRole(
-  userId: string,
-  supabase: SupabaseClient<Database>
-): Promise<AdminRole | null> {
-  try {
-    const { data, error } = await supabase
-      .from('admin_users')
-      .select('role')
-      .eq('id', userId)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (error) {
-      console.warn('Failed to query admin_users table:', error.message);
-      return null;
-    }
-    return data?.role ?? null;
-  } catch (err) {
-    console.warn('Error fetching admin role:', err);
-    return null;
-  }
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [role, setRole] = useState<AdminRole | null>(null);
 
   const supabase = useMemo(() => {
     try {
@@ -64,45 +40,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabaseClient = supabase;
     let mounted = true;
 
-    async function handleUserChange(currentUser: User | null) {
-      if (!currentUser) {
-        if (mounted) {
-          setUser(null);
-          setIsAdmin(false);
-          setRole(null);
-          setLoading(false);
-        }
-        return;
-      }
-
+    function handleUserChange(currentUser: User | null) {
       if (mounted) {
-        setUser(currentUser);
-      }
-
-      const roleVal = await fetchAdminRole(currentUser.id, supabaseClient);
-
-      if (mounted) {
-        setRole(roleVal);
-        setIsAdmin(roleVal ? ADMIN_ROLES.has(roleVal) : false);
+        setUser(currentUser ?? null);
         setLoading(false);
       }
     }
 
-    supabaseClient.auth.getUser().then(({ data }) => {
-      handleUserChange(data.user);
-    }).catch((err) => {
-      console.warn('getUser failed:', err);
-      if (mounted) {
-        setLoading(false);
-      }
-    });
+    supabaseClient.auth
+      .getUser()
+      .then(({ data }) => {
+        handleUserChange(data.user);
+      })
+      .catch((err) => {
+        console.warn('getUser failed:', err);
+        if (mounted) {
+          setLoading(false);
+        }
+      });
 
     const {
       data: { subscription },
     } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-      if (mounted) {
-        setLoading(true);
-      }
       handleUserChange(session?.user ?? null);
     });
 
@@ -112,35 +71,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [supabase]);
 
-  const login = async () => {
-    if (!supabase) return;
+  const signInWithPassword = async ({ email, password }: SignInWithPasswordInput) => {
+    if (!supabase) {
+      throw new Error('Thiếu cấu hình Supabase trên trình duyệt.');
+    }
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/admin/dashboard`,
-      },
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
     if (error) {
-      console.error('Supabase login error:', error.message);
+      throw mapSupabaseAuthError(error);
     }
   };
 
   const logout = async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      throw new Error('Thiếu cấu hình Supabase trên trình duyệt.');
+    }
 
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.error('Supabase logout error:', error.message);
+      throw error;
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, role, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, signInWithPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
+}
+
+function mapSupabaseAuthError(error: AuthError) {
+  if (error.message.toLowerCase().includes('invalid login credentials')) {
+    return new Error('Email hoặc mật khẩu không đúng.');
+  }
+
+  return new Error(error.message);
 }
 
 export function useAuth() {

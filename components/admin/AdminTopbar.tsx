@@ -1,8 +1,10 @@
 'use client';
 
 import { LogOut, Menu, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
 import { useAuth } from '@/lib/auth-context';
-import type { AdminUser } from '@/lib/services/admin/auth';
+import { ADMIN_ROLE_LABELS, type AdminUser } from '@/lib/types/admin';
 
 interface AdminTopbarProps {
   adminUser: AdminUser;
@@ -11,48 +13,41 @@ interface AdminTopbarProps {
 }
 
 export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbarProps) {
-  const { user, logout } = useAuth();
+  const router = useRouter();
+  const { logout } = useAuth();
 
   const handleLogout = async () => {
     await logout();
+    router.replace('/admin/login');
+    router.refresh();
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6">
-      {/* Mobile Menu Toggle */}
+    <div className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-[#D7E0EC] bg-white px-4 lg:px-6">
       <button
         onClick={onMenuToggle}
-        className="lg:hidden p-1 hover:bg-gray-100 rounded-md"
+        className="rounded-md p-1 transition hover:bg-[#F4F7FB] lg:hidden"
         aria-label={isMenuOpen ? 'Đóng menu' : 'Mở menu'}
       >
-        {isMenuOpen ? (
-          <X className="w-5 h-5 text-gray-700" />
-        ) : (
-          <Menu className="w-5 h-5 text-gray-700" />
-        )}
+        {isMenuOpen ? <X className="h-5 w-5 text-[#1B3A6B]" /> : <Menu className="h-5 w-5 text-[#1B3A6B]" />}
       </button>
 
-      {/* Logo / Title (hidden on mobile when menu is open) */}
-      {!isMenuOpen && (
-        <h1 className="text-lg font-semibold text-gray-900 lg:hidden">Quản trị</h1>
-      )}
+      {!isMenuOpen && <h1 className="text-lg font-semibold text-[#1B3A6B] lg:hidden">Quản trị</h1>}
 
-      {/* Spacer */}
       <div className="flex-1 lg:flex-none" />
 
-      {/* User Menu */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3">
-          <div className="hidden sm:block text-right">
-            <p className="text-sm font-medium text-gray-900">{user?.email ?? adminUser.email}</p>
-            <p className="text-xs text-gray-500">{adminUser.role}</p>
+          <div className="hidden text-right sm:block">
+            <p className="text-sm font-medium text-slate-900">{adminUser.email}</p>
+            <p className="text-xs text-slate-500">{ADMIN_ROLE_LABELS[adminUser.role]}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="p-1.5 hover:bg-gray-100 rounded-md transition-colors text-gray-600 hover:text-gray-900"
+            className="rounded-md p-1.5 text-[#E31E24] transition-colors hover:bg-[#FFF5F5] hover:text-[#C61A1F]"
             title="Đăng xuất"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="h-5 w-5" />
           </button>
         </div>
       </div>

@@ -1,11 +1,11 @@
-'use client';
+﻿'use client';
 
 import { MapPin, Phone, Mail, ChevronRight, Settings, Award } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 
 export function SiteFooter() {
-  const { user, isAdmin, login } = useAuth();
+  const { user } = useAuth();
 
   return (
     <footer className="bg-dtl-navy-dark text-white/75 pt-10">
@@ -112,19 +112,13 @@ export function SiteFooter() {
           <div>© 2025 Công Ty TNHH MTV Đại Tài Lợi. MST: 1401969516. All rights reserved.</div>
           
           <div className="flex items-center gap-4">
-            {isAdmin ? (
-              <Link href="/admin/orders" className="flex items-center gap-1.5 text-white/40 hover:text-dtl-red transition-colors font-medium">
-                <Settings className="w-3.5 h-3.5" />
-                Quản trị đơn hàng
-              </Link>
-            ) : !user ? (
-              <button 
-                onClick={login}
-                className="hover:text-white transition-colors"
-              >
-                Quản trị viên
-              </button>
-            ) : null}
+            <Link
+              href={user ? '/admin' : '/admin/login'}
+              className="flex items-center gap-1.5 font-medium text-white/40 transition-colors hover:text-dtl-red"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              Khu vực quản trị
+            </Link>
           </div>
         </div>
       </div>

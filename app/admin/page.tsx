@@ -1,5 +1,9 @@
 import { redirect } from 'next/navigation';
 
-export default function AdminPage() {
-  redirect('/admin/dashboard');
+import { getAdminEntryPath } from '@/lib/services/admin/auth';
+
+export default async function AdminPage() {
+  const entryPath = await getAdminEntryPath();
+
+  redirect(entryPath);
 }
