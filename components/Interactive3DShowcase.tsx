@@ -85,13 +85,13 @@ export function Interactive3DShowcase() {
         <div className="text-center mb-12">
           <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-dtl-red/30 to-rose-500/10 border border-dtl-red/40 text-rose-300 text-xs font-black tracking-widest uppercase px-4 py-1.5 rounded-full mb-4 animate-pulse">
             <Sparkles className="w-3.5 h-3.5 text-dtl-red" />
-            GIAO DIỆN TRÌNH DIỄN TƯƠNG TÁC
+            TRÌNH DIỄN SẢN PHẨM TRỰC QUAN
           </span>
           <h2 className="text-3xl md:text-[38px] font-black leading-tight tracking-tight uppercase">
-            Giao diện hiện đại với <em className="text-dtl-red not-italic">hiệu ứng 3D tương tác</em>
+            Hiệu ứng giao diện <em className="text-dtl-red not-italic">3D tương tác</em> để trình diễn sản phẩm
           </h2>
           <p className="text-sm text-slate-400 mt-2 max-w-xl mx-auto font-sans leading-relaxed">
-            Hiệu ứng chiều sâu và phản chiếu giúp trình bày sản phẩm trực quan hơn, không mang nghĩa dịch vụ thiết kế sản phẩm 3D riêng.
+            Ứng dụng công nghệ đồ họa giao diện để giả lập chiều sâu và góc nhìn đa chiều, giúp bạn dễ dàng xoay và xem chi tiết kiểu dáng chai lọ hũ thủy tinh một cách trực quan nhất.
           </p>
           <div className="w-[80px] h-[3.5px] bg-dtl-red mx-auto mt-4 rounded-full shadow-[0_2px_10px_rgba(227,30,36,0.6)]"></div>
         </div>
@@ -308,7 +308,7 @@ export function Interactive3DShowcase() {
               <div>
                 <div className="flex items-center gap-1.5 mb-3.5">
                   <span className="w-5 h-5 bg-dtl-red text-white font-mono text-[11px] font-bold flex items-center justify-center rounded-sm">1</span>
-                  <h3 className="text-[13px] font-bold uppercase text-slate-300">Chọn quy cách phôi chai</h3>
+                  <h3 className="text-[13px] font-bold uppercase text-slate-300">Tùy chọn kiểu dáng phôi chai trình diễn</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {BOTTLES.map((b) => {
@@ -342,7 +342,7 @@ export function Interactive3DShowcase() {
               <div>
                 <div className="flex items-center gap-1.5 mb-3.5">
                   <span className="w-5 h-5 bg-dtl-red text-white font-mono text-[11px] font-bold flex items-center justify-center rounded-sm">2</span>
-                  <h3 className="text-[13px] font-bold uppercase text-slate-300">Phụ kiện nắp đậy</h3>
+                  <h3 className="text-[13px] font-bold uppercase text-slate-300">Phối hợp phụ kiện nắp đậy minh họa</h3>
                 </div>
                 <div className="space-y-2">
                   {CAPS.map((c) => {
@@ -379,7 +379,7 @@ export function Interactive3DShowcase() {
               <div>
                 <div className="flex items-center gap-1.5 mb-3">
                   <span className="w-5 h-5 bg-dtl-red text-white font-mono text-[11px] font-bold flex items-center justify-center rounded-sm">3</span>
-                  <h3 className="text-[13px] font-bold uppercase text-slate-300">Màu mực in ấn bán nung</h3>
+                  <h3 className="text-[13px] font-bold uppercase text-slate-300">Màu sắc nhãn hiệu mô phỏng</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {INKS.map((ink) => {
@@ -416,7 +416,7 @@ export function Interactive3DShowcase() {
               <div>
                 <div className="flex items-center gap-1.5 mb-3">
                   <span className="w-5 h-5 bg-dtl-red text-white font-mono text-[11px] font-bold flex items-center justify-center rounded-sm">4</span>
-                  <h3 className="text-[13px] font-bold uppercase text-slate-300">Soạn tên nhãn hiệu sấy lụa</h3>
+                  <h3 className="text-[13px] font-bold uppercase text-slate-300">Soạn tên nhãn hiệu trình diễn</h3>
                 </div>
                 <div className="grid grid-cols-2 gap-3.5">
                   <div className="relative">
@@ -441,7 +441,7 @@ export function Interactive3DShowcase() {
                       maxLength={18}
                       value={subText}
                       onChange={(e) => setSubText(e.target.value.toUpperCase())}
-                      placeholder="DÒNG CHỮ PHỤ CỦA CHAI"
+                      placeholder="DÒNG CHỮ MINH HỌA"
                       className="w-full bg-black/40 border border-white/10 rounded-lg pl-8.5 pr-2.5 py-2 text-[11px] font-bold uppercase tracking-widest text-white focus:outline-none focus:border-dtl-red focus:ring-1 focus:ring-dtl-red/40"
                     />
                   </div>

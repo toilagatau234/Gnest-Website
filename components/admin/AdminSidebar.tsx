@@ -20,14 +20,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Tổng quan', href: '/admin/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
-  { label: 'Yêu cầu báo giá', href: '/admin/inquiries', icon: <MessageSquare className="w-5 h-5" /> },
-  { label: 'Danh mục', href: '/admin/categories', icon: <FolderOpen className="w-5 h-5" /> },
-  { label: 'Sản phẩm', href: '/admin/products', icon: <Package className="w-5 h-5" /> },
-  { label: 'Liên hệ bán hàng', href: '/admin/sales-contacts', icon: <Phone className="w-5 h-5" /> },
-  { label: 'Tuyển dụng', href: '/admin/jobs', icon: <Briefcase className="w-5 h-5" /> },
-  { label: 'Nội dung website', href: '/admin/site-content', icon: <FileText className="w-5 h-5" /> },
-  { label: 'Người dùng quản trị', href: '/admin/admin-users', icon: <Users className="w-5 h-5" /> },
+  { label: 'Tổng quan', href: '/admin/dashboard', icon: <LayoutDashboard className="w-4.5 h-4.5" /> },
+  { label: 'Yêu cầu báo giá', href: '/admin/inquiries', icon: <MessageSquare className="w-4.5 h-4.5" /> },
+  { label: 'Danh mục', href: '/admin/categories', icon: <FolderOpen className="w-4.5 h-4.5" /> },
+  { label: 'Sản phẩm', href: '/admin/products', icon: <Package className="w-4.5 h-4.5" /> },
+  { label: 'Liên hệ bán hàng', href: '/admin/sales-contacts', icon: <Phone className="w-4.5 h-4.5" /> },
+  { label: 'Tuyển dụng', href: '/admin/jobs', icon: <Briefcase className="w-4.5 h-4.5" /> },
+  { label: 'Nội dung website', href: '/admin/site-content', icon: <FileText className="w-4.5 h-4.5" /> },
+  { label: 'Người dùng quản trị', href: '/admin/admin-users', icon: <Users className="w-4.5 h-4.5" /> },
 ];
 
 interface AdminSidebarProps {
@@ -40,11 +40,11 @@ export function AdminSidebar({ isOpen }: AdminSidebarProps) {
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
   return (
-    <nav
+    <aside
       className={`
-        fixed lg:static
+        fixed lg:sticky
         top-14 left-0 bottom-0
-        w-60 bg-white border-r border-gray-200
+        w-64 bg-white/95 backdrop-blur-md border-r border-[#E2E8F0]
         overflow-y-auto
         transform transition-transform duration-300 ease-in-out
         lg:transform-none
@@ -52,7 +52,11 @@ export function AdminSidebar({ isOpen }: AdminSidebarProps) {
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}
     >
-      <div className="p-4 space-y-2">
+      <div className="p-5 space-y-1.5">
+        <div className="px-3 mb-4">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Menu quản trị</span>
+        </div>
+
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (
@@ -60,21 +64,31 @@ export function AdminSidebar({ isOpen }: AdminSidebarProps) {
               key={item.href}
               href={item.href}
               className={`
-                flex items-center gap-3 px-4 py-2.5 rounded-lg
-                transition-colors font-medium text-sm
+                group flex items-center gap-3 px-4 py-3 rounded-xl
+                transition-all duration-300 font-bold text-sm relative overflow-hidden
                 ${
                   active
-                    ? 'bg-red-50 text-red-700 border-l-4 border-red-600'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-[#1B3A6B]/5 to-transparent text-[#1B3A6B] border-l-4 border-[#E31E24] shadow-[0_4px_12px_rgba(27,58,107,0.03)]'
+                    : 'text-slate-600 hover:text-[#1B3A6B] hover:bg-slate-50'
                 }
               `}
             >
-              {item.icon}
-              <span>{item.label}</span>
+              {/* Active hover effect background */}
+              <div className="absolute inset-0 bg-[#E31E24]/5 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-300 -z-10" />
+
+              <div
+                className={`
+                  transition-colors duration-300
+                  ${active ? 'text-[#E31E24]' : 'text-slate-400 group-hover:text-[#1B3A6B]'}
+                `}
+              >
+                {item.icon}
+              </div>
+              <span className="tracking-tight">{item.label}</span>
             </Link>
           );
         })}
       </div>
-    </nav>
+    </aside>
   );
 }

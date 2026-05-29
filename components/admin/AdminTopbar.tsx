@@ -2,6 +2,7 @@
 
 import { LogOut, Menu, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import { useAuth } from '@/lib/auth-context';
 import { ADMIN_ROLE_LABELS, type AdminUser } from '@/lib/types/admin';
@@ -22,35 +23,56 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
     router.refresh();
   };
 
+  const emailInitial = adminUser.email ? adminUser.email.charAt(0).toUpperCase() : 'A';
+
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-[#D7E0EC] bg-white px-4 lg:px-6">
-      <button
-        onClick={onMenuToggle}
-        className="rounded-md p-1 transition hover:bg-[#F4F7FB] lg:hidden"
-        aria-label={isMenuOpen ? 'Đóng menu' : 'Mở menu'}
-      >
-        {isMenuOpen ? <X className="h-5 w-5 text-[#1B3A6B]" /> : <Menu className="h-5 w-5 text-[#1B3A6B]" />}
-      </button>
+    <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-4 lg:px-6 transition-all duration-300">
+      <div className="flex items-center gap-3">
+        {/* Toggle Menu Button for Mobile */}
+        <button
+          onClick={onMenuToggle}
+          className="rounded-xl p-1.5 transition-colors hover:bg-slate-100 lg:hidden text-[#1B3A6B]"
+          aria-label={isMenuOpen ? 'Đóng menu' : 'Mở menu'}
+        >
+          {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
 
-      {!isMenuOpen && <h1 className="text-lg font-semibold text-[#1B3A6B] lg:hidden">Quản trị</h1>}
-
-      <div className="flex-1 lg:flex-none" />
+        {/* Brand Logo Link to Dashboard */}
+        <Link href="/admin/dashboard" className="flex items-center gap-2 group">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#1B3A6B] to-[#E31E24] flex items-center justify-center shadow-md shadow-[#1B3A6B]/10 transition-transform duration-300 group-hover:scale-105">
+            <span className="text-white text-xs font-black tracking-widest pt-0.5 pl-0.5">G</span>
+          </div>
+          <span className="text-base font-black tracking-tight text-[#1B3A6B] uppercase hidden sm:inline-block">
+            Gnest <span className="text-[#E31E24]">Quản Trị</span>
+          </span>
+        </Link>
+      </div>
 
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="hidden text-right sm:block">
-            <p className="text-sm font-medium text-slate-900">{adminUser.email}</p>
-            <p className="text-xs text-slate-500">{ADMIN_ROLE_LABELS[adminUser.role]}</p>
+        {/* User Profile Block */}
+        <div className="flex items-center gap-3 border-l border-slate-150 pl-4 h-8">
+          {/* Avatar sphere */}
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#1B3A6B]/10 to-[#E31E24]/10 border border-[#1B3A6B]/15 flex items-center justify-center font-bold text-xs text-[#1B3A6B] shadow-inner select-none">
+            {emailInitial}
           </div>
+
+          <div className="hidden text-left sm:block">
+            <p className="text-xs font-bold text-slate-800 tracking-tight leading-none mb-0.5">{adminUser.email}</p>
+            <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+              {ADMIN_ROLE_LABELS[adminUser.role]}
+            </span>
+          </div>
+
+          {/* Logout Trigger */}
           <button
             onClick={handleLogout}
-            className="rounded-md p-1.5 text-[#E31E24] transition-colors hover:bg-[#FFF5F5] hover:text-[#C61A1F]"
-            title="Đăng xuất"
+            className="rounded-xl p-2 text-[#E31E24] transition-all duration-300 hover:bg-red-50 hover:text-[#C61A1F] ml-1 flex items-center justify-center"
+            title="Đăng xuất khỏi hệ thống"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-4.5 w-4.5" />
           </button>
         </div>
       </div>
-    </div>
+    </header>
   );
 }
