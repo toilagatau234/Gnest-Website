@@ -2,10 +2,10 @@
 
 import { MapPin, Phone, Mail, ChevronRight, Settings, Award } from 'lucide-react';
 import Link from 'next/link';
-import { useFirebase } from '@/lib/firebase-provider';
+import { useAuth } from '@/lib/auth-context';
 
 export function SiteFooter() {
-  const { user, isAdmin, login } = useFirebase();
+  const { user, isAdmin, login } = useAuth();
 
   return (
     <footer className="bg-dtl-navy-dark text-white/75 pt-10">

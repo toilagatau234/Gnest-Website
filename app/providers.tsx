@@ -1,17 +1,17 @@
 'use client';
 
 import { ModalProvider } from '@/lib/context';
-import { FirebaseProvider } from '@/lib/firebase-provider';
+import { AuthProvider } from '@/lib/auth-context';
 import { CategoriesProvider } from '@/lib/categories-context';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <FirebaseProvider>
+    <AuthProvider>
       <CategoriesProvider>
         <ModalProvider>
           {children}
         </ModalProvider>
       </CategoriesProvider>
-    </FirebaseProvider>
+    </AuthProvider>
   );
 }

@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useFirebase, OperationType, handleFirestoreError } from '@/lib/firebase-provider';
-import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import React, { useState } from 'react';
 import { Loader2, Phone, MapPin, Package, Clock, User, CheckCircle2, ChevronRight, LayoutDashboard, LogOut, Settings, ListPlus, Edit3, Trash2, Database, HelpCircle, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useCategories } from '@/lib/categories-context';
+import { useAuth } from '@/lib/auth-context';
 
 interface OrderItem {
   name: string;
@@ -22,7 +20,7 @@ interface Order {
   items: OrderItem[];
   status: 'pending' | 'assigned' | 'completed';
   assignedStaffId?: string;
-  createdAt: Timestamp;
+  createdAt?: string;
 }
 
 const STAFF = [
@@ -33,11 +31,11 @@ const STAFF = [
 ];
 
 export default function AdminDashboardPage() {
-  const { user, loading, isAdmin, login, logout } = useFirebase();
+  const { user, loading, isAdmin, login, logout } = useAuth();
   const { categories, addCategory, updateCategory, deleteCategory, seedDefaultCategories, isDbHealthy } = useCategories();
   
   const [orders, setOrders] = useState<Order[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'assigned' | 'completed'>('pending');
   
   // Dashboard Tabs: 'orders' or 'categories'
@@ -57,43 +55,31 @@ export default function AdminDashboardPage() {
   const [editParentId, setEditParentId] = useState('');
   const [editHasFilters, setEditHasFilters] = useState(false);
 
-  useEffect(() => {
-    if (!isAdmin) return;
-
-    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ordersData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Order[];
-      setOrders(ordersData);
-      setOrdersLoading(false);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'orders');
-    });
-
-    return () => unsubscribe();
-  }, [isAdmin]);
-
   const handleAssign = async (orderId: string, staffId: string) => {
-    try {
-      await updateDoc(doc(db, 'orders', orderId), {
-        assignedStaffId: staffId,
-        status: 'assigned'
-      });
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `orders/${orderId}`);
-    }
+    setOrders((currentOrders) =>
+      currentOrders.map((order) =>
+        order.id === orderId
+          ? {
+              ...order,
+              assignedStaffId: staffId,
+              status: 'assigned',
+            }
+          : order
+      )
+    );
   };
 
   const handleComplete = async (orderId: string) => {
-    try {
-      await updateDoc(doc(db, 'orders', orderId), {
-        status: 'completed'
-      });
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `orders/${orderId}`);
-    }
+    setOrders((currentOrders) =>
+      currentOrders.map((order) =>
+        order.id === orderId
+          ? {
+              ...order,
+              status: 'completed',
+            }
+          : order
+      )
+    );
   };
 
   // Add category submission
@@ -245,8 +231,12 @@ export default function AdminDashboardPage() {
 
           <div className="flex items-center gap-4">
             <div className="hidden sm:block text-right">
-              <div className="text-xs font-bold">{user.displayName}</div>
-              <div className="text-[9px] text-white/50 tracking-wider">toilagatau234@gmail.com</div>
+              <div className="text-xs font-bold">
+                {typeof user.user_metadata?.full_name === 'string'
+                  ? user.user_metadata.full_name
+                  : user.email}
+              </div>
+              <div className="text-[9px] text-white/50 tracking-wider">{user.email}</div>
             </div>
             <button onClick={logout} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors" title="Đăng xuất">
               <LogOut className="w-4.5 h-4.5" />
@@ -329,7 +319,9 @@ export default function AdminDashboardPage() {
                                 <span className="w-1 h-1 bg-slate-300 rounded-full" />
                                 <div className="flex items-center gap-1.5">
                                   <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                  {order.createdAt?.toDate ? order.createdAt.toDate().toLocaleString('vi-VN') : 'Mới cập nhật'}
+                                  {order.createdAt
+                                    ? new Date(order.createdAt).toLocaleString('vi-VN')
+                                    : 'Mới cập nhật'}
                                 </div>
                               </div>
                             </div>
@@ -413,7 +405,7 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* SECTION 2: DYNAMIC FIRESTORE CATEGORIES MANAGER */}
+        {/* SECTION 2: CATEGORIES MANAGER */}
         {adminMenu === 'categories' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             

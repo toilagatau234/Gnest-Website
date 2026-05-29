@@ -30,7 +30,7 @@ Storage        : Supabase Storage
 Deploy         : Vercel
 ```
 
-Không dùng/mở rộng Firebase. Repo hiện còn legacy Firebase, cần thay bằng Supabase khi migration.
+Không dùng/mở rộng backend legacy. Supabase là backend chính cho migration.
 
 ## Current Routes
 
@@ -64,12 +64,6 @@ lib/data.ts
 lib/context.tsx
 lib/categories-context.tsx
 lib/cart-context.tsx
-```
-
-Legacy Firebase files:
-```txt
-lib/firebase.ts
-lib/firebase-provider.tsx
 ```
 
 ## Public Features
@@ -196,7 +190,7 @@ app/admin/(dashboard)/
 
 ## Do Not Do
 
-- Do not add Firebase back.
+- Do not add backend legacy back.
 - Do not expose secrets.
 - Do not build payment/cart unless requested.
 - Do not remove existing public features.
@@ -207,7 +201,7 @@ app/admin/(dashboard)/
 
 Before finishing:
 - TypeScript passes.
-- No Firebase expansion.
+- No backend legacy expansion.
 - No exposed secrets.
 - RLS/role guard considered for mutations.
 - Admin route guarded server-side.
