@@ -39,7 +39,7 @@ export async function getInquiries(options?: GetInquiriesOptions) {
 
     return { data: data || [], error: null };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+    const message = err instanceof Error ? err.message : 'Lỗi không xác định';
     console.error('Failed to fetch inquiries:', message);
     return { data: null, error: message };
   }
@@ -60,7 +60,7 @@ export async function getInquiryCount() {
 
     return { count: count || 0, error: null };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+    const message = err instanceof Error ? err.message : 'Lỗi không xác định';
     console.error('Failed to count inquiries:', message);
     return { count: 0, error: message };
   }
@@ -82,7 +82,7 @@ export async function getNewInquiriesCount() {
 
     return { count: count || 0, error: null };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+    const message = err instanceof Error ? err.message : 'Lỗi không xác định';
     console.error('Failed to count new inquiries:', message);
     return { count: 0, error: message };
   }

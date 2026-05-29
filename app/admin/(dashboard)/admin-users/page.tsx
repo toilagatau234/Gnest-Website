@@ -4,8 +4,8 @@ export default function AdminUsersPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Admin users</h1>
-        <p className="text-gray-600 mt-2">Manage admin accounts and permissions</p>
+        <h1 className="text-3xl font-bold text-gray-900">Người dùng quản trị</h1>
+        <p className="text-gray-600 mt-2">Quản lý tài khoản và phân quyền quản trị</p>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
@@ -16,7 +16,7 @@ export default function AdminUsersPage() {
         </div>
         <p className="text-gray-600 text-lg font-medium">Sắp ra mắt</p>
         <p className="text-sm text-gray-500 mt-2">
-          Tính năng quản lý người dùng quản trị đang được phát triển
+          Quản lý người dùng quản trị sẽ được làm ở phase riêng.
         </p>
       </div>
     </div>

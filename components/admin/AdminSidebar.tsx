@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
-  MessageSquare,
-  FolderOpen,
-  Package,
-  Phone,
   Briefcase,
   FileText,
+  FolderOpen,
+  LayoutDashboard,
+  MessageSquare,
+  Package,
+  Phone,
   Users,
 } from 'lucide-react';
 
@@ -20,14 +20,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/admin/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+  { label: 'Tổng quan', href: '/admin/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
   { label: 'Yêu cầu báo giá', href: '/admin/inquiries', icon: <MessageSquare className="w-5 h-5" /> },
   { label: 'Danh mục', href: '/admin/categories', icon: <FolderOpen className="w-5 h-5" /> },
   { label: 'Sản phẩm', href: '/admin/products', icon: <Package className="w-5 h-5" /> },
-  { label: 'Liên hệ / Sales', href: '/admin/sales-contacts', icon: <Phone className="w-5 h-5" /> },
+  { label: 'Liên hệ bán hàng', href: '/admin/sales-contacts', icon: <Phone className="w-5 h-5" /> },
   { label: 'Tuyển dụng', href: '/admin/jobs', icon: <Briefcase className="w-5 h-5" /> },
   { label: 'Nội dung website', href: '/admin/site-content', icon: <FileText className="w-5 h-5" /> },
-  { label: 'Admin users', href: '/admin/admin-users', icon: <Users className="w-5 h-5" /> },
+  { label: 'Người dùng quản trị', href: '/admin/admin-users', icon: <Users className="w-5 h-5" /> },
 ];
 
 interface AdminSidebarProps {
@@ -37,9 +37,7 @@ interface AdminSidebarProps {
 export function AdminSidebar({ isOpen }: AdminSidebarProps) {
   const pathname = usePathname();
 
-  const isActive = (href: string) => {
-    return pathname === href || pathname.startsWith(href + '/');
-  };
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
   return (
     <nav

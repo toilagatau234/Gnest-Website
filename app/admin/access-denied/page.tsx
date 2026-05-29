@@ -9,15 +9,13 @@ export default function AccessDeniedPage() {
 
   const handleLogout = async () => {
     await logout();
-    window.location.href = '/';
+    window.location.href = '/admin/login';
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Card */}
         <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          {/* Icon */}
           <div className="flex justify-center mb-6">
             <div className="bg-red-50 rounded-full p-4">
               <svg
@@ -30,20 +28,18 @@ export default function AccessDeniedPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 9v2m0 4v2m0 4v2m0-14a9 9 0 110 18 9 9 0 010-18z"
+                  d="M12 9v2m0 4h.01M12 3a9 9 0 110 18 9 9 0 010-18z"
                 />
               </svg>
             </div>
           </div>
 
-          {/* Message */}
           <h1 className="text-2xl font-bold text-gray-900 mb-3">Truy cập bị từ chối</h1>
           <p className="text-gray-600 mb-6">
-            Bạn không có quyền truy cập trang này. Liên hệ quản trị viên nếu bạn nghĩ đây là
-            một lỗi.
+            Tài khoản của bạn chưa được cấp quyền quản trị hoặc đã bị tắt quyền truy cập.
+            Vui lòng liên hệ quản trị viên.
           </p>
 
-          {/* Actions */}
           <div className="space-y-3">
             <Link
               href="/"

@@ -8,8 +8,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Server-side auth check: will redirect if not authenticated/authorized
-  await requireAdminAuth();
+  const adminUser = await requireAdminAuth();
 
-  return <AdminShell>{children}</AdminShell>;
+  return <AdminShell adminUser={adminUser}>{children}</AdminShell>;
 }

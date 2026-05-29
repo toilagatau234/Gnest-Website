@@ -13,21 +13,20 @@ const statusConfig: Record<InquiryStatus, { label: string; variant: BadgeVariant
   new: { label: 'Mới', variant: 'default' },
   contacted: { label: 'Đã liên hệ', variant: 'secondary' },
   quoted: { label: 'Đã báo giá', variant: 'outline' },
-  closed: { label: 'Đóng', variant: 'secondary' },
+  closed: { label: 'Đã đóng', variant: 'secondary' },
   spam: { label: 'Spam', variant: 'destructive' },
 };
 
 function formatDate(dateString: string) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString('vi-VN', {
     year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   });
 }
 
-function truncateText(text: string | null | undefined, maxLength: number = 60) {
-  if (!text) return '—';
+function truncateText(text: string | null | undefined, maxLength = 60) {
+  if (!text) return '-';
   if (text.length > maxLength) {
     return text.substring(0, maxLength) + '...';
   }
@@ -63,7 +62,7 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
         <tbody className="divide-y divide-gray-200">
           {inquiries.map((inquiry) => {
             const status = inquiry.status as InquiryStatus;
-            const statusConfig_ = statusConfig[status] || statusConfig.new;
+            const currentStatus = statusConfig[status] || statusConfig.new;
 
             return (
               <tr key={inquiry.id} className="hover:bg-gray-50 transition-colors">
@@ -71,10 +70,7 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
                   {inquiry.customer_name}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
-                  <a
-                    href={`tel:${inquiry.phone}`}
-                    className="text-blue-600 hover:underline"
-                  >
+                  <a href={`tel:${inquiry.phone}`} className="text-blue-600 hover:underline">
                     {inquiry.phone}
                   </a>
                 </td>
@@ -87,20 +83,15 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
                       {inquiry.email}
                     </a>
                   ) : (
-                    '—'
+                    '-'
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
-                  <span title={inquiry.message || ''}>
-                    {truncateText(inquiry.message, 50)}
-                  </span>
+                  <span title={inquiry.message || ''}>{truncateText(inquiry.message, 50)}</span>
                 </td>
                 <td className="px-6 py-4 text-sm">
-                  <Badge
-                    variant={statusConfig_.variant}
-                    className="whitespace-nowrap"
-                  >
-                    {statusConfig_.label}
+                  <Badge variant={currentStatus.variant} className="whitespace-nowrap">
+                    {currentStatus.label}
                   </Badge>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">

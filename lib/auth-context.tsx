@@ -1,23 +1,27 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 import { createClient } from '@/lib/supabase/client';
+import type { AdminRole, Database } from '@/lib/types/database';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
-  role: string | null;
+  role: AdminRole | null;
   login: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const ADMIN_ROLES = new Set(['super_admin', 'admin', 'editor']);
+const ADMIN_ROLES = new Set<AdminRole>(['super_admin', 'admin', 'editor', 'viewer']);
 
-async function fetchAdminRole(userId: string, supabase: any): Promise<string | null> {
+async function fetchAdminRole(
+  userId: string,
+  supabase: SupabaseClient<Database>
+): Promise<AdminRole | null> {
   try {
     const { data, error } = await supabase
       .from('admin_users')
@@ -40,7 +44,7 @@ async function fetchAdminRole(userId: string, supabase: any): Promise<string | n
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<AdminRole | null>(null);
 
   const supabase = useMemo(() => {
     try {
@@ -57,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const supabaseClient = supabase;
     let mounted = true;
 
     async function handleUserChange(currentUser: User | null) {
@@ -74,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentUser);
       }
 
-      const roleVal = await fetchAdminRole(currentUser.id, supabase);
+      const roleVal = await fetchAdminRole(currentUser.id, supabaseClient);
 
       if (mounted) {
         setRole(roleVal);
@@ -83,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    supabase.auth.getUser().then(({ data }) => {
+    supabaseClient.auth.getUser().then(({ data }) => {
       handleUserChange(data.user);
     }).catch((err) => {
       console.warn('getUser failed:', err);
@@ -94,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
       if (mounted) {
         setLoading(true);
       }

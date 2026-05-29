@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import type { AdminRole } from '@/lib/types/database';
 
-const VALID_ADMIN_ROLES = new Set(['super_admin', 'admin', 'editor', 'viewer']);
+const VALID_ADMIN_ROLES = new Set<AdminRole>(['super_admin', 'admin', 'editor', 'viewer']);
 
 export interface AdminUser {
   id: string;
@@ -22,36 +22,29 @@ export async function requireAdminAuth(): Promise<AdminUser> {
     redirect('/admin/login');
   }
 
-  // Check if user has admin role
-  const { data: adminUser, error: adminError } = await supabase
+  const adminClient = createServiceRoleClient();
+
+  const { data: adminProfile, error: adminProfileError } = await adminClient
     .from('admin_users')
     .select('id, email, role, is_active')
     .eq('id', user.id)
     .maybeSingle();
 
-  if (adminError) {
-    console.error('Error checking admin status:', adminError.message);
+  if (adminProfileError || !adminProfile) {
     redirect('/admin/access-denied');
   }
 
-  if (!adminUser) {
-    // User not in admin_users table
-    redirect('/admin/access-denied');
-  }
-
-  // Check if user has valid role and is active
-  const hasValidRole = VALID_ADMIN_ROLES.has(adminUser.role) && adminUser.is_active;
+  const hasValidRole = VALID_ADMIN_ROLES.has(adminProfile.role) && adminProfile.is_active;
 
   if (!hasValidRole) {
-    // Invalid role or not active
     redirect('/admin/access-denied');
   }
 
   return {
-    id: adminUser.id,
-    email: adminUser.email,
-    role: adminUser.role,
-    is_active: adminUser.is_active,
+    id: adminProfile.id,
+    email: adminProfile.email,
+    role: adminProfile.role,
+    is_active: adminProfile.is_active,
   };
 }
 
@@ -65,7 +58,9 @@ export async function getAdminUserIfExists(): Promise<AdminUser | null> {
       return null;
     }
 
-    const { data: adminUser, error: adminError } = await supabase
+    const adminClient = createServiceRoleClient();
+
+    const { data: adminUser, error: adminError } = await adminClient
       .from('admin_users')
       .select('id, email, role, is_active')
       .eq('id', user.id)

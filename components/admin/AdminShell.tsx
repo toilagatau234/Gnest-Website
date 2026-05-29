@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { AdminTopbar } from '@/components/admin/AdminTopbar';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import type { AdminUser } from '@/lib/services/admin/auth';
 
 interface AdminShellProps {
   children: React.ReactNode;
+  adminUser: AdminUser;
 }
 
-export function AdminShell({ children }: AdminShellProps) {
+export function AdminShell({ children, adminUser }: AdminShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const toggleMenu = () => {
@@ -21,7 +23,7 @@ export function AdminShell({ children }: AdminShellProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AdminTopbar onMenuToggle={toggleMenu} isMenuOpen={menuOpen} />
+      <AdminTopbar adminUser={adminUser} onMenuToggle={toggleMenu} isMenuOpen={menuOpen} />
 
       <div className="flex">
         <AdminSidebar isOpen={menuOpen} />
