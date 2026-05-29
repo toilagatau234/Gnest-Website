@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  role: string | null;
   login: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -16,15 +17,30 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const ADMIN_ROLES = new Set(['super_admin', 'admin', 'editor']);
 
-function hasAdminRole(user: User | null) {
-  const role = user?.app_metadata?.role;
-  return typeof role === 'string' && ADMIN_ROLES.has(role);
+async function fetchAdminRole(userId: string, supabase: any): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('role')
+      .eq('id', userId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Failed to query admin_users table:', error.message);
+      return null;
+    }
+    return data?.role ?? null;
+  } catch (err) {
+    console.warn('Error fetching admin role:', err);
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
 
   const supabase = useMemo(() => {
     try {
@@ -34,6 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const [loading, setLoading] = useState(!!supabase);
+
   useEffect(() => {
     if (!supabase) {
       return;
@@ -41,19 +59,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let mounted = true;
 
+    async function handleUserChange(currentUser: User | null) {
+      if (!currentUser) {
+        if (mounted) {
+          setUser(null);
+          setIsAdmin(false);
+          setRole(null);
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (mounted) {
+        setUser(currentUser);
+      }
+
+      const roleVal = await fetchAdminRole(currentUser.id, supabase);
+
+      if (mounted) {
+        setRole(roleVal);
+        setIsAdmin(roleVal ? ADMIN_ROLES.has(roleVal) : false);
+        setLoading(false);
+      }
+    }
+
     supabase.auth.getUser().then(({ data }) => {
-      if (!mounted) return;
-      setUser(data.user);
-      setIsAdmin(hasAdminRole(data.user));
-      setLoading(false);
+      handleUserChange(data.user);
+    }).catch((err) => {
+      console.warn('getUser failed:', err);
+      if (mounted) {
+        setLoading(false);
+      }
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setIsAdmin(hasAdminRole(session?.user ?? null));
-      setLoading(false);
+      if (mounted) {
+        setLoading(true);
+      }
+      handleUserChange(session?.user ?? null);
     });
 
     return () => {
@@ -68,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/admin/orders`,
+        redirectTo: `${window.location.origin}/admin/dashboard`,
       },
     });
 
@@ -87,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, role, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

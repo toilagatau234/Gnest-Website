@@ -60,6 +60,7 @@ create table public.categories (
   type public.category_type not null default 'product',
   parent_id uuid references public.categories(id) on delete set null,
   sort_order integer not null default 0,
+  has_filters boolean not null default false,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

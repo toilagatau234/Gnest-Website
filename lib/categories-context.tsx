@@ -56,11 +56,7 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
             id: c.slug,
             title: c.name,
             type: c.type as 'product' | 'service',
-            hasFilters:
-              c.slug === 'chai-lo-thuy-tinh' ||
-              c.slug === 'chai-thuy-tinh' ||
-              c.slug === 'lo-thuy-tinh' ||
-              parentSlug === 'chai-lo-thuy-tinh',
+            hasFilters: c.has_filters,
             parentId: parentSlug,
             sortOrder: c.sort_order,
           };

@@ -39,8 +39,6 @@ export async function getProducts() {
     .from('products')
     .select(productSelect)
     .eq('is_active', true)
-    .eq('product_images.is_active', true)
-    .eq('product_bulk_discounts.is_active', true)
     .order('created_at', { ascending: false })
     .returns<ProductWithDetails[]>();
 
@@ -54,13 +52,28 @@ export async function getProducts() {
 export async function getProductsByCategorySlug(categorySlug: string) {
   const supabase = getSupabase();
 
+  // 1. Query category by slug first
+  const { data: categoryData, error: catError } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('slug', categorySlug)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (catError) {
+    throw new Error(`Failed to load category "${categorySlug}": ${catError.message}`);
+  }
+
+  if (!categoryData) {
+    return [];
+  }
+
+  // 2. Query products by category_id
   const { data, error } = await supabase
     .from('products')
     .select(productSelect)
     .eq('is_active', true)
-    .eq('product_images.is_active', true)
-    .eq('product_bulk_discounts.is_active', true)
-    .eq('categories.slug', categorySlug)
+    .eq('category_id', categoryData.id)
     .order('created_at', { ascending: false })
     .returns<ProductWithDetails[]>();
 
@@ -79,8 +92,6 @@ export async function getProductBySlug(slug: string) {
     .select(productSelect)
     .eq('slug', slug)
     .eq('is_active', true)
-    .eq('product_images.is_active', true)
-    .eq('product_bulk_discounts.is_active', true)
     .maybeSingle()
     .returns<ProductWithDetails | null>();
 

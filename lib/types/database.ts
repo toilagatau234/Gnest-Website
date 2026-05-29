@@ -71,6 +71,7 @@ export interface Database {
           type: CategoryType;
           parent_id: string | null;
           sort_order: number;
+          has_filters: boolean;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -82,6 +83,7 @@ export interface Database {
           type?: CategoryType;
           parent_id?: string | null;
           sort_order?: number;
+          has_filters?: boolean;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -92,6 +94,7 @@ export interface Database {
           type?: CategoryType;
           parent_id?: string | null;
           sort_order?: number;
+          has_filters?: boolean;
           is_active?: boolean;
           updated_at?: string;
         };
