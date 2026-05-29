@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/client';
 import type { Tables } from '@/lib/types/database';
 
 export type ProductImage = Tables<'product_images'>;
@@ -18,8 +18,22 @@ const productSelect = `
   product_bulk_discounts (*)
 `;
 
+function isSupabaseConfigured() {
+  return !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  );
+}
+
+function getSupabase() {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase environment variables are not configured.');
+  }
+  return createClient();
+}
+
 export async function getProducts() {
-  const supabase = await createClient();
+  const supabase = getSupabase();
 
   const { data, error } = await supabase
     .from('products')
@@ -38,7 +52,7 @@ export async function getProducts() {
 }
 
 export async function getProductsByCategorySlug(categorySlug: string) {
-  const supabase = await createClient();
+  const supabase = getSupabase();
 
   const { data, error } = await supabase
     .from('products')
@@ -58,7 +72,7 @@ export async function getProductsByCategorySlug(categorySlug: string) {
 }
 
 export async function getProductBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = getSupabase();
 
   const { data, error } = await supabase
     .from('products')

@@ -1,10 +1,24 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/client';
 import type { Tables } from '@/lib/types/database';
 
 export type Category = Tables<'categories'>;
 
+function isSupabaseConfigured() {
+  return !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  );
+}
+
+function getSupabase() {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase environment variables are not configured.');
+  }
+  return createClient();
+}
+
 export async function getCategories() {
-  const supabase = await createClient();
+  const supabase = getSupabase();
 
   const { data, error } = await supabase
     .from('categories')
@@ -21,7 +35,7 @@ export async function getCategories() {
 }
 
 export async function getCategoryBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = getSupabase();
 
   const { data, error } = await supabase
     .from('categories')

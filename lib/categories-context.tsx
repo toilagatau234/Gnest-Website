@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 import {
   CatalogCategory,
@@ -10,6 +10,8 @@ import {
   DEFAULT_ITEMS,
   getCatalogFromCategories,
 } from './data';
+import { getCategories } from './services/categories';
+import { getProducts } from './services/products';
 
 interface CategoriesContextType {
   categories: DbCategory[];
@@ -35,6 +37,90 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
   const [catalog, setCatalog] = useState<Record<string, CatalogCategory>>(
     getCatalogFromCategories(DEFAULT_CATEGORIES, DEFAULT_ITEMS)
   );
+  const [loading, setLoading] = useState(true);
+  const [isDbHealthy, setIsDbHealthy] = useState(false);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        const dbCats = await getCategories();
+        const dbProds = await getProducts();
+
+        // 1. Map Categories
+        const mappedCategories: DbCategory[] = dbCats.map((c) => {
+          const parentCat = c.parent_id ? dbCats.find((p) => p.id === c.parent_id) : null;
+          const parentSlug = parentCat ? parentCat.slug : null;
+
+          return {
+            id: c.slug,
+            title: c.name,
+            type: c.type as 'product' | 'service',
+            hasFilters:
+              c.slug === 'chai-lo-thuy-tinh' ||
+              c.slug === 'chai-thuy-tinh' ||
+              c.slug === 'lo-thuy-tinh' ||
+              parentSlug === 'chai-lo-thuy-tinh',
+            parentId: parentSlug,
+            sortOrder: c.sort_order,
+          };
+        });
+
+        // 2. Map Products
+        const mappedItems: CatalogItem[] = dbProds.map((p) => {
+          const cat = p.category_id ? dbCats.find((c) => c.id === p.category_id) : null;
+          const categorySlug = cat ? cat.slug : '';
+
+          const specsObj = p.specs && typeof p.specs === 'object' ? (p.specs as Record<string, any>) : {};
+
+          const activeImages = (p.product_images || [])
+            .filter((img) => img.is_active)
+            .sort((a, b) => a.sort_order - b.sort_order);
+          const imageUrls = activeImages.map((img) => img.public_url).filter(Boolean) as string[];
+          const primaryImg = activeImages.find((img) => img.is_primary) || activeImages[0];
+          const primaryImageUrl = primaryImg ? primaryImg.public_url : '/placeholder.svg';
+
+          const bulkDiscountsList = (p.product_bulk_discounts || [])
+            .filter((d) => d.is_active)
+            .sort((a, b) => a.min_quantity - b.min_quantity)
+            .map((d) => ({
+              threshold: d.min_quantity,
+              pricePerUnit: d.price_per_unit,
+            }));
+
+          return {
+            id: p.slug,
+            name: p.name,
+            img: primaryImageUrl || null,
+            imgs: imageUrls.length > 0 ? imageUrls : undefined,
+            dungTich: specsObj.dungTich ? String(specsObj.dungTich) : undefined,
+            quyCach: specsObj.quyCach ? String(specsObj.quyCach) : undefined,
+            phiNap: specsObj.phiNap ? String(specsObj.phiNap) : undefined,
+            loaiNap: specsObj.loaiNap ? String(specsObj.loaiNap) : undefined,
+            color: specsObj.color ? String(specsObj.color) : undefined,
+            desc: p.description || '',
+            price: p.price ?? undefined,
+            stock: p.stock ?? 0,
+            bulkDiscounts: bulkDiscountsList.length > 0 ? bulkDiscountsList : undefined,
+            categoryId: categorySlug,
+          };
+        });
+
+        setCategories(mappedCategories);
+        setCatalog(getCatalogFromCategories(mappedCategories, mappedItems));
+        setIsDbHealthy(true);
+      } catch (err) {
+        console.warn('Failed to load categories/products from Supabase. Falling back to default data.', err);
+        setCategories(DEFAULT_CATEGORIES);
+        setCatalog(getCatalogFromCategories(DEFAULT_CATEGORIES, DEFAULT_ITEMS));
+        setIsDbHealthy(false);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
 
   const syncCategories = (nextCategories: DbCategory[], items: CatalogItem[] = DEFAULT_ITEMS) => {
     setCategories(nextCategories);
@@ -85,12 +171,12 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
       value={{
         categories,
         catalog,
-        loading: false,
+        loading,
         addCategory,
         updateCategory,
         deleteCategory,
         seedDefaultCategories,
-        isDbHealthy: false,
+        isDbHealthy,
       }}
     >
       {children}
