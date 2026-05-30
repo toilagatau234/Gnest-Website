@@ -52,7 +52,9 @@ export default async function ProductsPage() {
         </div>
       ) : null}
 
-      {safeProducts.length > 0 ? <ProductsTable products={safeProducts} /> : null}
+      {safeProducts.length > 0 ? (
+        <ProductsTable products={safeProducts} categories={safeCategories} />
+      ) : null}
     </div>
   );
 }
