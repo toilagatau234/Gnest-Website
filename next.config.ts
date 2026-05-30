@@ -25,6 +25,16 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'bizweb.dktcdn.net',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ui-avatars.com',
+        pathname: '/**',
       }
     ],
   },

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import { Search, X, Package } from 'lucide-react';
 import { CatalogCategory, CatalogItem } from '@/lib/data';
@@ -185,8 +186,15 @@ export function SiteSearch() {
                         >
                           <div className="w-[42px] h-[42px] shrink-0 bg-white border border-dtl-border rounded overflow-hidden flex items-center justify-center p-1">
                             {primaryImg ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={primaryImg} alt={result.product.name} className="w-full h-full object-contain" />
+                              <div className="relative w-full h-full">
+                                <Image
+                                  src={primaryImg}
+                                  alt={result.product.name}
+                                  fill
+                                  sizes="42px"
+                                  className="object-contain"
+                                />
+                              </div>
                             ) : (
                               <Package className="w-5 h-5 text-dtl-gray/50" />
                             )}

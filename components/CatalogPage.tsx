@@ -11,6 +11,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useCategories } from "@/lib/categories-context";
 
@@ -92,20 +93,20 @@ function ProductImageDisplay({
 
   return (
     <div className="w-full h-full relative group">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={primaryImg}
         alt={alt}
-        className={`w-full h-full object-contain mix-blend-multiply transition-all duration-300 group-hover:scale-105 ${secondaryImg ? "group-hover:opacity-0" : ""}`}
-        loading="lazy"
+        fill
+        sizes="(max-width: 768px) 50vw, 25vw"
+        className={`object-contain mix-blend-multiply transition-all duration-300 group-hover:scale-105 ${secondaryImg ? "group-hover:opacity-0" : ""}`}
       />
       {secondaryImg && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={secondaryImg}
           alt={alt}
-          className="absolute inset-0 w-full h-full object-contain mix-blend-multiply opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105"
-          loading="lazy"
+          fill
+          sizes="(max-width: 768px) 50vw, 25vw"
+          className="absolute inset-0 object-contain mix-blend-multiply opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105"
         />
       )}
     </div>

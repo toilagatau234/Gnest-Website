@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'motion/react';
+import Image from 'next/image';
 
 const ITEMS = [
   {img: 'https://bizweb.dktcdn.net/thumb/large/100/091/995/products/sua-200.png', label: 'Chai Lọ Thủy Tinh', href: '/danh-muc/chai-lo-thuy-tinh', color: 'from-blue-500/20 to-blue-600/5'},
@@ -51,8 +52,14 @@ function GalleryCard({ item }: { item: typeof ITEMS[0] }) {
     <Link href={item.href} className={`group relative w-[180px] h-[180px] shrink-0 bg-gradient-to-br ${item.color} border border-white/10 rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_12px_30px_rgba(255,255,255,0.15)] hover:border-white/30 hover:z-10`}>
       <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       <div className="absolute inset-0 p-4 z-10 flex items-center justify-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={item.img} alt={item.label} className="w-[85%] h-[85%] object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-110" loading="eager" />
+        <Image
+          src={item.img}
+          alt={item.label}
+          width={150}
+          height={150}
+          className="w-[85%] h-[85%] object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-110"
+          priority
+        />
       </div>
       <div className="absolute bottom-0 inset-x-0 p-2.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-20">
         <div className="font-bold text-white text-center text-[13px] drop-shadow-md">{item.label}</div>
