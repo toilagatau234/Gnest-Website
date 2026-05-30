@@ -1,0 +1,138 @@
+import type { AdminCategory } from '@/lib/services/admin/categories';
+import type { AdminProduct } from '@/lib/services/admin/products';
+
+import { createProductAction, updateProductAction } from '@/app/admin/(dashboard)/products/actions';
+
+interface ProductFormProps {
+  categories: AdminCategory[];
+  product?: AdminProduct;
+}
+
+function getSpecsDefaultValue(product?: AdminProduct) {
+  if (!product?.specs || typeof product.specs !== 'object' || Array.isArray(product.specs)) {
+    return '{\n  "dungTich": "",\n  "quyCach": ""\n}';
+  }
+
+  return JSON.stringify(product.specs, null, 2);
+}
+
+export function ProductForm({ categories, product }: ProductFormProps) {
+  const action = product ? updateProductAction : createProductAction;
+  const activeCategories = categories.filter((category) => category.is_active);
+
+  return (
+    <form action={action} className="rounded-2xl border border-[#D7E0EC] bg-white p-5 shadow-sm">
+      <div className="mb-5">
+        <h2 className="text-lg font-bold text-[#1B3A6B]">
+          {product ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm'}
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Phase 2 quản lý thông tin cơ bản. Ảnh/Storage sẽ làm ở phase sau.
+        </p>
+      </div>
+
+      {product ? <input type="hidden" name="id" value={product.id} /> : null}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Tên sản phẩm</span>
+          <input
+            name="name"
+            required
+            defaultValue={product?.name ?? ''}
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
+            placeholder="VD: Hũ thủy tinh 500ml"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Slug</span>
+          <input
+            name="slug"
+            required
+            defaultValue={product?.slug ?? ''}
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
+            placeholder="hu-thuy-tinh-500ml"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Danh mục</span>
+          <select
+            name="category_id"
+            defaultValue={product?.category_id ?? ''}
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
+          >
+            <option value="">Chưa phân loại</option>
+            {activeCategories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Giá</span>
+          <input
+            name="price"
+            type="number"
+            min="0"
+            step="100"
+            defaultValue={product?.price ?? ''}
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
+            placeholder="Liên hệ nếu để trống"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Tồn kho</span>
+          <input
+            name="stock"
+            type="number"
+            min="0"
+            defaultValue={product?.stock ?? 0}
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
+          />
+        </label>
+
+        <div className="flex items-end pb-2">
+          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+            <input name="is_active" type="checkbox" defaultChecked={product?.is_active ?? true} />
+            Đang hiển thị
+          </label>
+        </div>
+      </div>
+
+      <label className="mt-4 block">
+        <span className="text-sm font-medium text-slate-700">Mô tả</span>
+        <textarea
+          name="description"
+          rows={3}
+          defaultValue={product?.description ?? ''}
+          className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
+          placeholder="Mô tả ngắn hiển thị trong catalog"
+        />
+      </label>
+
+      <label className="mt-4 block">
+        <span className="text-sm font-medium text-slate-700">Specs JSON</span>
+        <textarea
+          name="specs"
+          rows={5}
+          defaultValue={getSpecsDefaultValue(product)}
+          className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 font-mono text-xs outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
+        />
+      </label>
+
+      <div className="mt-5 flex justify-end">
+        <button
+          type="submit"
+          className="rounded-xl bg-[#E31E24] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#C9181E]"
+        >
+          {product ? 'Lưu thay đổi' : 'Tạo sản phẩm'}
+        </button>
+      </div>
+    </form>
+  );
+}
