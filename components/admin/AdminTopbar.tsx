@@ -1,8 +1,20 @@
 'use client';
 
-import { Database, ExternalLink, LogOut, Menu, Search, X } from 'lucide-react';
-import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { 
+  Search, 
+  Menu, 
+  LogOut, 
+  Database,
+  ExternalLink,
+  Server,
+  Sliders,
+  RefreshCw,
+  CloudLightning,
+  AlertTriangle,
+  X
+} from 'lucide-react';
+import Link from 'next/link';
 
 import { useAuth } from '@/lib/auth-context';
 import { ADMIN_ROLE_LABELS, type AdminUser } from '@/lib/types/admin';
@@ -13,23 +25,23 @@ interface AdminTopbarProps {
   isMenuOpen: boolean;
 }
 
-const BREADCRUMB_MAP: Record<string, { label: string; parent?: string }> = {
-  '/admin/dashboard':    { label: 'Dashboard' },
-  '/admin/inquiries':    { label: 'Yêu cầu báo giá', parent: 'Tổng quan' },
-  '/admin/categories':   { label: 'Danh mục', parent: 'Catalog' },
-  '/admin/products':     { label: 'Sản phẩm', parent: 'Catalog' },
-  '/admin/sales-contacts': { label: 'Liên hệ bán hàng', parent: 'Catalog' },
-  '/admin/jobs':         { label: 'Tuyển dụng', parent: 'Hệ thống' },
-  '/admin/site-content': { label: 'Nội dung website', parent: 'Hệ thống' },
-  '/admin/admin-users':  { label: 'Người dùng quản trị', parent: 'Hệ thống' },
-  '/admin/audit-logs':   { label: 'Nhật ký hoạt động', parent: 'Hệ thống' },
+const BREADCRUMB_MAP: Record<string, string> = {
+  '/admin/dashboard': 'Tổng quan / Bảng điều khiển',
+  '/admin/inquiries': 'Tổng quan / Yêu cầu báo giá sỉ',
+  '/admin/categories': 'Catalog sản phẩm / Quản lý danh mục',
+  '/admin/products': 'Catalog sản phẩm / Quản lý sản phẩm',
+  '/admin/sales-contacts': 'Catalog sản phẩm / Đầu mối liên hệ',
+  '/admin/jobs': 'Hệ thống / Tuyển dụng nhân sự',
+  '/admin/site-content': 'Hệ thống / Cấu hình nội dung website',
+  '/admin/admin-users': 'Hệ thống / Tài khoản quản trị',
+  '/admin/audit-logs': 'Hệ thống / Nhật ký hoạt động truy vết',
 };
 
-function getBreadcrumb(pathname: string) {
+function getBreadcrumbName(pathname: string) {
   const match = Object.keys(BREADCRUMB_MAP)
     .filter((href) => pathname === href || pathname.startsWith(href + '/'))
     .sort((a, b) => b.length - a.length)[0];
-  return match ? BREADCRUMB_MAP[match] : { label: 'Quản trị' };
+  return match ? BREADCRUMB_MAP[match] : 'Trang quản trị';
 }
 
 export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbarProps) {
@@ -43,91 +55,90 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
     router.refresh();
   };
 
-  const crumb = getBreadcrumb(pathname);
+  const currentTabName = getBreadcrumbName(pathname);
 
   return (
-    <header className="admin-glass sticky top-0 z-30 flex h-[60px] items-center justify-between gap-3 border-b border-[#E2E8F0]/80 px-4 lg:px-5">
-      {/* Left: toggle + breadcrumb */}
-      <div className="flex min-w-0 items-center gap-2.5">
-        <button
-          type="button"
+    <header className="sticky top-0 right-0 z-30 flex items-center justify-between bg-white/95 backdrop-blur-md h-16 px-6 lg:px-8 border-b border-[#E2E8F0] shadow-xs">
+      
+      {/* Left: Menu toggle & Breadcrumbs */}
+      <div className="flex items-center gap-4 flex-1 max-w-lg md:max-w-2xl">
+        <button 
           onClick={onMenuToggle}
           aria-label={isMenuOpen ? 'Đóng menu' : 'Mở menu'}
-          aria-expanded={isMenuOpen}
-          aria-controls="admin-sidebar"
-          className="admin-focus rounded-lg p-2 text-[#1B3A6B] transition-colors hover:bg-[#1B3A6B]/[0.06] lg:hidden"
+          className="lg:hidden p-2 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-colors"
         >
-          {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {isMenuOpen ? <X className="w-5.5 h-5.5" /> : <Menu className="w-5.5 h-5.5" />}
         </button>
 
-        <nav aria-label="Breadcrumb" className="min-w-0">
-          <ol className="flex items-center gap-1.5 text-[13px]">
-            <li>
-              <Link
-                href="/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="admin-focus flex items-center gap-1 rounded-md px-1.5 py-0.5 text-slate-400 transition-colors hover:text-[#1B3A6B]"
-                title="Xem trang chủ"
-              >
-                <span className="hidden font-medium sm:inline">Trang chủ</span>
-                <ExternalLink className="h-3 w-3" />
-              </Link>
-            </li>
-            <li className="text-slate-300">/</li>
-            {crumb.parent && (
-              <>
-                <li className="hidden text-slate-400 sm:block">{crumb.parent}</li>
-                <li className="hidden text-slate-300 sm:block">/</li>
-              </>
-            )}
-            <li className="truncate font-semibold text-[#1B3A6B]">{crumb.label}</li>
-          </ol>
-        </nav>
+        {/* Breadcrumb Info */}
+        <div className="flex items-center gap-2 text-sm hidden lg:flex select-none">
+          <Link
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-slate-400 hover:text-[#1B3A6B] transition-colors uppercase tracking-tighter text-[10px] font-bold flex items-center gap-1"
+          >
+            Trang chủ <ExternalLink className="w-2.5 h-2.5" />
+          </Link>
+          <span className="text-slate-300">/</span>
+          <span className="font-bold text-[#1B3A6B] uppercase tracking-tighter text-[10px]">{currentTabName}</span>
+        </div>
       </div>
 
-      {/* Right: search + status + role + logout */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Search placeholder */}
-        <div className="hidden items-center gap-2 rounded-lg border border-[#E2E8F0] bg-slate-50/80 px-3 py-1.5 text-[13px] text-slate-400 transition-colors hover:border-[#CBD5E1] md:flex">
-          <Search className="h-3.5 w-3.5" />
-          <span>Tìm kiếm…</span>
-          <kbd className="ml-1 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
-            ⌘K
-          </kbd>
+      {/* Right: Tools, status, profile, and logout */}
+      <div className="flex items-center gap-4 sm:gap-6">
+        
+        {/* Global Search Bar (Visual Placeholder) */}
+        <div className="relative w-full max-w-xs hidden md:block">
+          <input
+            type="text"
+            placeholder="Tìm kiếm nhanh..."
+            disabled
+            className="bg-[#F7F9FB] border border-[#E2E8F0] rounded-full px-10 py-1.5 text-xs w-52 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B] text-slate-400 cursor-not-allowed"
+          />
+          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-2 pointer-events-none" />
         </div>
 
-        {/* Supabase status */}
-        <div className="hidden items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-slate-50/60 px-2.5 py-1.5 sm:flex">
-          <Database className="h-3.5 w-3.5 text-emerald-500" />
-          <span className="text-[11px] font-semibold text-emerald-600">LIVE</span>
-        </div>
-
-        <span className="hidden h-4 w-px bg-[#E2E8F0] sm:block" />
-
-        {/* Role badge */}
-        <div className="hidden items-center gap-2 rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1.5 sm:flex">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1B3A6B] text-[9px] font-bold text-white">
-            {adminUser.email?.charAt(0).toUpperCase()}
+        {/* Floating Simulation Controls (Aesthetic) */}
+        <div className="hidden xl:flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl p-1 text-xs select-none">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 flex items-center gap-1 bg-white border border-slate-200/50 rounded-md py-0.5 shadow-xs mr-1 text-slate-500">
+            <Sliders className="w-3 h-3 text-[#1B3A6B]" /> Hệ thống:
+          </span>
+          
+          <div className="px-2 py-1 text-slate-500 font-medium text-[10px] flex items-center gap-1">
+            <RefreshCw className="w-2.5 h-2.5 text-slate-400" /> Skeletons
           </div>
-          <div className="leading-tight">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-[#1B3A6B]">
-              {ADMIN_ROLE_LABELS[adminUser.role]}
-            </p>
+          <div className="px-2 py-1 text-slate-500 font-medium text-[10px] flex items-center gap-1">
+            <CloudLightning className="w-2.5 h-2.5 text-slate-400" /> DB Live
           </div>
         </div>
 
-        {/* Logout */}
-        <button
-          type="button"
-          onClick={handleLogout}
-          aria-label="Đăng xuất"
-          title="Đăng xuất"
-          className="admin-focus flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[13px] font-medium text-slate-500 transition-colors hover:bg-red-50 hover:text-[#E31E24]"
-        >
-          <LogOut className="h-[17px] w-[17px]" />
-          <span className="hidden sm:inline">Đăng xuất</span>
-        </button>
+        {/* Database Status indicator badge */}
+        <div className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 text-xs font-semibold cursor-pointer">
+          <Server className="w-3 h-3 text-emerald-600 animate-pulse" />
+          <span className="hidden md:inline uppercase text-[9px] tracking-wider font-bold">SUPABASE LIVE</span>
+        </div>
+
+        {/* Divider line */}
+        <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
+
+        {/* User Role Badge */}
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end leading-tight">
+            <span className="text-xs font-bold text-slate-800">Đại Tài Lợi Co.</span>
+            <span className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-[#1B3A6B] rounded-md font-bold uppercase border border-blue-100">
+              {ADMIN_ROLE_LABELS[adminUser.role] || 'Admin'}
+            </span>
+          </div>
+          
+          <button 
+            onClick={handleLogout}
+            title="Đăng xuất"
+            className="p-2 text-slate-400 hover:text-[#E31E24] transition-colors rounded-xl hover:bg-[#E31E24]/5"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </header>
   );

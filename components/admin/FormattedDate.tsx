@@ -1,4 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
+'use client';
+
 import React, { useState, useEffect } from 'react';
 
 interface FormattedDateProps {
@@ -7,7 +9,7 @@ interface FormattedDateProps {
   options?: Intl.DateTimeFormatOptions;
 }
 
-export default function FormattedDate({ date, type = 'both', options }: FormattedDateProps) {
+export function FormattedDate({ date, type = 'both', options }: FormattedDateProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -39,4 +41,3 @@ export default function FormattedDate({ date, type = 'both', options }: Formatte
 
   return <span suppressHydrationWarning>{formattedText}</span>;
 }
-
