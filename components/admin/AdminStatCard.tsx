@@ -27,8 +27,8 @@ export function AdminStatCard({
     <Interactive3DTilt maxTilt={6} className="h-full">
       <div
         className={`
-          h-full bg-white border border-[#D7E0EC] rounded-2xl p-6
-          shadow-sm hover:shadow-md transition-all duration-300
+          h-full bg-white border border-[#E2E8F0] rounded-2xl p-6
+          shadow-admin hover:shadow-admin-pop transition-all duration-300
           relative overflow-hidden group flex flex-col justify-between
           ${className}
         `}

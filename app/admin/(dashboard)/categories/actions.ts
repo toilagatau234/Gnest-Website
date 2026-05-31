@@ -10,6 +10,8 @@ import {
 } from '@/lib/services/admin/categories';
 import type { CategoryType } from '@/lib/types/database';
 
+export type AdminFormState = { ok: boolean; error?: string };
+
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === 'string' ? value.trim() : '';
@@ -46,34 +48,50 @@ function readCategoryPayload(formData: FormData): CategoryPayload {
   };
 }
 
-export async function createCategoryAction(formData: FormData) {
-  const payload = readCategoryPayload(formData);
-  const { error } = await createAdminCategory(payload);
+export async function createCategoryAction(
+  _prevState: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  try {
+    const payload = readCategoryPayload(formData);
+    const { error } = await createAdminCategory(payload);
 
-  if (error) {
-    throw new Error(error);
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể tạo danh mục.' };
   }
 
   revalidatePath('/admin/categories');
   revalidatePath('/danh-muc');
+  return { ok: true };
 }
 
-export async function updateCategoryAction(formData: FormData) {
-  const categoryId = readString(formData, 'id');
+export async function updateCategoryAction(
+  _prevState: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  try {
+    const categoryId = readString(formData, 'id');
 
-  if (!categoryId) {
-    throw new Error('Thiếu ID danh mục.');
-  }
+    if (!categoryId) {
+      return { ok: false, error: 'Thiếu ID danh mục.' };
+    }
 
-  const payload = readCategoryPayload(formData);
-  const { error } = await updateAdminCategory(categoryId, payload);
+    const payload = readCategoryPayload(formData);
+    const { error } = await updateAdminCategory(categoryId, payload);
 
-  if (error) {
-    throw new Error(error);
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể cập nhật danh mục.' };
   }
 
   revalidatePath('/admin/categories');
   revalidatePath('/danh-muc');
+  return { ok: true };
 }
 
 export async function toggleCategoryActiveAction(formData: FormData) {

@@ -22,13 +22,13 @@ export function AdminCard({
   return (
     <div
       className={`
-        bg-white border border-[#D7E0EC] rounded-2xl shadow-sm
-        overflow-hidden transition-all duration-300 hover:shadow-md
+        bg-white border border-[#E2E8F0] rounded-2xl shadow-admin
+        overflow-hidden transition-shadow duration-300 hover:shadow-admin-pop
         ${className}
       `}
     >
       {(title || subtitle || headerAction) && (
-        <div className="border-b border-[#EBEFF5] px-6 py-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50/50">
+        <div className="border-b border-[#E2E8F0] px-6 py-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50/50">
           <div>
             {title && <h3 className="text-base font-extrabold text-[#1B3A6B] uppercase tracking-wider">{title}</h3>}
             {subtitle && <p className="text-xs text-slate-500 mt-1 leading-normal">{subtitle}</p>}

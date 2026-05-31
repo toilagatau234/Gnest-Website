@@ -1,5 +1,8 @@
 import { AlertCircle, FolderTree } from 'lucide-react';
 
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
+import { AdminSection } from '@/components/admin/AdminSection';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CategoryForm } from '@/components/admin/CategoryForm';
 import { CategoriesTable } from '@/components/admin/CategoriesTable';
 import { getAdminCategories } from '@/lib/services/admin/categories';
@@ -9,19 +12,20 @@ export const dynamic = 'force-dynamic';
 export default async function CategoriesPage() {
   const { data: categories, error } = await getAdminCategories();
   const safeCategories = categories || [];
+  const activeCount = safeCategories.filter((item) => item.is_active).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[#1B3A6B]">Danh mục</h1>
-          <p className="mt-2 text-slate-600">Quản lý danh mục sản phẩm, dịch vụ và cây danh mục cha/con.</p>
-        </div>
-        <div className="rounded-2xl border border-[#D7E0EC] bg-white px-4 py-3 text-sm shadow-sm">
-          <p className="font-semibold text-[#1B3A6B]">{safeCategories.length} danh mục</p>
-          <p className="text-slate-500">{safeCategories.filter((item) => item.is_active).length} đang hiển thị</p>
-        </div>
-      </div>
+    <AdminSection>
+      <AdminPageHeader
+        title="Danh mục"
+        description="Quản lý danh mục sản phẩm, dịch vụ và cây danh mục cha/con."
+        action={
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm shadow-admin">
+            <p className="font-semibold text-[#1B3A6B]">{safeCategories.length} danh mục</p>
+            <p className="text-slate-500">{activeCount} đang hiển thị</p>
+          </div>
+        }
+      />
 
       {error ? (
         <div className="flex items-start gap-3 rounded-2xl border border-[#F2C5C7] bg-[#FFF5F5] p-4">
@@ -36,18 +40,14 @@ export default async function CategoriesPage() {
       <CategoryForm categories={safeCategories} />
 
       {!error && safeCategories.length === 0 ? (
-        <div className="rounded-2xl border border-[#D7E0EC] bg-white p-12 text-center">
-          <div className="mb-4 flex justify-center">
-            <div className="rounded-full bg-[#F4F7FB] p-3">
-              <FolderTree className="h-6 w-6 text-[#1B3A6B]" />
-            </div>
-          </div>
-          <p className="text-slate-700">Chưa có danh mục nào</p>
-          <p className="mt-2 text-sm text-slate-500">Tạo danh mục đầu tiên để gán sản phẩm vào catalog.</p>
-        </div>
+        <AdminEmptyState
+          icon={<FolderTree className="h-6 w-6" />}
+          title="Chưa có danh mục nào"
+          description="Tạo danh mục đầu tiên để gán sản phẩm vào catalog."
+        />
       ) : null}
 
       {safeCategories.length > 0 ? <CategoriesTable categories={safeCategories} /> : null}
-    </div>
+    </AdminSection>
   );
 }

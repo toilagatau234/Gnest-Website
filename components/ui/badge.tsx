@@ -1,16 +1,17 @@
 import * as React from 'react';
 
-export type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive';
+export type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive' | 'success';
 
 interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: BadgeVariant;
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: 'bg-blue-100 text-blue-800 border border-blue-300',
-  secondary: 'bg-gray-100 text-gray-800 border border-gray-300',
-  outline: 'bg-transparent border border-gray-300 text-gray-800',
-  destructive: 'bg-red-100 text-red-800 border border-red-300',
+  default: 'bg-[#1B3A6B]/5 text-[#1B3A6B] ring-1 ring-inset ring-[#1B3A6B]/10',
+  secondary: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200',
+  outline: 'bg-transparent text-slate-700 ring-1 ring-inset ring-[#E2E8F0]',
+  destructive: 'bg-red-50 text-[#B42318] ring-1 ring-inset ring-red-100',
+  success: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100',
 };
 
 export function Badge({ variant = 'default', className, ...props }: BadgeProps) {

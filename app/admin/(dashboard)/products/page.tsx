@@ -1,5 +1,8 @@
 import { AlertCircle, Package } from 'lucide-react';
 
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
+import { AdminSection } from '@/components/admin/AdminSection';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { ProductsTable } from '@/components/admin/ProductsTable';
 import { getAdminCategories } from '@/lib/services/admin/categories';
@@ -14,19 +17,20 @@ export default async function ProductsPage() {
   const safeProducts = products || [];
   const safeCategories = categories || [];
   const error = productsError || categoriesError;
+  const activeCount = safeProducts.filter((item) => item.is_active).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[#1B3A6B]">Sản phẩm</h1>
-          <p className="mt-2 text-slate-600">Quản lý thông tin sản phẩm/dịch vụ hiển thị trên catalog.</p>
-        </div>
-        <div className="rounded-2xl border border-[#D7E0EC] bg-white px-4 py-3 text-sm shadow-sm">
-          <p className="font-semibold text-[#1B3A6B]">{safeProducts.length} sản phẩm</p>
-          <p className="text-slate-500">{safeProducts.filter((item) => item.is_active).length} đang hiển thị</p>
-        </div>
-      </div>
+    <AdminSection>
+      <AdminPageHeader
+        title="Sản phẩm"
+        description="Quản lý thông tin sản phẩm/dịch vụ hiển thị trên catalog."
+        action={
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm shadow-admin">
+            <p className="font-semibold text-[#1B3A6B]">{safeProducts.length} sản phẩm</p>
+            <p className="text-slate-500">{activeCount} đang hiển thị</p>
+          </div>
+        }
+      />
 
       {error ? (
         <div className="flex items-start gap-3 rounded-2xl border border-[#F2C5C7] bg-[#FFF5F5] p-4">
@@ -41,20 +45,16 @@ export default async function ProductsPage() {
       <ProductForm categories={safeCategories} />
 
       {!error && safeProducts.length === 0 ? (
-        <div className="rounded-2xl border border-[#D7E0EC] bg-white p-12 text-center">
-          <div className="mb-4 flex justify-center">
-            <div className="rounded-full bg-[#F4F7FB] p-3">
-              <Package className="h-6 w-6 text-[#1B3A6B]" />
-            </div>
-          </div>
-          <p className="text-slate-700">Chưa có sản phẩm nào</p>
-          <p className="mt-2 text-sm text-slate-500">Tạo sản phẩm đầu tiên sau khi đã có danh mục phù hợp.</p>
-        </div>
+        <AdminEmptyState
+          icon={<Package className="h-6 w-6" />}
+          title="Chưa có sản phẩm nào"
+          description="Tạo sản phẩm đầu tiên sau khi đã có danh mục phù hợp."
+        />
       ) : null}
 
       {safeProducts.length > 0 ? (
         <ProductsTable products={safeProducts} categories={safeCategories} />
       ) : null}
-    </div>
+    </AdminSection>
   );
 }

@@ -1,8 +1,7 @@
 'use client';
 
-import { LogOut, Menu, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { LogOut, Menu, Search, X } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { useAuth } from '@/lib/auth-context';
 import { ADMIN_ROLE_LABELS, type AdminUser } from '@/lib/types/admin';
@@ -13,8 +12,27 @@ interface AdminTopbarProps {
   isMenuOpen: boolean;
 }
 
+const PAGE_LABELS: Record<string, string> = {
+  '/admin/dashboard': 'Tổng quan',
+  '/admin/inquiries': 'Yêu cầu báo giá',
+  '/admin/categories': 'Danh mục',
+  '/admin/products': 'Sản phẩm',
+  '/admin/sales-contacts': 'Liên hệ bán hàng',
+  '/admin/jobs': 'Tuyển dụng',
+  '/admin/site-content': 'Nội dung website',
+  '/admin/admin-users': 'Người dùng quản trị',
+};
+
+function getPageLabel(pathname: string): string {
+  const match = Object.keys(PAGE_LABELS)
+    .filter((href) => pathname === href || pathname.startsWith(href + '/'))
+    .sort((a, b) => b.length - a.length)[0];
+  return match ? PAGE_LABELS[match] : 'Quản trị';
+}
+
 export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { logout } = useAuth();
 
   const handleLogout = async () => {
@@ -23,55 +41,53 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
     router.refresh();
   };
 
-  const emailInitial = adminUser.email ? adminUser.email.charAt(0).toUpperCase() : 'A';
+  const pageLabel = getPageLabel(pathname);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md px-4 lg:px-6 transition-all duration-300">
-      <div className="flex items-center gap-3">
-        {/* Toggle Menu Button for Mobile */}
+    <header className="admin-glass sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-[#E2E8F0] px-4 lg:px-6">
+      <div className="flex min-w-0 items-center gap-3">
+        {/* Mobile drawer toggle */}
         <button
+          type="button"
           onClick={onMenuToggle}
-          className="rounded-xl p-1.5 transition-colors hover:bg-slate-100 lg:hidden text-[#1B3A6B]"
           aria-label={isMenuOpen ? 'Đóng menu' : 'Mở menu'}
+          aria-expanded={isMenuOpen}
+          aria-controls="admin-sidebar"
+          className="admin-focus rounded-lg p-2 text-[#1B3A6B] transition-colors hover:bg-[#1B3A6B]/5 lg:hidden"
         >
           {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
-        {/* Brand Logo Link to Dashboard */}
-        <Link href="/admin/dashboard" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#1B3A6B] to-[#E31E24] flex items-center justify-center shadow-md shadow-[#1B3A6B]/10 transition-transform duration-300 group-hover:scale-105">
-            <span className="text-white text-xs font-black tracking-widest pt-0.5 pl-0.5">G</span>
-          </div>
-          <span className="text-base font-black tracking-tight text-[#1B3A6B] uppercase hidden sm:inline-block">
-            Gnest <span className="text-[#E31E24]">Quản Trị</span>
-          </span>
-        </Link>
+        {/* Breadcrumb / page context */}
+        <nav aria-label="Breadcrumb" className="min-w-0">
+          <ol className="flex items-center gap-2 text-sm">
+            <li className="hidden text-slate-400 sm:block">Quản trị</li>
+            <li className="hidden text-slate-300 sm:block">/</li>
+            <li className="truncate font-bold tracking-tight text-[#1B3A6B]">{pageLabel}</li>
+          </ol>
+        </nav>
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* User Profile Block */}
-        <div className="flex items-center gap-3 border-l border-slate-150 pl-4 h-8">
-          {/* Avatar sphere */}
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#1B3A6B]/10 to-[#E31E24]/10 border border-[#1B3A6B]/15 flex items-center justify-center font-bold text-xs text-[#1B3A6B] shadow-inner select-none">
-            {emailInitial}
-          </div>
-
-          <div className="hidden text-left sm:block">
-            <p className="text-xs font-bold text-slate-800 tracking-tight leading-none mb-0.5">{adminUser.email}</p>
-            <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
-              {ADMIN_ROLE_LABELS[adminUser.role]}
-            </span>
-          </div>
-
-          {/* Logout Trigger */}
-          <button
-            onClick={handleLogout}
-            className="rounded-xl p-2 text-[#E31E24] transition-all duration-300 hover:bg-red-50 hover:text-[#C61A1F] ml-1 flex items-center justify-center"
-            title="Đăng xuất khỏi hệ thống"
-          >
-            <LogOut className="h-4.5 w-4.5" />
-          </button>
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Search placeholder (decorative) */}
+        <div className="hidden items-center gap-2 rounded-full border border-[#E2E8F0] bg-white/70 px-3.5 py-1.5 text-sm text-slate-400 md:flex">
+          <Search className="h-4 w-4" />
+          <span>Tìm kiếm…</span>
         </div>
+
+        <span className="hidden rounded-full bg-[#1B3A6B]/5 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#1B3A6B] sm:inline-block">
+          {ADMIN_ROLE_LABELS[adminUser.role]}
+        </span>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          aria-label="Đăng xuất khỏi hệ thống"
+          title="Đăng xuất khỏi hệ thống"
+          className="admin-focus flex items-center justify-center rounded-lg p-2 text-[#E31E24] transition-colors hover:bg-red-50 hover:text-[#C61A1F]"
+        >
+          <LogOut className="h-[18px] w-[18px]" />
+        </button>
       </div>
     </header>
   );

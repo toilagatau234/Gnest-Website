@@ -10,6 +10,8 @@ import {
 } from '@/lib/services/admin/products';
 import type { Json } from '@/lib/types/database';
 
+export type AdminFormState = { ok: boolean; error?: string };
+
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === 'string' ? value.trim() : '';
@@ -78,34 +80,50 @@ function readProductPayload(formData: FormData): ProductPayload {
   };
 }
 
-export async function createProductAction(formData: FormData) {
-  const payload = readProductPayload(formData);
-  const { error } = await createAdminProduct(payload);
+export async function createProductAction(
+  _prevState: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  try {
+    const payload = readProductPayload(formData);
+    const { error } = await createAdminProduct(payload);
 
-  if (error) {
-    throw new Error(error);
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể tạo sản phẩm.' };
   }
 
   revalidatePath('/admin/products');
   revalidatePath('/danh-muc');
+  return { ok: true };
 }
 
-export async function updateProductAction(formData: FormData) {
-  const productId = readString(formData, 'id');
+export async function updateProductAction(
+  _prevState: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  try {
+    const productId = readString(formData, 'id');
 
-  if (!productId) {
-    throw new Error('Thiếu ID sản phẩm.');
-  }
+    if (!productId) {
+      return { ok: false, error: 'Thiếu ID sản phẩm.' };
+    }
 
-  const payload = readProductPayload(formData);
-  const { error } = await updateAdminProduct(productId, payload);
+    const payload = readProductPayload(formData);
+    const { error } = await updateAdminProduct(productId, payload);
 
-  if (error) {
-    throw new Error(error);
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể cập nhật sản phẩm.' };
   }
 
   revalidatePath('/admin/products');
   revalidatePath('/danh-muc');
+  return { ok: true };
 }
 
 export async function toggleProductActiveAction(formData: FormData) {
