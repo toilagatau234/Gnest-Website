@@ -1,8 +1,8 @@
 import { AlertCircle, Package } from 'lucide-react';
 
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { AdminSection } from '@/components/admin/AdminSection';
-import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { ProductsTable } from '@/components/admin/ProductsTable';
 import { getAdminCategories } from '@/lib/services/admin/categories';
@@ -25,7 +25,7 @@ export default async function ProductsPage() {
         title="Sản phẩm"
         description="Quản lý thông tin sản phẩm/dịch vụ hiển thị trên catalog."
         action={
-          <div className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm shadow-admin">
+          <div className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm shadow-admin">
             <p className="font-semibold text-[#1B3A6B]">{safeProducts.length} sản phẩm</p>
             <p className="text-slate-500">{activeCount} đang hiển thị</p>
           </div>
@@ -33,7 +33,7 @@ export default async function ProductsPage() {
       />
 
       {error ? (
-        <div className="flex items-start gap-3 rounded-2xl border border-[#F2C5C7] bg-[#FFF5F5] p-4">
+        <div className="flex items-start gap-3 rounded-xl border border-[#F2C5C7] bg-[#FFF5F5] p-4">
           <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#E31E24]" />
           <div>
             <p className="font-medium text-[#7A271A]">Không thể tải dữ liệu sản phẩm</p>

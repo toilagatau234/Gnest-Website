@@ -1,125 +1,92 @@
 import { AlertCircle, BadgeCheck, ShieldCheck, UserCog } from 'lucide-react';
 
+import { AdminCard } from '@/components/admin/AdminCard';
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
+import { AdminSection } from '@/components/admin/AdminSection';
+import { AdminStatCard } from '@/components/admin/AdminStatCard';
+import { AdminStatusChip } from '@/components/admin/AdminStatusChip';
+import { AdminTableShell, AdminTh } from '@/components/admin/AdminTableShell';
 import { getAdminUsers } from '@/lib/services/admin/admin-users';
 import { ADMIN_ROLE_LABELS } from '@/lib/types/admin';
 
 export default async function AdminUsersPage() {
   const { data: adminUsers, error } = await getAdminUsers();
+  const activeCount = adminUsers.filter((adminUser) => adminUser.is_active).length;
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[#1B3A6B]">Người dùng quản trị</h1>
-        <p className="mt-2 text-slate-600">
-          Nền tảng quản trị nhân sự đã được chuẩn bị, chưa mở CRUD thực tế ở phase này.
-        </p>
-      </div>
+    <AdminSection>
+      <AdminPageHeader
+        title="Người dùng quản trị"
+        description="Nền tảng quản trị nhân sự đã được chuẩn bị, chưa mở CRUD thực tế ở phase này."
+      />
 
       {error ? (
-        <div className="mb-6 rounded-2xl border border-[#F2C5C7] bg-[#FFF5F5] p-4 text-sm text-[#B42318]">
+        <div className="rounded-xl border border-[#F2C5C7] bg-[#FFF5F5] p-4 text-sm text-[#B42318]">
           Không thể tải danh sách quản trị viên: {error}
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl border border-[#D7E0EC] bg-white p-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-[#FFF5F5] p-3 text-[#E31E24]">
-              <UserCog className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Tài khoản hiện có</p>
-              <p className="text-2xl font-bold text-[#1B3A6B]">{adminUsers.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-[#D7E0EC] bg-white p-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-[#F4F7FB] p-3 text-[#1B3A6B]">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Role hỗ trợ</p>
-              <p className="text-lg font-bold text-[#1B3A6B]">Super Admin / Admin / Editor / Viewer</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-[#D7E0EC] bg-white p-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-[#FFF5F5] p-3 text-[#E31E24]">
-              <BadgeCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Trạng thái phase</p>
-              <p className="text-lg font-bold text-[#1B3A6B]">Foundation đã sẵn sàng</p>
-            </div>
-          </div>
-        </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <AdminStatCard
+          title="Tài khoản hiện có"
+          value={adminUsers.length}
+          icon={<UserCog className="h-5 w-5" />}
+          description={`${activeCount} tài khoản đang hoạt động.`}
+        />
+        <AdminStatCard
+          title="Role hỗ trợ"
+          value="4"
+          icon={<ShieldCheck className="h-5 w-5" />}
+          description="Super Admin, Admin, Editor và Viewer."
+        />
+        <AdminStatCard
+          title="Trạng thái phase"
+          value="Sẵn sàng"
+          icon={<BadgeCheck className="h-5 w-5" />}
+          description="Foundation dữ liệu và phân quyền đã có."
+        />
       </div>
 
-      <div className="mt-6 rounded-2xl border border-[#D7E0EC] bg-white p-6">
-        <div className="mb-4 flex items-start gap-3">
-          <div className="rounded-xl bg-[#FFF8E8] p-2.5 text-[#B54708]">
-            <AlertCircle className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-[#1B3A6B]">TODO triển khai nhân sự thật</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Tạo staff thật cần server action hoặc route handler dùng Supabase service role để tạo
-              `auth.users`, gửi luồng đặt mật khẩu, rồi mới ghi record vào `admin_users`.
-            </p>
-          </div>
+      <AdminCard title="Ghi chú triển khai" subtitle="CRUD nhân sự cần luồng server-side riêng để không lộ service role.">
+        <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <p className="text-sm leading-6 text-amber-800">
+            Tạo staff thật cần server action hoặc route handler dùng Supabase service role để tạo auth.users,
+            gửi luồng đặt mật khẩu, rồi mới ghi record vào admin_users.
+          </p>
         </div>
+      </AdminCard>
 
-        <div className="overflow-x-auto rounded-xl border border-[#EEF2F6]">
-          <table className="w-full">
-            <thead className="bg-[#F4F7FB]">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#1B3A6B]">
-                  Email
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#1B3A6B]">
-                  Role
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#1B3A6B]">
-                  Trạng thái
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#EEF2F6]">
-              {adminUsers.length > 0 ? (
-                adminUsers.map((adminUser) => (
-                  <tr key={adminUser.id}>
-                    <td className="px-4 py-3 text-sm text-slate-700">{adminUser.email}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {ADMIN_ROLE_LABELS[adminUser.role]}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                          adminUser.is_active
-                            ? 'bg-[#ECFDF3] text-[#027A48]'
-                            : 'bg-[#FFF5F5] text-[#B42318]'
-                        }`}
-                      >
-                        {adminUser.is_active ? 'Đang hoạt động' : 'Đã khóa'}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-sm text-slate-500">
-                    Chưa có dữ liệu hiển thị hoặc chưa bootstrap tài khoản quản trị đầu tiên.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+      <AdminTableShell
+        minWidth={720}
+        head={
+          <>
+            <AdminTh>Email</AdminTh>
+            <AdminTh>Role</AdminTh>
+            <AdminTh>Trạng thái</AdminTh>
+          </>
+        }
+      >
+        {adminUsers.length > 0 ? (
+          adminUsers.map((adminUser) => (
+            <tr key={adminUser.id} className="transition-colors hover:bg-[#F8FAFC]">
+              <td className="px-5 py-4 text-sm font-medium text-slate-900">{adminUser.email}</td>
+              <td className="px-5 py-4 text-sm text-slate-600">{ADMIN_ROLE_LABELS[adminUser.role]}</td>
+              <td className="px-5 py-4 text-sm">
+                <AdminStatusChip tone={adminUser.is_active ? 'success' : 'neutral'}>
+                  {adminUser.is_active ? 'Đang hoạt động' : 'Đã khóa'}
+                </AdminStatusChip>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan={3} className="px-5 py-10 text-center text-sm text-slate-500">
+              Chưa có dữ liệu hiển thị hoặc chưa bootstrap tài khoản quản trị đầu tiên.
+            </td>
+          </tr>
+        )}
+      </AdminTableShell>
+    </AdminSection>
   );
 }

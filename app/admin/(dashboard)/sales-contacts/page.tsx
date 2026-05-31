@@ -1,24 +1,23 @@
-import { AlertCircle } from 'lucide-react';
+import { Phone } from 'lucide-react';
+
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
+import { AdminPlaceholderPanel } from '@/components/admin/AdminPlaceholderPanel';
+import { AdminSection } from '@/components/admin/AdminSection';
 
 export default function SalesContactsPage() {
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Liên hệ bán hàng</h1>
-        <p className="text-gray-600 mt-2">Quản lý hotline, Zalo và nhân sự tư vấn</p>
-      </div>
+    <AdminSection>
+      <AdminPageHeader
+        title="Liên hệ bán hàng"
+        description="Quản lý hotline, Zalo và nhân sự tư vấn hiển thị trên website."
+      />
 
-      <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-        <div className="flex justify-center mb-4">
-          <div className="bg-yellow-100 rounded-full p-3">
-            <AlertCircle className="w-6 h-6 text-yellow-600" />
-          </div>
-        </div>
-        <p className="text-gray-600 text-lg font-medium">Sắp ra mắt</p>
-        <p className="text-sm text-gray-500 mt-2">
-          Quản lý liên hệ bán hàng sẽ được làm ở phase riêng.
-        </p>
-      </div>
-    </div>
+      <AdminPlaceholderPanel
+        icon={<Phone className="h-5 w-5" />}
+        title="Phân hệ liên hệ bán hàng đang được chuẩn bị"
+        description="Giao diện đã được giữ đúng hệ thống admin mới. CRUD chi tiết nên triển khai bằng server action có guard admin và ghi audit log."
+        items={['Hotline và Zalo', 'Avatar tư vấn viên', 'Thứ tự hiển thị']}
+      />
+    </AdminSection>
   );
 }

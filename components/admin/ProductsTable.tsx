@@ -26,7 +26,7 @@ function formatPrice(price: number | null) {
 export function ProductsTable({ products, categories }: ProductsTableProps) {
   return (
     <AdminTableShell
-      minWidth={920}
+      minWidth={960}
       head={
         <>
           <AdminTh>Tên</AdminTh>
@@ -41,25 +41,25 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
       }
     >
       {products.map((product) => (
-        <tr key={product.id} className="transition-colors hover:bg-[#F1F5F9]">
-          <td className="px-5 py-3 text-sm font-semibold text-slate-900">{product.name}</td>
-          <td className="px-5 py-3 text-sm text-slate-600">{product.slug}</td>
-          <td className="px-5 py-3 text-sm text-slate-600">{product.categories?.name ?? '-'}</td>
-          <td className="px-5 py-3 text-sm text-slate-600">{formatPrice(product.price)}</td>
-          <td className="px-5 py-3 text-sm text-slate-600">{product.stock}</td>
-          <td className="px-5 py-3 text-sm text-slate-600">{product.product_images?.length ?? 0}</td>
-          <td className="px-5 py-3 text-sm">
+        <tr key={product.id} className="transition-colors hover:bg-[#F8FAFC]">
+          <td className="px-5 py-4 text-sm font-semibold text-slate-900">{product.name}</td>
+          <td className="px-5 py-4 text-sm text-slate-500">{product.slug}</td>
+          <td className="px-5 py-4 text-sm text-slate-600">{product.categories?.name ?? '-'}</td>
+          <td className="px-5 py-4 text-sm font-medium text-slate-800">{formatPrice(product.price)}</td>
+          <td className="px-5 py-4 text-sm text-slate-600">{product.stock}</td>
+          <td className="px-5 py-4 text-sm text-slate-600">{product.product_images?.length ?? 0}</td>
+          <td className="px-5 py-4 text-sm">
             <AdminStatusChip tone={product.is_active ? 'success' : 'neutral'}>
               {product.is_active ? 'Hiển thị' : 'Ẩn'}
             </AdminStatusChip>
           </td>
-          <td className="px-5 py-3 text-right text-sm">
+          <td className="px-5 py-4 text-right text-sm">
             <div className="flex justify-end gap-2">
               <details className="text-left">
-                <summary className="admin-focus cursor-pointer rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[#1B3A6B] hover:text-[#1B3A6B]">
+                <summary className="admin-focus cursor-pointer rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-[#1B3A6B] hover:text-[#1B3A6B]">
                   Sửa
                 </summary>
-                <div className="fixed inset-x-4 top-20 z-50 mx-auto max-w-4xl rounded-2xl bg-white p-2 shadow-admin-pop ring-1 ring-[#E2E8F0]">
+                <div className="fixed inset-x-4 top-20 z-50 mx-auto max-w-4xl rounded-xl bg-white p-2 shadow-admin-pop ring-1 ring-[#E2E8F0]">
                   <ProductForm categories={categories} product={product} />
                 </div>
               </details>
@@ -68,7 +68,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                 <input type="hidden" name="next_is_active" value={String(!product.is_active)} />
                 <button
                   type="submit"
-                  className="admin-focus rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[#E31E24] hover:text-[#E31E24]"
+                  className="admin-focus rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-[#E31E24] hover:text-[#E31E24]"
                 >
                   {product.is_active ? 'Ẩn' : 'Hiện'}
                 </button>

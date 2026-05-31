@@ -17,7 +17,7 @@ export function AdminShell({ children, adminUser }: AdminShellProps) {
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <div className="flex min-h-screen bg-[#f7f9fb] font-sans text-[#0F172A] selection:bg-[#E31E24]/10 selection:text-[#E31E24]">
+    <div className="flex min-h-screen bg-[#F7F9FB] font-sans text-slate-900 selection:bg-[#E31E24]/10 selection:text-[#E31E24]">
       <AdminSidebar isOpen={menuOpen} adminUser={adminUser} onNavigate={closeMenu} />
 
       {/* Mobile drawer overlay */}
@@ -32,8 +32,8 @@ export function AdminShell({ children, adminUser }: AdminShellProps) {
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar adminUser={adminUser} onMenuToggle={toggleMenu} isMenuOpen={menuOpen} />
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="animate-[fadeIn_0.4s_ease-out]">{children}</div>
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+          <div className="animate-[fadeIn_0.3s_ease-out]">{children}</div>
         </main>
       </div>
     </div>

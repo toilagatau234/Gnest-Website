@@ -3,14 +3,13 @@
 import { useActionState } from 'react';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
-import type { AdminCategory } from '@/lib/services/admin/categories';
-import type { CategoryType } from '@/lib/types/database';
-
 import {
   createCategoryAction,
   updateCategoryAction,
   type AdminFormState,
 } from '@/app/admin/(dashboard)/categories/actions';
+import type { AdminCategory } from '@/lib/services/admin/categories';
+import type { CategoryType } from '@/lib/types/database';
 
 interface CategoryFormProps {
   categories: AdminCategory[];
@@ -18,6 +17,9 @@ interface CategoryFormProps {
 }
 
 const INITIAL_STATE: AdminFormState = { ok: false };
+const fieldClass =
+  'mt-1.5 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10';
+const labelClass = 'text-sm font-medium text-slate-700';
 
 export function CategoryForm({ categories, category }: CategoryFormProps) {
   const action = category ? updateCategoryAction : createCategoryAction;
@@ -26,12 +28,12 @@ export function CategoryForm({ categories, category }: CategoryFormProps) {
   const defaultType: CategoryType = category?.type ?? 'product';
 
   return (
-    <form action={formAction} className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-admin">
-      <div className="border-b border-[#E2E8F0] bg-slate-50/50 px-5 py-4">
-        <h2 className="text-base font-bold text-[#1B3A6B]">
+    <form action={formAction} className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-admin">
+      <div className="border-b border-[#EEF2F6] px-5 py-4">
+        <h2 className="text-base font-semibold text-[#1B3A6B]">
           {category ? 'Cập nhật danh mục' : 'Thêm danh mục'}
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm leading-6 text-slate-500">
           Quản lý danh mục cha/con hiển thị trên catalog.
         </p>
       </div>
@@ -59,48 +61,40 @@ export function CategoryForm({ categories, category }: CategoryFormProps) {
           </div>
         ) : null}
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-2">
           <label className="block">
-            <span className="text-sm font-medium text-slate-700">Tên danh mục</span>
+            <span className={labelClass}>Tên danh mục</span>
             <input
               name="name"
               required
               defaultValue={category?.name ?? ''}
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
+              className={fieldClass}
               placeholder="VD: Hũ thủy tinh"
             />
           </label>
 
           <label className="block">
-            <span className="text-sm font-medium text-slate-700">Slug</span>
+            <span className={labelClass}>Slug</span>
             <input
               name="slug"
               required
               defaultValue={category?.slug ?? ''}
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
+              className={fieldClass}
               placeholder="hu-thuy-tinh"
             />
           </label>
 
           <label className="block">
-            <span className="text-sm font-medium text-slate-700">Loại</span>
-            <select
-              name="type"
-              defaultValue={defaultType}
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
-            >
+            <span className={labelClass}>Loại</span>
+            <select name="type" defaultValue={defaultType} className={fieldClass}>
               <option value="product">Sản phẩm</option>
               <option value="service">Dịch vụ</option>
             </select>
           </label>
 
           <label className="block">
-            <span className="text-sm font-medium text-slate-700">Danh mục cha</span>
-            <select
-              name="parent_id"
-              defaultValue={category?.parent_id ?? ''}
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
-            >
+            <span className={labelClass}>Danh mục cha</span>
+            <select name="parent_id" defaultValue={category?.parent_id ?? ''} className={fieldClass}>
               <option value="">Không có</option>
               {availableParents.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -111,16 +105,16 @@ export function CategoryForm({ categories, category }: CategoryFormProps) {
           </label>
 
           <label className="block">
-            <span className="text-sm font-medium text-slate-700">Thứ tự</span>
+            <span className={labelClass}>Thứ tự</span>
             <input
               name="sort_order"
               type="number"
               defaultValue={category?.sort_order ?? 0}
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
+              className={fieldClass}
             />
           </label>
 
-          <div className="flex items-end gap-4 pb-2">
+          <div className="flex items-end gap-5 pb-2">
             <label className="inline-flex items-center gap-2 text-sm text-slate-700">
               <input name="has_filters" type="checkbox" defaultChecked={category?.has_filters ?? false} />
               Có bộ lọc
@@ -132,14 +126,14 @@ export function CategoryForm({ categories, category }: CategoryFormProps) {
           </div>
         </div>
 
-        <div className="mt-5 flex justify-end">
+        <div className="mt-6 flex justify-end">
           <button
             type="submit"
             disabled={isPending}
-            className="admin-focus inline-flex items-center gap-2 rounded-lg bg-[#1B3A6B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#16315b] disabled:cursor-not-allowed disabled:opacity-60"
+            className="admin-focus inline-flex items-center gap-2 rounded-lg bg-[#1B3A6B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#16315b] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isPending ? 'Đang lưu…' : category ? 'Lưu thay đổi' : 'Tạo danh mục'}
+            {isPending ? 'Đang lưu...' : category ? 'Lưu thay đổi' : 'Tạo danh mục'}
           </button>
         </div>
       </div>

@@ -17,11 +17,11 @@ interface AdminTableShellProps {
 export function AdminTableShell({ head, children, minWidth = 820, className = '' }: AdminTableShellProps) {
   return (
     <div
-      className={`overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-admin ${className}`}
+      className={`overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-admin ${className}`}
     >
       <div className="overflow-x-auto">
         <table className="w-full" style={{ minWidth }}>
-          <thead className="border-b border-[#E2E8F0] bg-[#F1F5F9]/70">
+          <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
             <tr>{head}</tr>
           </thead>
           <tbody className="divide-y divide-[#EEF2F6]">{children}</tbody>
@@ -41,7 +41,7 @@ interface AdminThProps {
 export function AdminTh({ children, align = 'left', className = '' }: AdminThProps) {
   return (
     <th
-      className={`px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-slate-500 ${
+      className={`px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-500 ${
         align === 'right' ? 'text-right' : 'text-left'
       } ${className}`}
     >

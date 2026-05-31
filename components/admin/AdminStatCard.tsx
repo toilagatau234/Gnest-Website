@@ -1,7 +1,4 @@
-'use client';
-
 import React from 'react';
-import { Interactive3DTilt } from '@/components/Interactive3DTilt';
 
 interface AdminStatCardProps {
   title: string;
@@ -13,6 +10,7 @@ interface AdminStatCardProps {
     isPositive: boolean;
   };
   className?: string;
+  tone?: 'default' | 'attention';
 }
 
 export function AdminStatCard({
@@ -21,49 +19,44 @@ export function AdminStatCard({
   icon,
   description,
   trend,
+  tone = 'default',
   className = '',
 }: AdminStatCardProps) {
   return (
-    <Interactive3DTilt maxTilt={6} className="h-full">
-      <div
-        className={`
-          h-full bg-white border border-[#E2E8F0] rounded-2xl p-6
-          shadow-admin hover:shadow-admin-pop transition-all duration-300
-          relative overflow-hidden group flex flex-col justify-between
-          ${className}
-        `}
-      >
-        {/* Decorative background gradient */}
-        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-slate-50 to-transparent rounded-bl-full pointer-events-none transition-all duration-300 group-hover:scale-110" />
-
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{title}</span>
-            <div className="p-2.5 bg-slate-50 rounded-xl text-[#1B3A6B] border border-slate-100 transition-colors duration-300 group-hover:bg-[#1B3A6B]/5 group-hover:text-[#E31E24]">
-              {icon}
-            </div>
-          </div>
-
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 tracking-tight">{value}</span>
-            {trend && (
-              <span
-                className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                  trend.isPositive
-                    ? 'bg-green-50 text-green-700 border border-green-100'
-                    : 'bg-rose-50 text-rose-700 border border-rose-100'
-                }`}
-              >
-                {trend.value}
-              </span>
-            )}
+    <div
+      className={`flex h-full flex-col justify-between rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-admin ${className}`}
+    >
+      <div>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <span className="text-sm font-medium leading-5 text-slate-500">{title}</span>
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
+              tone === 'attention'
+                ? 'border-red-100 bg-red-50 text-[#E31E24]'
+                : 'border-slate-100 bg-slate-50 text-[#1B3A6B]'
+            }`}
+          >
+            {icon}
           </div>
         </div>
 
-        {description && (
-          <p className="text-xs text-slate-400 mt-4 leading-normal font-medium">{description}</p>
-        )}
+        <div className="flex flex-wrap items-baseline gap-2">
+          <span className="text-3xl font-semibold tracking-tight text-slate-950">{value}</span>
+          {trend && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
+                trend.isPositive
+                  ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+                  : 'bg-red-50 text-[#B42318] ring-red-100'
+              }`}
+            >
+              {trend.value}
+            </span>
+          )}
+        </div>
       </div>
-    </Interactive3DTilt>
+
+      {description && <p className="mt-4 text-sm leading-6 text-slate-500">{description}</p>}
+    </div>
   );
 }
