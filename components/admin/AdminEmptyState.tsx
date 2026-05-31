@@ -9,13 +9,13 @@ interface AdminEmptyStateProps {
 
 export function AdminEmptyState({ icon, title, description, action }: AdminEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-[#E2E8F0] rounded-2xl bg-slate-50/50">
-      <div className="p-4 bg-white rounded-full shadow-admin text-slate-400 border border-[#E2E8F0] mb-4">
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white px-6 py-14 text-center shadow-admin">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-50 text-slate-400">
         {icon}
       </div>
-      <h3 className="text-lg font-bold text-slate-800 mb-2">{title}</h3>
-      <p className="text-sm text-slate-500 max-w-sm leading-relaxed mb-6">{description}</p>
-      {action && action}
+      <h3 className="text-base font-semibold text-slate-800">{title}</h3>
+      <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-slate-500">{description}</p>
+      {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }

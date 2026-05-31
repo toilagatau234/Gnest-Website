@@ -1,234 +1,263 @@
 import {
+  ArrowRight,
+  CheckCircle2,
+  Database,
+  EyeOff,
   FolderOpen,
+  FolderTree,
+  ImageOff,
   MessageSquare,
   Package,
+  PackageMinus,
   Phone,
-  ArrowUpRight,
-  Plus,
-  Briefcase,
-  Users,
-  Database,
+  ScrollText,
   ShieldAlert,
 } from 'lucide-react';
 import Link from 'next/link';
 
-import { createServiceRoleClient } from '@/lib/supabase/server';
-import { getInquiryCount, getNewInquiriesCount } from '@/lib/services/admin/inquiries';
-import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
-import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { AdminCard } from '@/components/admin/AdminCard';
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { AdminSection } from '@/components/admin/AdminSection';
+import { AdminStatCard } from '@/components/admin/AdminStatCard';
+import { AdminStatusChip, type AdminStatusTone } from '@/components/admin/AdminStatusChip';
+import { getDashboardData } from '@/lib/services/admin/dashboard';
+import type { InquiryStatus } from '@/lib/types/database';
 
 export const dynamic = 'force-dynamic';
 
-async function getStats() {
-  let productsCount = 0;
-  let categoriesCount = 0;
-  let salesContactsCount = 0;
-  let hasSupabase = false;
+const INQUIRY_STATUS: Record<InquiryStatus, { label: string; tone: AdminStatusTone }> = {
+  new: { label: 'Mới', tone: 'info' },
+  contacted: { label: 'Đã liên hệ', tone: 'warning' },
+  quoted: { label: 'Đã báo giá', tone: 'success' },
+  closed: { label: 'Đã đóng', tone: 'neutral' },
+  spam: { label: 'Spam', tone: 'alert' },
+};
 
-  try {
-    const supabase = createServiceRoleClient();
-    hasSupabase = true;
+const ACTION_LABELS: Record<string, string> = {
+  create: 'Tạo mới',
+  update: 'Cập nhật',
+  activate: 'Hiển thị',
+  deactivate: 'Ẩn',
+};
 
-    const [prodRes, catRes, contactRes] = await Promise.all([
-      supabase.from('products').select('*', { count: 'exact', head: true }),
-      supabase.from('categories').select('*', { count: 'exact', head: true }),
-      supabase.from('sales_contacts').select('*', { count: 'exact', head: true }).eq('is_active', true),
-    ]);
+const ENTITY_LABELS: Record<string, string> = {
+  products: 'sản phẩm',
+  categories: 'danh mục',
+  inquiries: 'yêu cầu',
+};
 
-    productsCount = prodRes.count || 0;
-    categoriesCount = catRes.count || 0;
-    salesContactsCount = contactRes.count || 0;
-  } catch (err) {
-    console.warn('Failed to fetch counts from Supabase. Using default placeholders.', err);
+function formatTime(value: string) {
+  return new Date(value).toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function metadataName(metadata: unknown): string | null {
+  if (metadata && typeof metadata === 'object' && 'name' in metadata) {
+    const name = (metadata as { name?: unknown }).name;
+    return typeof name === 'string' ? name : null;
   }
-
-  return { productsCount, categoriesCount, salesContactsCount, hasSupabase };
+  return null;
 }
 
 export default async function AdminDashboardPage() {
-  const [{ count: totalInquiries }, { count: newInquiries }, dbStats] = await Promise.all([
-    getInquiryCount(),
-    getNewInquiriesCount(),
-    getStats(),
-  ]);
+  const data = await getDashboardData();
+  const { counts, attention, recentInquiries, recentActivity, hasSupabase } = data;
 
   const stats = [
     {
-      title: 'Tổng sản phẩm',
-      value: dbStats.hasSupabase ? String(dbStats.productsCount) : '-',
-      icon: <Package className="w-5 h-5" />,
-      description: dbStats.hasSupabase ? 'Các sản phẩm hiện có trong catalog' : 'Cấu hình Supabase để xem số liệu',
+      label: 'Yêu cầu mới',
+      value: counts.newInquiries,
+      icon: <MessageSquare className="h-[18px] w-[18px]" />,
+      hint: `Trên tổng ${counts.totalInquiries} yêu cầu`,
+      tone: counts.newInquiries > 0 ? ('accent' as const) : ('default' as const),
+      href: '/admin/inquiries',
     },
     {
-      title: 'Tổng danh mục',
-      value: dbStats.hasSupabase ? String(dbStats.categoriesCount) : '-',
-      icon: <FolderOpen className="w-5 h-5" />,
-      description: dbStats.hasSupabase ? 'Danh mục sản phẩm & dịch vụ' : 'Cấu hình Supabase để xem số liệu',
+      label: 'Tổng sản phẩm',
+      value: hasSupabase ? counts.products : '—',
+      icon: <Package className="h-[18px] w-[18px]" />,
+      hint: 'Đang có trong catalog',
+      href: '/admin/products',
     },
     {
-      title: 'Yêu cầu mới',
-      value: String(newInquiries),
-      icon: <MessageSquare className="w-5 h-5" />,
-      description: 'Yêu cầu báo giá mới chưa phản hồi',
-      trend: newInquiries > 0 ? { value: `${newInquiries} mới`, isPositive: false } : undefined,
+      label: 'Tổng danh mục',
+      value: hasSupabase ? counts.categories : '—',
+      icon: <FolderOpen className="h-[18px] w-[18px]" />,
+      hint: 'Sản phẩm & dịch vụ',
+      href: '/admin/categories',
     },
     {
-      title: 'Liên hệ sỉ active',
-      value: dbStats.hasSupabase ? String(dbStats.salesContactsCount) : '-',
-      icon: <Phone className="w-5 h-5" />,
-      description: dbStats.hasSupabase ? 'Đầu mối liên hệ bán hàng hoạt động' : 'Cấu hình Supabase để xem số liệu',
+      label: 'Liên hệ sỉ',
+      value: hasSupabase ? counts.activeContacts : '—',
+      icon: <Phone className="h-[18px] w-[18px]" />,
+      hint: 'Đầu mối đang hoạt động',
+      href: '/admin/sales-contacts',
     },
   ];
 
-  const quickActions = [
-    {
-      title: 'Quản lý Sản phẩm',
-      desc: 'Thêm mới hoặc điều chỉnh danh sách sản phẩm, chai lọ, hũ thủy tinh.',
-      href: '/admin/products',
-      icon: <Package className="w-5 h-5 text-white" />,
-      color: 'from-[#1B3A6B] to-[#254F8C]',
-    },
-    {
-      title: 'Quản lý Danh mục',
-      desc: 'Quản lý danh sách các danh mục sản phẩm sỉ & lẻ và dịch vụ.',
-      href: '/admin/categories',
-      icon: <FolderOpen className="w-5 h-5 text-white" />,
-      color: 'from-[#E31E24] to-[#F14D52]',
-    },
-    {
-      title: 'Yêu cầu báo giá',
-      desc: 'Xem và liên hệ khách hàng gửi yêu cầu tư vấn, mua sỉ bao bì.',
-      href: '/admin/inquiries',
-      icon: <MessageSquare className="w-5 h-5 text-white" />,
-      color: 'from-amber-500 to-amber-600',
-    },
-    {
-      title: 'Hồ sơ tuyển dụng',
-      desc: 'Cập nhật danh sách tin tuyển dụng vị trí làm việc tại xưởng.',
-      href: '/admin/jobs',
-      icon: <Briefcase className="w-5 h-5 text-white" />,
-      color: 'from-emerald-500 to-emerald-600',
-    },
-  ];
+  const attentionItems = [
+    { label: 'Sản phẩm thiếu ảnh', value: attention.missingImages, icon: <ImageOff className="h-4 w-4" />, href: '/admin/products' },
+    { label: 'Sản phẩm sắp hết hàng', value: attention.lowStock, icon: <PackageMinus className="h-4 w-4" />, href: '/admin/products' },
+    { label: 'Sản phẩm đang ẩn', value: attention.hiddenProducts, icon: <EyeOff className="h-4 w-4" />, href: '/admin/products' },
+    { label: 'Danh mục đang ẩn', value: attention.hiddenCategories, icon: <FolderTree className="h-4 w-4" />, href: '/admin/categories' },
+  ].filter((item) => item.value > 0);
 
   return (
     <AdminSection>
       <AdminPageHeader
-        title="Tổng quan quản trị"
-        description="Chào mừng bạn đến với trang quản trị Gnest. Theo dõi nhanh các số liệu kinh doanh và điều hành hệ thống."
+        title="Tổng quan"
+        description="Theo dõi nhanh việc cần xử lý, yêu cầu báo giá mới và hoạt động của hệ thống."
       />
 
-      {/* Grid of Stat Cards with 3D Hover Tilt */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {!hasSupabase && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Chưa kết nối Supabase</p>
+            <p className="mt-1 text-sm leading-relaxed text-amber-700">
+              Cấu hình biến môi trường Supabase để hiển thị số liệu thực tế và lưu dữ liệu lâu dài.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* KPI row */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <AdminStatCard
-            key={stat.title}
-            title={stat.title}
-            value={stat.value}
-            icon={stat.icon}
-            description={stat.description}
-            trend={stat.trend}
-          />
+          <AdminStatCard key={stat.label} {...stat} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
-        {/* Left Column: Quick Actions (Takes 2 span) */}
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Primary column */}
+        <div className="space-y-6 lg:col-span-2">
+          <AdminCard title="Cần xử lý" subtitle="Dữ liệu catalog đang thiếu hoặc cần kiểm tra">
+            {attentionItems.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-xl bg-emerald-50/60 px-4 py-3 text-sm text-emerald-700">
+                <CheckCircle2 className="h-5 w-5 shrink-0" />
+                Mọi dữ liệu catalog đang ổn định, không có mục nào cần xử lý.
+              </div>
+            ) : (
+              <ul className="divide-y divide-[#EEF2F6]">
+                {attentionItems.map((item) => (
+                  <li key={item.label}>
+                    <Link
+                      href={item.href}
+                      className="admin-focus -mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-slate-50"
+                    >
+                      <span className="flex items-center gap-3 text-sm text-slate-700">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                          {item.icon}
+                        </span>
+                        {item.label}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-sm font-semibold tabular-nums text-slate-900">{item.value}</span>
+                        <ArrowRight className="h-4 w-4 text-slate-300" />
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </AdminCard>
+
           <AdminCard
-            title="Thao tác nhanh"
-            subtitle="Truy cập nhanh các phân hệ chính để quản lý dữ liệu website"
+            title="Yêu cầu báo giá gần đây"
+            subtitle="5 yêu cầu mới nhất từ khách hàng"
+            headerAction={
+              <Link href="/admin/inquiries" className="admin-focus inline-flex items-center gap-1 rounded-md text-sm font-medium text-[#1B3A6B] hover:underline">
+                Xem tất cả
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            }
+            noPadding
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {quickActions.map((action) => (
-                <Link
-                  key={action.title}
-                  href={action.href}
-                  className="group relative flex flex-col justify-between p-5 rounded-2xl border border-[#D7E0EC] bg-white hover:bg-slate-50 transition-all duration-300 hover:shadow-md cursor-pointer overflow-hidden"
-                >
-                  {/* Backdrop subtle light glow */}
-                  <div className="absolute -top-12 -right-12 w-24 h-24 bg-gradient-to-br from-slate-100 to-transparent rounded-full opacity-40 transition-transform duration-500 group-hover:scale-125" />
-
-                  <div className="flex items-start gap-4">
-                    <div className={`p-3 bg-gradient-to-br ${action.color} rounded-xl shadow-sm`}>
-                      {action.icon}
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800 tracking-tight group-hover:text-[#1B3A6B] transition-colors duration-300">
-                        {action.title}
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                        {action.desc}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#1B3A6B] mt-4 self-end group-hover:text-[#E31E24] transition-colors duration-300">
-                    <span>Truy cập</span>
-                    <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </div>
-                </Link>
-              ))}
-            </div>
+            {recentInquiries.length === 0 ? (
+              <p className="px-5 py-8 text-center text-sm text-slate-500">Chưa có yêu cầu báo giá nào.</p>
+            ) : (
+              <ul className="divide-y divide-[#EEF2F6]">
+                {recentInquiries.map((inquiry) => {
+                  const meta = INQUIRY_STATUS[inquiry.status as InquiryStatus] ?? INQUIRY_STATUS.new;
+                  return (
+                    <li key={inquiry.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{inquiry.customer_name}</p>
+                        <p className="truncate text-xs text-slate-500">
+                          {inquiry.phone}
+                          {inquiry.message ? ` · ${inquiry.message}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <AdminStatusChip tone={meta.tone} dot={inquiry.status === 'new'}>
+                          {meta.label}
+                        </AdminStatusChip>
+                        <span className="hidden text-xs text-slate-400 sm:block">{formatTime(inquiry.created_at)}</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </AdminCard>
         </div>
 
-        {/* Right Column: Database Connection & Info */}
-        <div>
-          <AdminCard
-            title="Trạng thái hệ thống"
-            subtitle="Giám sát kết nối cơ sở dữ liệu Supabase"
-          >
-            <div className="space-y-6">
-              {/* Connection status badge */}
-              <div className="flex items-center justify-between p-4 rounded-xl border bg-slate-50">
-                <div className="flex items-center gap-2.5">
-                  <Database className={`w-5 h-5 ${dbStats.hasSupabase ? 'text-emerald-500' : 'text-slate-400'}`} />
-                  <div>
-                    <span className="text-xs font-bold text-slate-700 block">Cơ sở dữ liệu</span>
-                    <span className="text-[10px] text-slate-400 font-mono">SUPABASE DB</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className={`w-2.5 h-2.5 rounded-full ${dbStats.hasSupabase ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400 animate-pulse'}`} />
-                  <span className={`text-[10px] font-black uppercase tracking-wider ${dbStats.hasSupabase ? 'text-emerald-600' : 'text-amber-600'}`}>
-                    {dbStats.hasSupabase ? 'Đã kết nối' : 'Fallback'}
-                  </span>
-                </div>
-              </div>
-
-              {!dbStats.hasSupabase && (
-                <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/50 flex gap-3">
-                  <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <h5 className="text-xs font-bold text-amber-800">Chưa cấu hình Supabase</h5>
-                    <p className="text-[11px] text-amber-700 mt-1 leading-relaxed">
-                      Để lưu dữ liệu lâu dài và trải nghiệm đầy đủ tính năng, vui lòng cấu hình tệp tin <code>.env</code> ở local hoặc thiết lập biến môi trường trên Vercel.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-3.5">
-                <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">Thông báo phase sau</h4>
-                <ul className="space-y-2 text-xs text-slate-500 leading-relaxed font-medium">
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#E31E24] font-bold">•</span>
-                    <span>Hệ thống phân quyền RLS đã hoàn thiện để bảo vệ dữ liệu.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#E31E24] font-bold">•</span>
-                    <span>CRUD chi tiết các bảng sẽ được xây dựng ở các task riêng.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#E31E24] font-bold">•</span>
-                    <span>Toàn bộ hoạt động của admin sẽ được ghi nhận tại bảng logs.</span>
-                  </li>
-                </ul>
-              </div>
+        {/* Secondary column */}
+        <div className="space-y-6">
+          <AdminCard title="Trạng thái hệ thống">
+            <div className="flex items-center justify-between rounded-xl border border-[#EEF2F6] bg-slate-50/60 px-4 py-3">
+              <span className="flex items-center gap-2.5 text-sm font-medium text-slate-700">
+                <Database className={`h-4 w-4 ${hasSupabase ? 'text-emerald-500' : 'text-slate-400'}`} />
+                Cơ sở dữ liệu
+              </span>
+              <AdminStatusChip tone={hasSupabase ? 'success' : 'warning'} dot>
+                {hasSupabase ? 'Đã kết nối' : 'Fallback'}
+              </AdminStatusChip>
             </div>
+            <p className="mt-3 text-xs leading-relaxed text-slate-400">
+              Mọi thao tác quan trọng của admin được ghi lại trong nhật ký hoạt động.
+            </p>
+          </AdminCard>
+
+          <AdminCard
+            title="Hoạt động gần đây"
+            headerAction={
+              <Link href="/admin/audit-logs" className="admin-focus inline-flex items-center gap-1 rounded-md text-sm font-medium text-[#1B3A6B] hover:underline">
+                Tất cả
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            }
+            noPadding
+          >
+            {recentActivity.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 px-5 py-8 text-center text-sm text-slate-500">
+                <ScrollText className="h-5 w-5 text-slate-300" />
+                Chưa có hoạt động nào được ghi nhận.
+              </div>
+            ) : (
+              <ul className="divide-y divide-[#EEF2F6]">
+                {recentActivity.map((log) => {
+                  const name = metadataName(log.metadata);
+                  const action = ACTION_LABELS[log.action] ?? log.action;
+                  const entity = ENTITY_LABELS[log.entity] ?? log.entity;
+                  return (
+                    <li key={log.id} className="px-5 py-3">
+                      <p className="text-sm text-slate-700">
+                        <span className="font-medium text-slate-900">{action}</span> {entity}
+                        {name ? <span className="text-slate-500"> · {name}</span> : null}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        {log.actorEmail ?? 'Hệ thống'} · {formatTime(log.created_at)}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </AdminCard>
         </div>
       </div>

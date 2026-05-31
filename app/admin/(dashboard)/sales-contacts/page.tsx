@@ -1,24 +1,27 @@
-import { AlertCircle } from 'lucide-react';
+import { Phone, MessageCircle, ImageIcon, ListOrdered } from 'lucide-react';
+
+import { AdminModulePreview } from '@/components/admin/AdminModulePreview';
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
+import { AdminSection } from '@/components/admin/AdminSection';
 
 export default function SalesContactsPage() {
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Liên hệ bán hàng</h1>
-        <p className="text-gray-600 mt-2">Quản lý hotline, Zalo và nhân sự tư vấn</p>
-      </div>
+    <AdminSection>
+      <AdminPageHeader
+        title="Liên hệ bán hàng"
+        description="Quản lý hotline, Zalo và nhân sự tư vấn hiển thị trên website."
+      />
 
-      <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-        <div className="flex justify-center mb-4">
-          <div className="bg-yellow-100 rounded-full p-3">
-            <AlertCircle className="w-6 h-6 text-yellow-600" />
-          </div>
-        </div>
-        <p className="text-gray-600 text-lg font-medium">Sắp ra mắt</p>
-        <p className="text-sm text-gray-500 mt-2">
-          Quản lý liên hệ bán hàng sẽ được làm ở phase riêng.
-        </p>
-      </div>
-    </div>
+      <AdminModulePreview
+        intro="Module quản lý đầu mối bán hàng giúp cập nhật thông tin liên hệ mà khách nhìn thấy trên trang catalog."
+        features={[
+          { icon: <Phone className="h-5 w-5" />, title: 'Hotline & số điện thoại', description: 'Thêm, sửa và sắp xếp các số hotline tư vấn theo từng khu vực.' },
+          { icon: <MessageCircle className="h-5 w-5" />, title: 'Tài khoản Zalo', description: 'Gắn link Zalo cho từng nhân viên kinh doanh để khách liên hệ nhanh.' },
+          { icon: <ImageIcon className="h-5 w-5" />, title: 'Ảnh đại diện nhân sự', description: 'Tải ảnh đại diện và vai trò để tăng độ tin cậy với khách hàng.' },
+          { icon: <ListOrdered className="h-5 w-5" />, title: 'Thứ tự & trạng thái', description: 'Bật/tắt và sắp xếp thứ tự ưu tiên hiển thị từng đầu mối liên hệ.' },
+        ]}
+        note="Bảng sales_contacts đã sẵn sàng; phần CRUD và upload ảnh sẽ được bổ sung ở phase Storage."
+      />
+    </AdminSection>
   );
 }

@@ -5,6 +5,8 @@ export type AdminStatusTone = 'success' | 'alert' | 'neutral' | 'info' | 'warnin
 interface AdminStatusChipProps {
   tone?: AdminStatusTone;
   children: React.ReactNode;
+  /** Show a small leading status dot. */
+  dot?: boolean;
   className?: string;
 }
 
@@ -16,11 +18,25 @@ const toneStyles: Record<AdminStatusTone, string> = {
   warning: 'bg-amber-50 text-amber-700 ring-amber-100',
 };
 
-export function AdminStatusChip({ tone = 'neutral', children, className = '' }: AdminStatusChipProps) {
+const dotStyles: Record<AdminStatusTone, string> = {
+  success: 'bg-emerald-500',
+  alert: 'bg-[#E31E24]',
+  neutral: 'bg-slate-400',
+  info: 'bg-[#1B3A6B]',
+  warning: 'bg-amber-500',
+};
+
+export function AdminStatusChip({
+  tone = 'neutral',
+  children,
+  dot = false,
+  className = '',
+}: AdminStatusChipProps) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${toneStyles[tone]} ${className}`}
     >
+      {dot && <span className={`h-1.5 w-1.5 rounded-full ${dotStyles[tone]}`} />}
       {children}
     </span>
   );

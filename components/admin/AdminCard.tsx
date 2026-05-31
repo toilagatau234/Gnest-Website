@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 
 interface AdminCardProps {
@@ -11,6 +9,10 @@ interface AdminCardProps {
   noPadding?: boolean;
 }
 
+/**
+ * Calm white surface for grouping admin content. Light border, very soft
+ * shadow, no hover animation — the card should recede so its contents lead.
+ */
 export function AdminCard({
   title,
   subtitle,
@@ -19,24 +21,22 @@ export function AdminCard({
   className = '',
   noPadding = false,
 }: AdminCardProps) {
+  const hasHeader = title || subtitle || headerAction;
+
   return (
     <div
-      className={`
-        bg-white border border-[#E2E8F0] rounded-2xl shadow-admin
-        overflow-hidden transition-shadow duration-300 hover:shadow-admin-pop
-        ${className}
-      `}
+      className={`overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-admin ${className}`}
     >
-      {(title || subtitle || headerAction) && (
-        <div className="border-b border-[#E2E8F0] px-6 py-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50/50">
-          <div>
-            {title && <h3 className="text-base font-extrabold text-[#1B3A6B] uppercase tracking-wider">{title}</h3>}
-            {subtitle && <p className="text-xs text-slate-500 mt-1 leading-normal">{subtitle}</p>}
+      {hasHeader && (
+        <div className="flex flex-col gap-3 border-b border-[#EEF2F6] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            {title && <h3 className="text-[15px] font-semibold text-[#1B3A6B]">{title}</h3>}
+            {subtitle && <p className="mt-0.5 text-xs leading-normal text-slate-500">{subtitle}</p>}
           </div>
           {headerAction && <div className="shrink-0">{headerAction}</div>}
         </div>
       )}
-      <div className={noPadding ? '' : 'p-6'}>{children}</div>
+      <div className={noPadding ? '' : 'p-5'}>{children}</div>
     </div>
   );
 }
