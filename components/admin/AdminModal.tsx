@@ -70,10 +70,10 @@ export function AdminModal({
         aria-modal="true"
         aria-label={title}
         onMouseDown={(event) => event.stopPropagation()}
-        className={`my-auto flex max-h-[calc(100vh-3rem)] w-full ${sizeStyles[size]} flex-col overflow-hidden rounded-2xl bg-white shadow-admin-pop ring-1 ring-[#E2E8F0]`}
+        className={`my-auto flex max-h-[calc(100vh-3rem)] w-full ${sizeStyles[size]} flex-col overflow-hidden rounded-xl bg-white shadow-admin-pop ring-1 ring-[#E2E8F0]`}
       >
         <div className="flex items-start justify-between gap-4 border-b border-[#EEF2F6] px-5 py-4">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-[#1B3A6B]">{title}</h2>
             {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
           </div>
@@ -90,7 +90,7 @@ export function AdminModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</div>
 
         {footer && (
-          <div className="flex items-center justify-end gap-3 border-t border-[#EEF2F6] bg-slate-50/60 px-5 py-3.5">
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#EEF2F6] bg-slate-50/60 px-5 py-3.5">
             {footer}
           </div>
         )}

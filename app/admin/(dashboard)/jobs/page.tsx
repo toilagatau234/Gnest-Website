@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Edit2, Briefcase, MapPin, DollarSign, ArrowUpRight, GraduationCap, Search } from 'lucide-react';
 
 interface JobVacancy {
@@ -45,7 +45,7 @@ const mockJobs: JobVacancy[] = [
 
 export default function JobsPage() {
   const [searchText, setSearchText] = useState('');
-  const [jobs, setJobs] = useState<JobVacancy[]>(mockJobs);
+  const [jobs] = useState<JobVacancy[]>(mockJobs);
 
   const filteredJobs = jobs.filter(j =>
     j.title.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -56,29 +56,29 @@ export default function JobsPage() {
   return (
     <div className="space-y-6">
       {/* Title block */}
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-        <div>
+      <div className="flex flex-col justify-between gap-4 rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm lg:flex-row lg:items-center">
+        <div className="min-w-0">
           <h2 className="text-lg font-bold text-[#1B3A6B]">Tin Tuyển Dụng Đang Đăng</h2>
           <p className="text-xs text-slate-500 mt-1">
             Quản trị vị trí ứng tuyển hiển thị trên trang /tuyen-dung ngoài client. Hút nhân tài cho Đại Tài Lợi.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-56">
             <input
               type="text"
               placeholder="Tìm kiếm vị trí..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="bg-[#F7F9FB] border border-[#E2E8F0] rounded-xl pl-8 pr-3 py-1.5 text-xs w-48 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B] text-slate-700"
+              className="h-9 w-full rounded-lg border border-[#E2E8F0] bg-[#F7F9FB] py-1.5 pl-8 pr-3 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
             />
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2 pointer-events-none" />
           </div>
 
           <button
             onClick={() => alert('Thao tác tuyển dụng CRUD đầy đủ sẽ được bổ sung ở phase riêng.')}
-            className="bg-[#1B3A6B] text-white hover:bg-[#112546] transition-all text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1B3A6B] px-4 py-2 text-xs font-bold text-white transition-all hover:bg-[#112546]"
           >
             <Plus className="w-4 h-4" /> Đăng tin mới
           </button>
@@ -88,7 +88,7 @@ export default function JobsPage() {
       {/* Grid structure for career vacancies */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredJobs.map((job) => (
-          <div key={job.id} className="bg-white hover:border-slate-350 border border-[#E2E8F0] rounded-2xl p-5 shadow-xs relative group transition-all hover:shadow-md flex flex-col justify-between">
+          <div key={job.id} className="group relative flex min-w-0 flex-col justify-between rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-xs transition-all hover:border-slate-300 hover:shadow-md">
             <div>
               
               {/* Header icons info */}
@@ -99,14 +99,14 @@ export default function JobsPage() {
                 
                 <button 
                   onClick={() => alert('Chỉnh sửa thông tin tuyển dụng ở chế độ visual mockup.')}
-                  className="p-1.5 bg-white text-slate-500 hover:text-slate-800 rounded-lg shadow-xs border border-slate-200 hover:border-slate-350 transition-all opacity-80 group-hover:opacity-100"
+                  className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 opacity-80 shadow-xs transition-all hover:border-slate-300 hover:text-slate-800 group-hover:opacity-100"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
               </div>
 
               {/* Title & metadata */}
-              <h3 className="font-bold text-slate-850 text-sm">{job.title}</h3>
+              <h3 className="text-sm font-bold text-slate-800">{job.title}</h3>
               <p className="text-[10px] text-slate-400 font-mono mt-0.5">/{job.slug}</p>
 
               {/* Badges and loc and wage info */}

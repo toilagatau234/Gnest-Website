@@ -17,31 +17,23 @@ export function AdminShell({ children, adminUser }: AdminShellProps) {
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <div className="flex min-h-screen bg-[#F7F9FB] font-sans text-slate-800 antialiased selection:bg-[#1B3A6B]/10 selection:text-[#1B3A6B]">
-      
-      {/* Sidebar Navigation */}
+    <div className="min-h-screen bg-[#F7F9FB] font-sans text-slate-800 antialiased selection:bg-[#1B3A6B]/10 selection:text-[#1B3A6B]">
       <AdminSidebar isOpen={menuOpen} adminUser={adminUser} onNavigate={closeMenu} />
 
-      {/* Main Content Area Wrap */}
-      <div className="flex-grow flex-1 flex flex-col min-h-screen min-w-0 overflow-hidden lg:pl-72 transition-all duration-300">
-        
-        {/* Top Header Navigation */}
+      <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden lg:pl-72">
         <AdminTopbar adminUser={adminUser} onMenuToggle={toggleMenu} isMenuOpen={menuOpen} />
 
-        {/* Operational Canvas Main */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto w-full max-w-[1400px]">
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-[1440px]">
             <div className="animate-[fadeIn_0.3s_ease-out_both]">
               {children}
             </div>
           </div>
         </main>
 
-        {/* Credit System Footer */}
-        <footer className="py-4 text-center text-[10px] text-slate-400 font-medium bg-white border-t border-slate-200 select-none">
+        <footer className="border-t border-slate-200 bg-white px-4 py-4 text-center text-[10px] font-medium text-slate-400">
           <p>© 2026 Đại Tài Lợi • Gnest Administration Portal. Đồng bộ Supabase TLS 1.3 encrypted secure platform.</p>
         </footer>
-
       </div>
     </div>
   );

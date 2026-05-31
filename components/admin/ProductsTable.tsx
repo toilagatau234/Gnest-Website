@@ -3,19 +3,9 @@
 import { useMemo, useState } from 'react';
 import { 
   ImageIcon, 
-  Package, 
-  Plus, 
-  Eye, 
-  Trash2, 
-  Edit2, 
-  Copy, 
   AlertTriangle, 
   ListFilter,
-  FileSpreadsheet,
-  Download,
   Check,
-  EyeOff,
-  ChevronRight,
   Search
 } from 'lucide-react';
 
@@ -113,47 +103,47 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
     <div className="space-y-6">
       
       {/* KPI mini row inside tab */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-3.5 bg-slate-50 border border-slate-200/50 rounded-xl shadow-xs">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-200/50 bg-slate-50 p-3.5 shadow-xs">
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">TỔNG SẢN PHẨM</p>
           <p className="text-xl font-bold text-[#1B3A6B] mt-1">{totalCount}</p>
         </div>
-        <div className="p-3.5 bg-emerald-50/50 border border-emerald-100 rounded-xl shadow-xs">
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3.5 shadow-xs">
           <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider font-mono">ĐANG HIỂN THỊ</p>
           <p className="text-xl font-bold text-emerald-700 mt-1">{activeCount}</p>
         </div>
-        <div className="p-3.5 bg-slate-50 border border-slate-200/50 rounded-xl shadow-xs">
+        <div className="rounded-xl border border-slate-200/50 bg-slate-50 p-3.5 shadow-xs">
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">ĐANG ẨN</p>
           <p className="text-xl font-bold text-slate-500 mt-1">{hiddenCount}</p>
         </div>
-        <div className="p-3.5 bg-amber-50/50 border border-amber-100 rounded-xl shadow-xs">
+        <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3.5 shadow-xs">
           <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wider font-mono">CẢNH BÁO HẾT/THẤP KHO</p>
           <p className="text-xl font-bold text-amber-700 mt-1">{lowStockCount}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm space-y-6">
+      <div className="space-y-6 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:p-6">
         
         {/* Title & Actions Header */}
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-4 border-b border-slate-100">
-          <div>
+        <div className="flex flex-col justify-between gap-4 border-b border-slate-100 pb-4 lg:flex-row lg:items-center">
+          <div className="min-w-0">
             <h2 className="text-base font-bold text-[#1B3A6B]">Danh Sách Sản Phẩm (Catalog)</h2>
             <p className="text-[10px] text-slate-400 mt-0.5">
               Quản trị giá bán sỉ theo bậc số lượng, thông số kỹ thuật và hình ảnh mô tả
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {/* Real React 19 product creation form trigger styled exactly like template action buttons */}
             <ProductFormDialog categories={categories} />
           </div>
         </div>
 
         {/* Advanced Filter Strip */}
-        <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-xl text-xs space-y-3">
-          <div className="flex flex-wrap gap-4 items-center justify-between">
+        <div className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50 p-4 text-xs">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             
-            <div className="flex flex-wrap gap-2.5 items-center">
+            <div className="flex min-w-0 flex-wrap items-center gap-2.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono flex items-center gap-1">
                 <ListFilter className="w-3.5 h-3.5" /> Lọc nâng cao:
               </span>
@@ -162,7 +152,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
+                className="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
               >
                 <option value="all">Tất cả danh mục</option>
                 {categories.map(c => (
@@ -174,7 +164,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
+                className="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
               >
                 <option value="all">Mọi trạng thái</option>
                 <option value="active">Đang hiển thị</option>
@@ -185,7 +175,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
               <select
                 value={stockFilter}
                 onChange={(e) => setStockFilter(e.target.value as StockFilter)}
-                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
+                className="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
               >
                 <option value="all">Sản lượng tồn kho</option>
                 <option value="in_stock">Còn hàng (Sỉ)</option>
@@ -197,7 +187,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
               <select
                 value={priceFilter}
                 onChange={(e) => setPriceFilter(e.target.value as PriceFilter)}
-                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
+                className="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
               >
                 <option value="all">Kiểu hiển thị giá</option>
                 <option value="fixed">Có giá niêm yết</option>
@@ -206,13 +196,13 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
             </div>
 
             {/* Search Input Filter */}
-            <div className="relative">
+            <div className="relative w-full sm:w-56">
               <input
                 type="text"
                 placeholder="Tìm sản phẩm nhanh..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs w-48 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
+                className="h-9 w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2 pointer-events-none" />
             </div>
@@ -239,7 +229,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
             <p className="text-slate-400 text-xs mt-1">Vui lòng thay đổi từ khóa tìm kiếm hoặc tắt bộ lọc nâng cao.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-6 px-6 lg:mx-0 lg:px-0">
+          <div className="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
             <table className="w-full text-xs text-left min-w-[940px]">
               <thead>
                 <tr className="bg-slate-50/80 text-slate-500 font-bold uppercase tracking-wider text-[9px] border-b border-slate-200">
@@ -299,7 +289,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                         <div className="space-y-0.5">
                           <span className="font-mono font-bold text-slate-700">{p.stock.toLocaleString('vi-VN')}</span>
                           {isLowStock && (
-                            <span className={`block text-[9px] font-bold px-1.5 py-0.2 rounded border max-w-max ${
+                            <span className={`block max-w-max rounded border px-1.5 py-px text-[9px] font-bold ${
                               p.stock === 0 ? 'bg-rose-50 text-[#E31E24] border-rose-100' : 'bg-amber-50 text-amber-600 border-amber-100'
                             }`}>
                               {p.stock === 0 ? 'Hết hàng' : 'Tồn thấp'}

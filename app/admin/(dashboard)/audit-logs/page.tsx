@@ -1,4 +1,4 @@
-import { AlertCircle, ScrollText, CheckCircle2, History, Shield, RefreshCw } from 'lucide-react';
+import { AlertCircle, ScrollText, CheckCircle2, Shield } from 'lucide-react';
 
 import { getAuditLogs } from '@/lib/services/admin/audit-logs';
 import { FormattedDate } from '@/components/admin/FormattedDate';
@@ -6,10 +6,10 @@ import { FormattedDate } from '@/components/admin/FormattedDate';
 export const dynamic = 'force-dynamic';
 
 const ACTION_META: Record<string, { label: string; toneClass: string }> = {
-  create: { label: 'Tạo mới', toneClass: 'bg-emerald-50 text-emerald-800 border border-emerald-250 font-bold' },
+  create: { label: 'Tạo mới', toneClass: 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold' },
   update: { label: 'Cập nhật', toneClass: 'bg-sky-50 text-sky-800 border border-sky-200 font-bold' },
   activate: { label: 'Hiển thị', toneClass: 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold' },
-  deactivate: { label: 'Mở ẩn', toneClass: 'bg-amber-50 text-amber-700 border border-amber-250 font-bold' },
+  deactivate: { label: 'Mở ẩn', toneClass: 'bg-amber-50 text-amber-700 border border-amber-200 font-bold' },
 };
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -34,8 +34,8 @@ export default async function AuditLogsPage() {
     <div className="space-y-6">
       
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 p-6 bg-white rounded-2xl border border-[#E2E8F0] shadow-sm">
-        <div>
+      <div className="flex flex-col justify-between gap-4 rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm lg:flex-row lg:items-center">
+        <div className="min-w-0">
           <h2 className="text-lg font-bold text-[#1B3A6B]">Nhật Ký Hoạt Động Hệ Thống</h2>
           <p className="text-xs text-slate-500 mt-1">
             Theo dõi, giám sát và truy vết các hành động tạo mới, cập nhật, hiển thị/ẩn dữ liệu của các quản trị viên
@@ -59,9 +59,9 @@ export default async function AuditLogsPage() {
       ) : null}
 
       {/* Main Audit log card list */}
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm space-y-4">
-        <div className="flex justify-between items-center pb-2 border-b border-slate-50">
-          <div>
+      <div className="space-y-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:p-6">
+        <div className="flex items-center justify-between border-b border-slate-50 pb-2">
+          <div className="min-w-0">
             <h3 className="font-bold text-[#1B3A6B] text-sm">Truy Vết Hành Động Gần Đây</h3>
             <p className="text-[10px] text-slate-400 mt-0.5">Hiển thị tối đa 100 tác vụ lưu vết gần nhất</p>
           </div>
@@ -74,7 +74,7 @@ export default async function AuditLogsPage() {
             <p className="text-slate-400 text-xs mt-0.5">Khi có chỉnh sửa dữ liệu, log truy vết sẽ hiển thị ở đây.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-6 px-6 lg:mx-0 lg:px-0">
+          <div className="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
             <table className="w-full text-xs text-left min-w-[760px]">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[9px] border-b border-slate-200">
@@ -87,7 +87,7 @@ export default async function AuditLogsPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {safeLogs.map((log) => {
-                  const meta = ACTION_META[log.action] ?? { label: log.action, toneClass: 'bg-slate-150 text-slate-500 border border-slate-200' };
+                  const meta = ACTION_META[log.action] ?? { label: log.action, toneClass: 'bg-slate-100 text-slate-500 border border-slate-200' };
                   const name = metadataName(log.metadata);
                   const actorShort = log.actorEmail ? log.actorEmail.split('@')[0] : 'Hệ thống';
 

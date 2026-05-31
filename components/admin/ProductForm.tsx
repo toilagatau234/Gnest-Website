@@ -30,7 +30,7 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 const fieldClass =
-  'w-full bg-white border border-slate-250 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B] rounded-lg px-3 py-2 text-slate-800 text-xs font-medium transition-all';
+  'w-full bg-white border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B] rounded-lg px-3 py-2 text-slate-800 text-xs font-medium transition-all';
 const labelClass = 'mb-1 block text-xs font-bold text-slate-500 uppercase tracking-wide';
 
 export function ProductForm({ categories, product, onSuccess }: ProductFormProps) {
@@ -64,7 +64,7 @@ export function ProductForm({ categories, product, onSuccess }: ProductFormProps
       ) : null}
 
       {/* Tabs Layout matching template styling */}
-      <div className="flex gap-1 border-b border-slate-100">
+      <div className="flex gap-1 overflow-x-auto border-b border-slate-100">
         {TABS.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -73,7 +73,7 @@ export function ProductForm({ categories, product, onSuccess }: ProductFormProps
               type="button"
               onClick={() => setActiveTab(tab.id)}
               aria-current={active ? 'true' : undefined}
-              className={`-mb-px border-b-2 px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer ${
+              className={`-mb-px shrink-0 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer ${
                 active
                   ? 'border-[#1B3A6B] text-[#1B3A6B]'
                   : 'border-transparent text-slate-400 hover:text-slate-700'
@@ -131,7 +131,7 @@ export function ProductForm({ categories, product, onSuccess }: ProductFormProps
             name="description"
             rows={4}
             defaultValue={product?.description ?? ''}
-            className="w-full bg-white border border-slate-250 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B] rounded-lg px-3 py-2 text-slate-800 text-xs font-normal transition-all leading-relaxed"
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-normal leading-relaxed text-slate-800 transition-all focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
             placeholder="Mô tả ngắn hiển thị cho đại lý sỉ tham khảo"
           />
         </label>
@@ -188,7 +188,7 @@ export function ProductForm({ categories, product, onSuccess }: ProductFormProps
       </div>
 
       {/* Form Action Buttons Bar */}
-      <div className="flex justify-end border-t border-[#EEF2F6] pt-4 gap-2">
+      <div className="flex flex-wrap justify-end gap-2 border-t border-[#EEF2F6] pt-4">
         <button
           type="submit"
           disabled={isPending}

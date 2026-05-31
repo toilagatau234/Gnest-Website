@@ -86,9 +86,9 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
         aria-label="Điều hướng quản trị"
         className={`
           fixed inset-y-0 left-0 z-50 flex w-72 flex-col
-          bg-gradient-to-b from-[#1B3A6B] to-[#132d56] text-white border-r border-white/10
+          border-r border-white/10 bg-gradient-to-b from-[#1B3A6B] to-[#132d56] text-white shadow-2xl shadow-slate-900/10
           transition-transform duration-300 ease-in-out
-          lg:sticky lg:top-0 lg:h-screen lg:translate-x-0
+          lg:translate-x-0
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
@@ -121,7 +121,7 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-8">
+        <nav className="min-h-0 flex-1 space-y-8 overflow-y-auto px-3 py-6">
           {navSections.map((section, gIdx) => (
             <div key={gIdx}>
               <p className="px-4 text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3 select-none">
@@ -146,16 +146,16 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
                           }
                         `}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
                           <Icon
-                            className={`w-4 h-4 transition-transform duration-200 ${
+                            className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
                               active ? 'text-white scale-105' : 'text-white/60 group-hover:text-white group-hover:scale-105'
                             }`}
                           />
-                          <span>{item.label}</span>
+                          <span className="truncate">{item.label}</span>
                         </div>
                         {item.badge && (
-                          <span className="ml-auto bg-[#E31E24] text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider font-mono">
+                          <span className="ml-2 shrink-0 rounded-full bg-[#E31E24] px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider">
                             {item.badge}
                           </span>
                         )}

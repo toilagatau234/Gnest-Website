@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Globe, 
   Eye, 
@@ -107,21 +107,21 @@ export default function SiteContentPage() {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm">
+    <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:p-6">
       
       {/* Tab Header layout */}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-4 border-b border-slate-100 mb-6">
-        <div>
+      <div className="mb-6 flex flex-col justify-between gap-4 border-b border-slate-100 pb-4 lg:flex-row lg:items-center">
+        <div className="min-w-0">
           <h2 className="text-base font-bold text-[#1B3A6B]">Nội Dung Động Website / Landing Config</h2>
           <p className="text-[10px] text-slate-400 mt-0.5">
             Tùy biến nhanh thông tin hiển thị tại trang chủ, thông tin liên hệ chân trang & chỉ số thẻ SEO
           </p>
         </div>
 
-        <div className="flex bg-slate-50 border border-slate-200 p-1 rounded-xl text-xs font-semibold select-none">
+        <div className="flex overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-semibold">
           <button
             onClick={() => setEditorMode('visual')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
               editorMode === 'visual' 
                 ? 'bg-white shadow-xs text-[#1B3A6B] font-bold' 
                 : 'text-slate-500 hover:text-slate-700'
@@ -131,7 +131,7 @@ export default function SiteContentPage() {
           </button>
           <button
             onClick={() => setEditorMode('split')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
               editorMode === 'split' 
                 ? 'bg-white shadow-xs text-[#1B3A6B] font-bold' 
                 : 'text-slate-500 hover:text-slate-700'
@@ -146,7 +146,7 @@ export default function SiteContentPage() {
       <div className={`grid grid-cols-1 ${editorMode === 'split' ? 'xl:grid-cols-2' : ''} gap-6`}>
         
         {/* SOẠN THẢO VISUAL FORM PANEL */}
-        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+        <div className="max-h-[70vh] space-y-6 overflow-y-auto pr-0 xl:pr-2">
           
           {/* GROUP 1: Trang Chủ Banner */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
@@ -175,7 +175,7 @@ export default function SiteContentPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-slate-500 font-semibold mb-1">Nút CTA</label>
                   <input 
@@ -211,7 +211,7 @@ export default function SiteContentPage() {
                   type="text" 
                   value={footerName}
                   onChange={(e) => setFooterName(e.target.value)}
-                  className="w-full bg-white border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B] rounded-lg px-3 py-2 text-slate-850 font-bold"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
                 />
               </div>
 
@@ -225,7 +225,7 @@ export default function SiteContentPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-slate-500 font-semibold mb-1">Điện thoại</label>
                   <input 
@@ -254,7 +254,7 @@ export default function SiteContentPage() {
               <Sparkles className="w-4 h-4 text-emerald-500" /> Nút nổi liên hệ (CTA Buttons)
             </h3>
 
-            <div className="grid grid-cols-2 gap-4 text-xs">
+            <div className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-2">
               <div>
                 <label className="block text-slate-500 font-semibold mb-1">Zalo float hotline</label>
                 <input 
@@ -309,7 +309,7 @@ export default function SiteContentPage() {
 
         {/* COMPILER PAYLOAD PANEL VIEWPORT */}
         {editorMode === 'split' && (
-          <div className="bg-slate-900 rounded-2xl p-5 flex flex-col justify-between text-slate-350 font-mono relative overflow-hidden shrink-0 h-[70vh]">
+          <div className="relative flex h-[70vh] shrink-0 flex-col justify-between overflow-hidden rounded-xl bg-slate-900 p-5 font-mono text-slate-300">
             <div className="absolute top-2 right-2 p-2 opacity-5 pointer-events-none">
               <Code className="w-48 h-48 text-white" />
             </div>
@@ -337,10 +337,10 @@ export default function SiteContentPage() {
       </div>
 
       {/* Buttons submit bar layout */}
-      <div className="mt-8 pt-4 border-t border-slate-200/80 flex justify-end gap-3.5">
+      <div className="mt-8 flex flex-wrap justify-end gap-3.5 border-t border-slate-200/80 pt-4">
         <button
           onClick={handlePreviewWeb}
-          className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-250 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 outline-none cursor-pointer"
+          className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 outline-none hover:bg-slate-50"
         >
           <Eye className="w-4 h-4 text-slate-500" /> Xem trước Landing (Preview)
         </button>

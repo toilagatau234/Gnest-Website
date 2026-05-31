@@ -21,7 +21,7 @@ interface CategoryFormProps {
 const INITIAL_STATE: AdminFormState = { ok: false };
 
 const fieldClass =
-  'w-full bg-white border border-slate-250 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B] rounded-lg px-3 py-2 text-slate-800 text-xs font-medium transition-all';
+  'w-full bg-white border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B] rounded-lg px-3 py-2 text-slate-800 text-xs font-medium transition-all';
 const labelClass = 'mb-1 block text-xs font-bold text-slate-500 uppercase tracking-wide';
 
 export function CategoryForm({ categories, category, onSuccess }: CategoryFormProps) {

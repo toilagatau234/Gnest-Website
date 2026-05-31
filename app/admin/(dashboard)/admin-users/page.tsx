@@ -1,4 +1,4 @@
-import { Info, ShieldCheck, UserCog, UserCheck, ShieldAlert, Key } from 'lucide-react';
+import { Info, ShieldCheck, UserCog, UserCheck, Key } from 'lucide-react';
 
 import { getAdminUsers } from '@/lib/services/admin/admin-users';
 import { ADMIN_ROLE_LABELS } from '@/lib/types/admin';
@@ -10,14 +10,13 @@ export default async function AdminUsersPage() {
   const { data: adminUsers, error } = await getAdminUsers();
   const safeUsers = adminUsers ?? [];
   const activeCount = safeUsers.filter((user) => user.is_active).length;
-  const lockedCount = safeUsers.length - activeCount;
 
   return (
     <div className="space-y-6">
       
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 p-6 bg-white rounded-2xl border border-[#E2E8F0] shadow-sm">
-        <div>
+      <div className="flex flex-col justify-between gap-4 rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm lg:flex-row lg:items-center">
+        <div className="min-w-0">
           <h2 className="text-lg font-bold text-[#1B3A6B]">Tài Khoản Quản Trị Hệ Thống</h2>
           <p className="text-xs text-slate-500 mt-1">
             Quản lý đội ngũ nhân sự, biên tập viên và phân quyền bảo mật truy cập bảng điều khiển CMS
@@ -27,7 +26,7 @@ export default async function AdminUsersPage() {
         <button 
           onClick={undefined}
           disabled
-          className="bg-slate-100 border border-slate-200 text-slate-400 font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 cursor-not-allowed select-none"
+          className="flex cursor-not-allowed select-none items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-bold text-slate-400"
         >
           <Key className="w-4 h-4" /> Cấp quyền mới
         </button>
@@ -40,8 +39,8 @@ export default async function AdminUsersPage() {
       ) : null}
 
       {/* KPI Stats widgets grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-sm flex items-center gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="flex min-w-0 items-center gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
           <div className="p-3 bg-[#1B3A6B]/5 text-[#1B3A6B] rounded-xl shrink-0">
             <UserCog className="w-6 h-6" />
           </div>
@@ -52,7 +51,7 @@ export default async function AdminUsersPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-sm flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
             <UserCheck className="w-6 h-6" />
           </div>
@@ -63,7 +62,7 @@ export default async function AdminUsersPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-sm flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
           <div className="p-3 bg-amber-50 text-amber-600 rounded-xl shrink-0">
             <ShieldCheck className="w-6 h-6" />
           </div>
@@ -76,13 +75,13 @@ export default async function AdminUsersPage() {
       </div>
 
       {/* Main Table card */}
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm space-y-4">
+      <div className="space-y-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:p-6">
         <div>
           <h3 className="font-bold text-[#1B3A6B] text-sm">Danh Sách Quản Trị Viên</h3>
           <p className="text-[10px] text-slate-400 mt-0.5">Danh sách tài khoản có quyền đăng nhập vào CMS</p>
         </div>
 
-        <div className="overflow-x-auto -mx-6 px-6 lg:mx-0 lg:px-0">
+        <div className="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
           <table className="w-full text-xs text-left min-w-[620px]">
             <thead>
               <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[9px] border-b border-slate-200">
@@ -129,7 +128,7 @@ export default async function AdminUsersPage() {
       </div>
 
       {/* Triển khai note block */}
-      <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-5 leading-relaxed">
+      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-5 leading-relaxed">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 animate-pulse" />
         <div className="text-xs">
           <h2 className="font-bold text-amber-800 uppercase tracking-wider font-mono text-[10px]">Lưu ý kỹ thuật phân bổ nhân sự</h2>

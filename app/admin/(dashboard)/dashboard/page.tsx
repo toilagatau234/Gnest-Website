@@ -1,26 +1,17 @@
 import {
   AlertTriangle,
-  ArrowRight,
-  Briefcase,
   CheckCircle2,
-  Database,
   ExternalLink,
   FolderTree,
-  Globe,
-  History,
   ImageOff,
   Lock,
-  MessageSquare,
   Package,
-  PackageMinus,
   Phone,
   PhoneCall,
   Plus,
   Quote,
-  RefreshCw,
   ScrollText,
   Server,
-  ShieldCheck,
   Zap,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -80,23 +71,23 @@ export default async function AdminDashboardPage() {
     <div className="space-y-6">
       
       {/* Welcome & System Status Bar */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6 bg-white rounded-2xl border border-[#E2E8F0] gap-4">
-        <div>
+      <div className="flex min-w-0 flex-col items-start justify-between gap-4 rounded-xl border border-[#E2E8F0] bg-white p-5 lg:flex-row lg:items-center">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#1B3A6B] animate-pulse"></span>
             <span className="text-[10px] font-extrabold text-[#1B3A6B] tracking-wider uppercase font-mono">ĐẠI TÀI LỢI • CMS CONSOLE</span>
           </div>
-          <h2 className="text-lg font-bold text-slate-800 leading-tight mt-1.5 font-sans">
+          <h2 className="mt-1.5 text-lg font-bold leading-tight text-slate-800">
             Bảng Điều Khiển Quản Trị Hệ Thống Gnest
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="mt-1 max-w-4xl text-xs text-slate-500">
             Chào mừng bạn trở lại! Bán lẻ/sỉ catalog sản phẩm, quản lý danh mục và phản hồi yêu cầu sỉ tức thì.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex shrink-0 items-center gap-2.5">
           <Link 
             href="/admin/products"
-            className="px-4 py-2 bg-[#1B3A6B] hover:bg-[#112546] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#1B3A6B] px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#112546]"
           >
             <Plus className="w-4 h-4" /> Đăng Sản Phẩm Mới
           </Link>
@@ -104,7 +95,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* PRIORITIZED ACTION DESK (VIỆC CẦN XỬ LÝ TRƯỚC) */}
-      <div className="bg-white rounded-2xl border-l-4 border-l-[#E31E24] border border-[#E2E8F0] p-6 shadow-sm">
+      <div className="rounded-xl border border-l-4 border-[#E2E8F0] border-l-[#E31E24] bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2 pb-3 border-b border-slate-100 mb-4">
           <AlertTriangle className="w-5 h-5 text-[#E31E24] shrink-0" />
           <div>
@@ -113,7 +104,7 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           
           {/* Urgent Item 1: Pending Inquiries */}
           <div className={`p-4 rounded-xl border transition-all ${
@@ -215,9 +206,9 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* KPI Stats Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all group">
+        <div className="group flex min-h-32 flex-col justify-between rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm transition-all hover:shadow-md">
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">TỔNG SẢN PHẨM</span>
             <div className="p-1.5 bg-[#1B3A6B]/5 text-[#1B3A6B] rounded-lg group-hover:bg-[#1B3A6B]/15 transition-colors">
@@ -232,7 +223,7 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all group">
+        <div className="group flex min-h-32 flex-col justify-between rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm transition-all hover:shadow-md">
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">DANH MỤC</span>
             <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-100 transition-colors">
@@ -247,7 +238,7 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all group">
+        <div className="group flex min-h-32 flex-col justify-between rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm transition-all hover:shadow-md">
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-bold text-[#E31E24] uppercase tracking-wider font-mono">BÁO GIÁ MỚI</span>
             <div className="p-1.5 bg-red-50 text-[#E31E24] rounded-lg group-hover:bg-red-100 transition-colors animate-pulse">
@@ -262,7 +253,7 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all group">
+        <div className="group flex min-h-32 flex-col justify-between rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm transition-all hover:shadow-md">
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">LIÊN HỆ BÁN HÀNG</span>
             <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-100 transition-colors">
@@ -275,7 +266,7 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all group">
+        <div className="group flex min-h-32 flex-col justify-between rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm transition-all hover:shadow-md">
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider font-mono">TỒN KHO THẤP</span>
             <div className="p-1.5 bg-amber-50 text-amber-600 rounded-lg group-hover:bg-amber-100 transition-colors">
@@ -288,7 +279,7 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all group">
+        <div className="group flex min-h-32 flex-col justify-between rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm transition-all hover:shadow-md">
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">THIẾU HÌNH ẢNH</span>
             <div className="p-1.5 bg-slate-50 text-slate-500 rounded-lg group-hover:bg-slate-100 transition-colors">
@@ -304,25 +295,25 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Main Grid Section */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         
         {/* Recent Inquiries CRM (Col Span 2) */}
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm xl:col-span-2">
-          <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-50">
-            <div>
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm xl:col-span-2">
+          <div className="mb-4 flex flex-col gap-3 border-b border-slate-50 pb-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <h3 className="font-bold text-[#1B3A6B] text-sm">Yêu Cầu Báo Giá Gần Đây</h3>
               <p className="text-[10px] text-slate-400">Các yêu cầu từ form đăng ký sỉ được cập nhật tức thì</p>
             </div>
             <Link 
               href="/admin/inquiries"
-              className="text-xs text-[#1B3A6B] font-semibold hover:underline flex items-center gap-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-[#1B3A6B] hover:underline"
             >
               Xem chi tiết CRM <ExternalLink className="w-3 h-3" />
             </Link>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
+            <table className="w-full min-w-[760px] text-left text-xs">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[9px] border-b border-slate-100">
                   <th className="p-3">Khách hàng</th>
@@ -394,7 +385,7 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Quick Actions (Col 1) */}
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm space-y-4">
+        <div className="space-y-4 rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
           <h3 className="font-bold text-[#1B3A6B] text-sm pb-2 border-b border-slate-50">Lối Tắt Hành Động Nhanh</h3>
           
           <div className="grid grid-cols-1 gap-2.5">
@@ -431,10 +422,10 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Second Row Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
 
         {/* Operational Warnings / Alert List (Col 1) */}
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm">
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
           <h3 className="font-bold text-[#1B3A6B] text-sm mb-3 pb-2 border-b border-slate-50 flex items-center gap-1.5 text-red-600">
             <AlertTriangle className="w-4.5 h-4.5" /> Cảnh Báo Cần Xử Lý
           </h3>
@@ -483,14 +474,14 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* System Technical States (Col 1) */}
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm">
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
           <h3 className="font-bold text-[#1B3A6B] text-sm mb-3 pb-2 border-b border-slate-50 flex items-center gap-1.5">
             <Server className="w-4.5 h-4.5 text-[#1B3A6B]" /> Trạng Thái Máy Chủ
           </h3>
 
           <div className="space-y-3">
             {systemHealth.map((sy, idx) => (
-              <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 rounded-xl border border-slate-200/50">
+              <div key={idx} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200/50 bg-slate-50 p-2.5 text-xs">
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${sy.color === 'emerald' ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
                   <span className="font-semibold text-slate-700">{sy.name}</span>
@@ -509,7 +500,7 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Recent Activity Audit Stream (Col 1) */}
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm">
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
           <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-50">
             <h3 className="font-bold text-[#1B3A6B] text-sm">Nhật Ký Gần Đây</h3>
             <Link 
