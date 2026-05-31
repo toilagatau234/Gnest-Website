@@ -68,6 +68,10 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
+<<<<<<< HEAD
+=======
+        {/* Search (scoped per-page search lives in the toolbars; this is global navigation) */}
+>>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
         <div className="hidden items-center gap-2 rounded-lg border border-[#E2E8F0] bg-slate-50 px-3 py-1.5 text-sm text-slate-400 md:flex">
           <Search className="h-4 w-4" />
           <span>Tìm kiếm...</span>

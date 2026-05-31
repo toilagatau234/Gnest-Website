@@ -3,8 +3,14 @@ import { AlertCircle, FolderTree } from 'lucide-react';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { AdminSection } from '@/components/admin/AdminSection';
+<<<<<<< HEAD
 import { CategoriesTable } from '@/components/admin/CategoriesTable';
 import { CategoryForm } from '@/components/admin/CategoryForm';
+=======
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { CategoriesTable } from '@/components/admin/CategoriesTable';
+import { CategoryFormDialog } from '@/components/admin/CategoryFormDialog';
+>>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
 import { getAdminCategories } from '@/lib/services/admin/categories';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +24,7 @@ export default async function CategoriesPage() {
     <AdminSection>
       <AdminPageHeader
         title="Danh mục"
+<<<<<<< HEAD
         description="Quản lý danh mục sản phẩm, dịch vụ và cây danh mục cha/con trên catalog."
         action={
           <div className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm shadow-admin">
@@ -25,6 +32,10 @@ export default async function CategoriesPage() {
             <p className="text-slate-500">{activeCount} đang hiển thị</p>
           </div>
         }
+=======
+        description={`${safeCategories.length} danh mục · ${activeCount} đang hiển thị`}
+        action={<CategoryFormDialog categories={safeCategories} />}
+>>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
       />
 
       {error ? (
@@ -37,13 +48,12 @@ export default async function CategoriesPage() {
         </div>
       ) : null}
 
-      <CategoryForm categories={safeCategories} />
-
       {!error && safeCategories.length === 0 ? (
         <AdminEmptyState
           icon={<FolderTree className="h-6 w-6" />}
           title="Chưa có danh mục nào"
           description="Tạo danh mục đầu tiên để gán sản phẩm vào catalog."
+          action={<CategoryFormDialog categories={safeCategories} />}
         />
       ) : null}
 

@@ -3,7 +3,12 @@ import { AlertCircle, Package } from 'lucide-react';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { AdminSection } from '@/components/admin/AdminSection';
+<<<<<<< HEAD
 import { ProductForm } from '@/components/admin/ProductForm';
+=======
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { ProductFormDialog } from '@/components/admin/ProductFormDialog';
+>>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
 import { ProductsTable } from '@/components/admin/ProductsTable';
 import { getAdminCategories } from '@/lib/services/admin/categories';
 import { getAdminProducts } from '@/lib/services/admin/products';
@@ -23,6 +28,7 @@ export default async function ProductsPage() {
     <AdminSection>
       <AdminPageHeader
         title="Sản phẩm"
+<<<<<<< HEAD
         description="Quản lý thông tin sản phẩm/dịch vụ hiển thị trên catalog."
         action={
           <div className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm shadow-admin">
@@ -30,6 +36,10 @@ export default async function ProductsPage() {
             <p className="text-slate-500">{activeCount} đang hiển thị</p>
           </div>
         }
+=======
+        description={`${safeProducts.length} sản phẩm · ${activeCount} đang hiển thị`}
+        action={<ProductFormDialog categories={safeCategories} />}
+>>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
       />
 
       {error ? (
@@ -42,13 +52,12 @@ export default async function ProductsPage() {
         </div>
       ) : null}
 
-      <ProductForm categories={safeCategories} />
-
       {!error && safeProducts.length === 0 ? (
         <AdminEmptyState
           icon={<Package className="h-6 w-6" />}
           title="Chưa có sản phẩm nào"
           description="Tạo sản phẩm đầu tiên sau khi đã có danh mục phù hợp."
+          action={<ProductFormDialog categories={safeCategories} />}
         />
       ) : null}
 

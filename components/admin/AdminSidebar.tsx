@@ -81,6 +81,10 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}
     >
+<<<<<<< HEAD
+=======
+      {/* Brand */}
+>>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
       <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/10 px-5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15">
           <span className="text-sm font-bold tracking-wide text-white">G</span>
@@ -101,6 +105,10 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
         </button>
       </div>
 
+<<<<<<< HEAD
+=======
+      {/* Navigation */}
+>>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
       <nav className="flex-1 overflow-y-auto px-3 py-5">
         {navSections.map((section) => (
           <div key={section.title} className="mb-5 last:mb-0">
@@ -142,6 +150,10 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
         ))}
       </nav>
 
+<<<<<<< HEAD
+=======
+      {/* User / role area */}
+>>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
       <div className="shrink-0 border-t border-white/10 p-3">
         <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-white ring-1 ring-white/15">
