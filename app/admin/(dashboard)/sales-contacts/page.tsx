@@ -1,14 +1,7 @@
-<<<<<<< HEAD
-import { Phone } from 'lucide-react';
-
-import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
-import { AdminPlaceholderPanel } from '@/components/admin/AdminPlaceholderPanel';
-=======
 import { Phone, MessageCircle, ImageIcon, ListOrdered } from 'lucide-react';
 
 import { AdminModulePreview } from '@/components/admin/AdminModulePreview';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
->>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
 import { AdminSection } from '@/components/admin/AdminSection';
 
 export default function SalesContactsPage() {
@@ -19,13 +12,6 @@ export default function SalesContactsPage() {
         description="Quản lý hotline, Zalo và nhân sự tư vấn hiển thị trên website."
       />
 
-<<<<<<< HEAD
-      <AdminPlaceholderPanel
-        icon={<Phone className="h-5 w-5" />}
-        title="Phân hệ liên hệ bán hàng đang được chuẩn bị"
-        description="Giao diện đã được giữ đúng hệ thống admin mới. CRUD chi tiết nên triển khai bằng server action có guard admin và ghi audit log."
-        items={['Hotline và Zalo', 'Avatar tư vấn viên', 'Thứ tự hiển thị']}
-=======
       <AdminModulePreview
         intro="Module quản lý đầu mối bán hàng giúp cập nhật thông tin liên hệ mà khách nhìn thấy trên trang catalog."
         features={[
@@ -35,7 +21,6 @@ export default function SalesContactsPage() {
           { icon: <ListOrdered className="h-5 w-5" />, title: 'Thứ tự & trạng thái', description: 'Bật/tắt và sắp xếp thứ tự ưu tiên hiển thị từng đầu mối liên hệ.' },
         ]}
         note="Bảng sales_contacts đã sẵn sàng; phần CRUD và upload ảnh sẽ được bổ sung ở phase Storage."
->>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
       />
     </AdminSection>
   );

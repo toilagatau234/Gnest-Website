@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-import { AdminStatusChip } from '@/components/admin/AdminStatusChip';
-=======
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -10,7 +7,6 @@ import { AdminFilterBar } from '@/components/admin/AdminFilterBar';
 import { AdminModal } from '@/components/admin/AdminModal';
 import { AdminSearchInput } from '@/components/admin/AdminSearchInput';
 import { AdminStatusChip, type AdminStatusTone } from '@/components/admin/AdminStatusChip';
->>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
 import { AdminTableShell, AdminTh } from '@/components/admin/AdminTableShell';
 import type { Inquiry } from '@/lib/services/admin/inquiries';
 import type { InquiryStatus } from '@/lib/types/database';
@@ -19,14 +15,6 @@ interface InquiriesTableProps {
   inquiries: Inquiry[];
 }
 
-<<<<<<< HEAD
-const statusConfig: Record<InquiryStatus, { label: string; tone: 'success' | 'alert' | 'neutral' | 'info' | 'warning' }> = {
-  new: { label: 'Mới', tone: 'alert' },
-  contacted: { label: 'Đã liên hệ', tone: 'info' },
-  quoted: { label: 'Đã báo giá', tone: 'warning' },
-  closed: { label: 'Đã đóng', tone: 'success' },
-  spam: { label: 'Spam', tone: 'neutral' },
-=======
 type TabId = 'all' | InquiryStatus;
 
 const STATUS_META: Record<InquiryStatus, { label: string; tone: AdminStatusTone }> = {
@@ -35,7 +23,6 @@ const STATUS_META: Record<InquiryStatus, { label: string; tone: AdminStatusTone 
   quoted: { label: 'Đã báo giá', tone: 'success' },
   closed: { label: 'Đã đóng', tone: 'neutral' },
   spam: { label: 'Spam', tone: 'alert' },
->>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
 };
 
 const TABS: { id: TabId; label: string }[] = [
@@ -57,67 +44,6 @@ function formatDateTime(value: string) {
   });
 }
 
-<<<<<<< HEAD
-function truncateText(text: string | null | undefined, maxLength = 64) {
-  if (!text) {
-    return '-';
-  }
-
-  if (text.length > maxLength) {
-    return text.substring(0, maxLength) + '...';
-  }
-
-  return text;
-}
-
-export function InquiriesTable({ inquiries }: InquiriesTableProps) {
-  return (
-    <AdminTableShell
-      minWidth={980}
-      head={
-        <>
-          <AdminTh>Khách hàng</AdminTh>
-          <AdminTh>Số điện thoại</AdminTh>
-          <AdminTh>Email</AdminTh>
-          <AdminTh>Nội dung</AdminTh>
-          <AdminTh>Trạng thái</AdminTh>
-          <AdminTh>Ngày tạo</AdminTh>
-        </>
-      }
-    >
-      {inquiries.map((inquiry) => {
-        const status = inquiry.status as InquiryStatus;
-        const currentStatus = statusConfig[status] || statusConfig.new;
-
-        return (
-          <tr key={inquiry.id} className="transition-colors hover:bg-[#F8FAFC]">
-            <td className="px-5 py-4 text-sm font-semibold text-slate-900">{inquiry.customer_name}</td>
-            <td className="px-5 py-4 text-sm text-slate-600">
-              <a href={`tel:${inquiry.phone}`} className="font-medium text-[#1B3A6B] hover:text-[#E31E24]">
-                {inquiry.phone}
-              </a>
-            </td>
-            <td className="px-5 py-4 text-sm text-slate-600">
-              {inquiry.email ? (
-                <a href={`mailto:${inquiry.email}`} className="break-all text-[#1B3A6B] hover:text-[#E31E24]">
-                  {inquiry.email}
-                </a>
-              ) : (
-                '-'
-              )}
-            </td>
-            <td className="px-5 py-4 text-sm leading-6 text-slate-600">
-              <span title={inquiry.message || ''}>{truncateText(inquiry.message)}</span>
-            </td>
-            <td className="px-5 py-4 text-sm">
-              <AdminStatusChip tone={currentStatus.tone}>{currentStatus.label}</AdminStatusChip>
-            </td>
-            <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-600">{formatDate(inquiry.created_at)}</td>
-          </tr>
-        );
-      })}
-    </AdminTableShell>
-=======
 function zaloLink(phone: string) {
   return `https://zalo.me/${phone.replace(/\D/g, '')}`;
 }
@@ -329,6 +255,5 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
         ) : null}
       </AdminModal>
     </div>
->>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
   );
 }

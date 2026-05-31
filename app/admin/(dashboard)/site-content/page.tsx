@@ -1,14 +1,7 @@
-<<<<<<< HEAD
-import { FileText } from 'lucide-react';
-
-import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
-import { AdminPlaceholderPanel } from '@/components/admin/AdminPlaceholderPanel';
-=======
 import { Home, PhoneCall, Megaphone, PanelBottom } from 'lucide-react';
 
 import { AdminModulePreview } from '@/components/admin/AdminModulePreview';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
->>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
 import { AdminSection } from '@/components/admin/AdminSection';
 
 export default function SiteContentPage() {
@@ -16,16 +9,6 @@ export default function SiteContentPage() {
     <AdminSection>
       <AdminPageHeader
         title="Nội dung website"
-<<<<<<< HEAD
-        description="Quản lý nội dung hiển thị trên trang chủ, footer, CTA và các khu vực tĩnh."
-      />
-
-      <AdminPlaceholderPanel
-        icon={<FileText className="h-5 w-5" />}
-        title="Phân hệ nội dung website đang được chuẩn bị"
-        description="Khi triển khai CRUD, dữ liệu nên lưu theo key/value có validate schema để tránh làm vỡ giao diện public."
-        items={['Trang chủ', 'Footer và CTA', 'Khối nội dung tĩnh']}
-=======
         description="Quản lý nội dung động hiển thị trên trang công khai."
       />
 
@@ -38,7 +21,6 @@ export default function SiteContentPage() {
           { icon: <PanelBottom className="h-5 w-5" />, title: 'Footer', description: 'Cập nhật thông tin doanh nghiệp và liên kết ở chân trang.' },
         ]}
         note="Bảng site_contents lưu nội dung dạng key/value JSON; trình soạn thảo sẽ được bổ sung ở phase riêng."
->>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
       />
     </AdminSection>
   );

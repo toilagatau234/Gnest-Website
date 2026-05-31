@@ -47,6 +47,7 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
   return (
     <header className="admin-glass sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-[#E2E8F0] px-4 lg:px-6">
       <div className="flex min-w-0 items-center gap-3">
+        {/* Mobile drawer toggle */}
         <button
           type="button"
           onClick={onMenuToggle}
@@ -58,23 +59,21 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
           {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
+        {/* Breadcrumb / page context */}
         <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex items-center gap-2 text-sm">
             <li className="hidden text-slate-400 sm:block">Quản trị</li>
             <li className="hidden text-slate-300 sm:block">/</li>
-            <li className="truncate font-semibold tracking-tight text-[#1B3A6B]">{pageLabel}</li>
+            <li className="truncate font-bold tracking-tight text-[#1B3A6B]">{pageLabel}</li>
           </ol>
         </nav>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-<<<<<<< HEAD
-=======
         {/* Search (scoped per-page search lives in the toolbars; this is global navigation) */}
->>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
         <div className="hidden items-center gap-2 rounded-lg border border-[#E2E8F0] bg-slate-50 px-3 py-1.5 text-sm text-slate-400 md:flex">
           <Search className="h-4 w-4" />
-          <span>Tìm kiếm...</span>
+          <span>Tìm kiếm…</span>
         </div>
 
         <span className="hidden rounded-md bg-[#1B3A6B]/5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#1B3A6B] sm:inline-block">

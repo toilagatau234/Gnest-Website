@@ -1,12 +1,3 @@
-<<<<<<< HEAD
-import { ScrollText } from 'lucide-react';
-
-import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
-import { AdminPlaceholderPanel } from '@/components/admin/AdminPlaceholderPanel';
-import { AdminSection } from '@/components/admin/AdminSection';
-
-export default function AuditLogsPage() {
-=======
 import { AlertCircle, ScrollText } from 'lucide-react';
 
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
@@ -53,22 +44,10 @@ export default async function AuditLogsPage() {
   const { data: logs, error } = await getAuditLogs({ limit: 100 });
   const safeLogs = logs ?? [];
 
->>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
   return (
     <AdminSection>
       <AdminPageHeader
         title="Nhật ký hoạt động"
-<<<<<<< HEAD
-        description="Theo dõi các thao tác quan trọng của admin trên dữ liệu CMS."
-      />
-
-      <AdminPlaceholderPanel
-        icon={<ScrollText className="h-5 w-5" />}
-        title="Audit log đã có nền tảng dữ liệu"
-        description="Các mutation hiện tại có ghi audit_logs. Giao diện lọc, phân trang và xem chi tiết log nên được triển khai ở phase riêng."
-        items={['Hành động', 'Đối tượng dữ liệu', 'Người thao tác']}
-      />
-=======
         description="Lịch sử các thao tác quan trọng của quản trị viên trên hệ thống."
       />
 
@@ -122,7 +101,6 @@ export default async function AuditLogsPage() {
           })}
         </AdminTableShell>
       ) : null}
->>>>>>> 3b38c8f142158fddd39741ee7b80a71a7f60a0d6
     </AdminSection>
   );
 }
