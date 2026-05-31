@@ -1,24 +1,27 @@
-import { AlertCircle } from 'lucide-react';
+import { Briefcase, MapPin, Banknote, ToggleRight } from 'lucide-react';
+
+import { AdminModulePreview } from '@/components/admin/AdminModulePreview';
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
+import { AdminSection } from '@/components/admin/AdminSection';
 
 export default function JobsPage() {
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Tuyển dụng</h1>
-        <p className="text-gray-600 mt-2">Quản lý bài tuyển dụng</p>
-      </div>
+    <AdminSection>
+      <AdminPageHeader
+        title="Tuyển dụng"
+        description="Quản lý các tin tuyển dụng hiển thị trên trang /tuyen-dung."
+      />
 
-      <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-        <div className="flex justify-center mb-4">
-          <div className="bg-yellow-100 rounded-full p-3">
-            <AlertCircle className="w-6 h-6 text-yellow-600" />
-          </div>
-        </div>
-        <p className="text-gray-600 text-lg font-medium">Sắp ra mắt</p>
-        <p className="text-sm text-gray-500 mt-2">
-          Quản lý tuyển dụng sẽ được làm ở phase riêng.
-        </p>
-      </div>
-    </div>
+      <AdminModulePreview
+        intro="Module tuyển dụng cho phép đăng và cập nhật các vị trí làm việc tại xưởng và văn phòng."
+        features={[
+          { icon: <Briefcase className="h-5 w-5" />, title: 'Tin tuyển dụng', description: 'Tạo tiêu đề, mô tả công việc và yêu cầu cho từng vị trí.' },
+          { icon: <MapPin className="h-5 w-5" />, title: 'Địa điểm làm việc', description: 'Gắn nơi làm việc cụ thể cho mỗi tin tuyển dụng.' },
+          { icon: <Banknote className="h-5 w-5" />, title: 'Mức lương', description: 'Hiển thị khoảng lương tham khảo để ứng viên dễ cân nhắc.' },
+          { icon: <ToggleRight className="h-5 w-5" />, title: 'Thứ tự & trạng thái', description: 'Bật/tắt và sắp xếp các tin đang tuyển trên website.' },
+        ]}
+        note="Bảng job_vacancies đã sẵn sàng; phần CRUD sẽ được bổ sung ở phase riêng."
+      />
+    </AdminSection>
   );
 }

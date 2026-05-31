@@ -1,69 +1,68 @@
-'use client';
-
 import React from 'react';
-import { Interactive3DTilt } from '@/components/Interactive3DTilt';
+import Link from 'next/link';
+
+type StatTone = 'default' | 'accent';
 
 interface AdminStatCardProps {
-  title: string;
+  label: string;
   value: string | number;
   icon: React.ReactNode;
-  description?: string;
-  trend?: {
-    value: string;
-    isPositive: boolean;
-  };
-  className?: string;
+  hint?: string;
+  /** `accent` draws a restrained red emphasis — reserve it for items needing attention. */
+  tone?: StatTone;
+  /** Optional destination; the whole card becomes a link. */
+  href?: string;
 }
 
+const iconToneStyles: Record<StatTone, string> = {
+  default: 'bg-slate-50 text-[#1B3A6B]',
+  accent: 'bg-red-50 text-[#E31E24]',
+};
+
+/**
+ * Clean KPI tile: label, large value, small icon. No decorative gradients or
+ * tilt — the number is the focus.
+ */
 export function AdminStatCard({
-  title,
+  label,
   value,
   icon,
-  description,
-  trend,
-  className = '',
+  hint,
+  tone = 'default',
+  href,
 }: AdminStatCardProps) {
-  return (
-    <Interactive3DTilt maxTilt={6} className="h-full">
-      <div
-        className={`
-          h-full bg-white border border-[#E2E8F0] rounded-2xl p-6
-          shadow-admin hover:shadow-admin-pop transition-all duration-300
-          relative overflow-hidden group flex flex-col justify-between
-          ${className}
-        `}
-      >
-        {/* Decorative background gradient */}
-        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-slate-50 to-transparent rounded-bl-full pointer-events-none transition-all duration-300 group-hover:scale-110" />
+  const interactive = href ? 'transition-colors hover:border-[#CBD5E1]' : '';
 
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{title}</span>
-            <div className="p-2.5 bg-slate-50 rounded-xl text-[#1B3A6B] border border-slate-100 transition-colors duration-300 group-hover:bg-[#1B3A6B]/5 group-hover:text-[#E31E24]">
-              {icon}
-            </div>
-          </div>
-
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 tracking-tight">{value}</span>
-            {trend && (
-              <span
-                className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                  trend.isPositive
-                    ? 'bg-green-50 text-green-700 border border-green-100'
-                    : 'bg-rose-50 text-rose-700 border border-rose-100'
-                }`}
-              >
-                {trend.value}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {description && (
-          <p className="text-xs text-slate-400 mt-4 leading-normal font-medium">{description}</p>
-        )}
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</span>
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconToneStyles[tone]}`}
+        >
+          {icon}
+        </span>
       </div>
-    </Interactive3DTilt>
+      <p
+        className={`mt-3 text-3xl font-bold tracking-tight ${
+          tone === 'accent' ? 'text-[#E31E24]' : 'text-[#1B3A6B]'
+        }`}
+      >
+        {value}
+      </p>
+      {hint && <p className="mt-1 text-xs leading-normal text-slate-400">{hint}</p>}
+    </>
   );
+
+  const className = `block rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-admin ${interactive}`;
+
+  if (href) {
+    return (
+      <Link href={href} className={`admin-focus ${className}`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
 }
