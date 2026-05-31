@@ -8,21 +8,15 @@ interface AdminStatCardProps {
   value: string | number;
   icon: React.ReactNode;
   hint?: string;
-  /** `accent` draws a restrained red emphasis — reserve it for items needing attention. */
   tone?: StatTone;
-  /** Optional destination; the whole card becomes a link. */
   href?: string;
 }
 
 const iconToneStyles: Record<StatTone, string> = {
-  default: 'bg-slate-50 text-[#1B3A6B]',
-  accent: 'bg-red-50 text-[#E31E24]',
+  default: 'bg-[#1B3A6B]/[0.06] text-[#1B3A6B]',
+  accent: 'bg-[#E31E24]/[0.07] text-[#E31E24]',
 };
 
-/**
- * Clean KPI tile: label, large value, small icon. No decorative gradients or
- * tilt — the number is the focus.
- */
 export function AdminStatCard({
   label,
   value,
@@ -31,38 +25,41 @@ export function AdminStatCard({
   tone = 'default',
   href,
 }: AdminStatCardProps) {
-  const interactive = href ? 'transition-colors hover:border-[#CBD5E1]' : '';
-
   const content = (
     <>
       <div className="flex items-start justify-between gap-3">
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">
+          {label}
+        </span>
         <span
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconToneStyles[tone]}`}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconToneStyles[tone]}`}
         >
           {icon}
         </span>
       </div>
       <p
-        className={`mt-3 text-3xl font-bold tracking-tight ${
+        className={`mt-3 text-[28px] font-bold leading-none tracking-tight ${
           tone === 'accent' ? 'text-[#E31E24]' : 'text-[#1B3A6B]'
         }`}
       >
         {value}
       </p>
-      {hint && <p className="mt-1 text-xs leading-normal text-slate-400">{hint}</p>}
+      {hint && (
+        <p className="mt-1.5 text-[12px] leading-snug text-slate-400">{hint}</p>
+      )}
     </>
   );
 
-  const className = `block rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-admin ${interactive}`;
+  const baseClass =
+    'block rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-admin admin-stat-lift';
 
   if (href) {
     return (
-      <Link href={href} className={`admin-focus ${className}`}>
+      <Link href={href} className={`admin-focus ${baseClass}`}>
         {content}
       </Link>
     );
   }
 
-  return <div className={className}>{content}</div>;
+  return <div className={baseClass}>{content}</div>;
 }

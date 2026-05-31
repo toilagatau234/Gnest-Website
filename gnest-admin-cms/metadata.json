@@ -1,0 +1,6 @@
+{
+  "name": "Gnest Admin CMS",
+  "description": "Hệ thống quản trị nội dung & sản phẩm cho dự án Gnest (Đại Tài Lợi)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
