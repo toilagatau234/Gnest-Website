@@ -8,6 +8,7 @@ import {
   Check,
   Search
 } from 'lucide-react';
+import Image from 'next/image';
 
 import { ProductRowActions } from '@/components/admin/ProductRowActions';
 import type { AdminCategory } from '@/lib/services/admin/categories';
@@ -252,8 +253,8 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                     >
                       <td className="p-4">
                         {thumbnail ? (
-                          <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 relative bg-slate-100">
-                            <img src={thumbnail} alt={p.name} className="w-full h-full object-cover" />
+                           <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 relative bg-slate-100">
+                            <Image src={thumbnail} alt={p.name} fill sizes="40px" className="object-cover" unoptimized />
                           </div>
                         ) : (
                           <div className="w-10 h-10 rounded-lg border border-dashed border-rose-300 bg-rose-50 flex items-center justify-center text-rose-500" title="Chưa có hình ảnh">

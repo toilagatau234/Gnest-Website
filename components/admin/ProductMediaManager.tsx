@@ -15,6 +15,7 @@ import {
   Loader2, 
   AlertCircle 
 } from 'lucide-react';
+import Image from 'next/image';
 
 import { AdminActionButton } from '@/components/admin/AdminActionButton';
 import { useToast } from '@/components/admin/AdminToast';
@@ -351,7 +352,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                   {/* Thumbnail Image display */}
                   <div className="w-full aspect-video rounded-lg overflow-hidden border border-slate-100 relative bg-slate-50 flex items-center justify-center mb-3">
                     {hasUrl ? (
-                      <img src={img.public_url!} alt={img.alt || 'Ảnh sản phẩm'} className="w-full h-full object-cover" />
+                      <Image src={img.public_url!} alt={img.alt || 'Ảnh sản phẩm'} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" unoptimized />
                     ) : (
                       <ImageIcon className="w-6 h-6 text-slate-300" />
                     )}
