@@ -81,9 +81,9 @@ export function AdminModal({
 
   return (
     <div
-      className="admin-modal-overlay fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-950/40 p-3 backdrop-blur-sm sm:items-center sm:p-6"
-      onMouseDown={() => {
-        if (dismissible) {
+      className="admin-modal-overlay fixed inset-0 z-[80] flex items-end justify-center overflow-y-auto overscroll-contain bg-slate-950/40 p-3 backdrop-blur-sm sm:items-center sm:p-6"
+      onMouseDown={(event) => {
+        if (dismissible && event.target === event.currentTarget) {
           onClose();
         }
       }}
@@ -94,9 +94,9 @@ export function AdminModal({
         aria-labelledby={headingId}
         aria-describedby={description ? descriptionId : undefined}
         onMouseDown={(event) => event.stopPropagation()}
-        className={`admin-modal-panel flex max-h-[min(92vh,900px)] w-full flex-col overflow-hidden rounded-3xl bg-white shadow-admin-pop ring-1 ring-[#E5E7EF] ${sizeStyles[size]}`}
+        className={`admin-modal-panel flex max-h-[min(92svh,900px)] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-admin-pop ring-1 ring-[#E5E7EF] sm:rounded-3xl ${sizeStyles[size]}`}
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#EEF2F6] px-5 py-4">
+        <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-4 border-b border-[#EEF2F6] bg-white px-5 py-4">
           <div className="min-w-0 flex-1">
             <h2 id={headingId} className="text-base font-extrabold text-[#202224]">
               {title}
@@ -119,10 +119,10 @@ export function AdminModal({
           )}
         </div>
 
-        <div className="admin-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</div>
+        <div className="admin-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">{children}</div>
 
         {footer && (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-[#EEF2F6] bg-[#F7F9FB] px-5 py-3.5">
+          <div className="sticky bottom-0 z-10 flex shrink-0 flex-col-reverse gap-3 border-t border-[#EEF2F6] bg-[#F7F9FB] px-5 py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
             {footer}
           </div>
         )}

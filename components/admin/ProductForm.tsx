@@ -25,9 +25,9 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'specs', label: 'Thông số kỹ thuật' },
 ];
 
-const fieldClass =
-  'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 transition-all focus:border-[#1B3A6B] focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]';
-const labelClass = 'mb-1 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-slate-500';
+const fieldClass = 'admin-input text-xs';
+const selectClass = 'admin-select text-xs';
+const labelClass = 'mb-1.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#646464]';
 
 /** Maps a server error message to the tab that owns the offending field. */
 function tabForError(error: string): TabId | null {
@@ -69,7 +69,7 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
       {product ? <input type="hidden" name="id" value={product.id} /> : null}
 
       {/* Sticky tab bar pinned beneath the modal header. */}
-      <div className="sticky -top-5 z-10 -mx-5 -mt-5 mb-1 flex gap-1 overflow-x-auto border-b border-slate-100 bg-white/95 px-5 pt-2 backdrop-blur">
+      <div className="sticky -top-5 z-10 -mx-5 -mt-5 mb-1 flex gap-1 overflow-x-auto border-b border-[#EEF2F6] bg-white/95 px-5 pt-2 backdrop-blur">
         {TABS.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -79,7 +79,7 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
               onClick={() => setActiveTab(tab.id)}
               aria-current={active ? 'true' : undefined}
               className={`-mb-px shrink-0 cursor-pointer border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
-                active ? 'border-[#E31E24] text-[#1B3A6B]' : 'border-transparent text-slate-400 hover:text-slate-700'
+                active ? 'border-[#4880FF] text-[#3749A6]' : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
               {tab.label}
@@ -128,7 +128,7 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
 
           <label className="block sm:col-span-2">
             <span className={labelClass}>Danh mục thuộc về</span>
-            <select name="category_id" defaultValue={product?.category_id ?? ''} className={fieldClass}>
+            <select name="category_id" defaultValue={product?.category_id ?? ''} className={selectClass}>
               <option value="">Chưa phân loại</option>
               {activeCategories.map((category) => (
                 <option key={category.id} value={category.id}>
@@ -145,12 +145,12 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
             name="description"
             rows={4}
             defaultValue={product?.description ?? ''}
-            className="max-h-48 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-normal leading-relaxed text-slate-800 transition-all focus:border-[#1B3A6B] focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
+            className="admin-input min-h-28 max-h-48 py-2 text-xs font-normal leading-relaxed"
             placeholder="Mô tả ngắn hiển thị cho đại lý sỉ tham khảo"
           />
         </label>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+        <div className="admin-soft-panel px-4 py-3">
           <AdminToggle
             name="is_active"
             defaultChecked={product?.is_active ?? true}

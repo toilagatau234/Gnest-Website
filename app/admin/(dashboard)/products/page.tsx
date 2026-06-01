@@ -42,7 +42,6 @@ export default async function ProductsPage() {
           icon={<Package className="h-6 w-6" />}
           title="Chưa có sản phẩm nào"
           description="Tạo sản phẩm đầu tiên sau khi đã có danh mục phù hợp."
-          action={<ProductFormDialog categories={safeCategories} />}
         />
       ) : null}
 

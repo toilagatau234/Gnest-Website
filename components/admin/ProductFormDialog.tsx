@@ -79,7 +79,7 @@ export function ProductFormDialog({ categories, product }: ProductFormDialogProp
               type="button"
               onClick={closeDialog}
               disabled={isPending}
-              className="admin-focus inline-flex h-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white px-5 text-xs font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="admin-button-secondary px-5 text-xs"
             >
               Hủy
             </button>
@@ -87,7 +87,7 @@ export function ProductFormDialog({ categories, product }: ProductFormDialogProp
               type="submit"
               form={formId}
               disabled={isPending}
-              className="admin-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#1B3A6B] px-6 text-xs font-extrabold text-white shadow-sm transition hover:bg-[#16315b] disabled:cursor-not-allowed disabled:opacity-60"
+              className="admin-button-primary px-6 text-xs"
             >
               {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {isPending ? 'Đang lưu…' : isEdit ? 'Cập nhật sản phẩm' : 'Đăng sản phẩm'}

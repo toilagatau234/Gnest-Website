@@ -9,7 +9,6 @@ import {
   Search
 } from 'lucide-react';
 
-import { ProductFormDialog } from '@/components/admin/ProductFormDialog';
 import { ProductRowActions } from '@/components/admin/ProductRowActions';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { AdminProduct } from '@/lib/services/admin/products';
@@ -124,18 +123,13 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 
       <div className="space-y-6 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:p-6">
         
-        {/* Title & Actions Header */}
+        {/* Title Header */}
         <div className="flex flex-col justify-between gap-4 border-b border-slate-100 pb-4 lg:flex-row lg:items-center">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-[#1B3A6B]">Danh Sách Sản Phẩm (Catalog)</h2>
             <p className="text-[10px] text-slate-400 mt-0.5">
               Quản trị giá bán sỉ theo bậc số lượng, thông số kỹ thuật và hình ảnh mô tả
             </p>
-          </div>
-
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {/* Real React 19 product creation form trigger styled exactly like template action buttons */}
-            <ProductFormDialog categories={categories} />
           </div>
         </div>
 

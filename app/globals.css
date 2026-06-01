@@ -71,6 +71,16 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
   }
+
+  @keyframes floatBox {
+    0%, 100% { transform: translate(-50%, 0); }
+    50% { transform: translate(-50%, -8px); }
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.35; transform: scale(0.82) rotate(0deg); }
+    50% { opacity: 1; transform: scale(1.12) rotate(12deg); }
+  }
 }
 
 @layer base {
@@ -196,6 +206,10 @@
       animation: none !important;
       transition-duration: 1ms !important;
       transform: none !important;
+    }
+    .admin-loading-motion {
+      animation: none !important;
+      transition-duration: 1ms !important;
     }
   }
 }
