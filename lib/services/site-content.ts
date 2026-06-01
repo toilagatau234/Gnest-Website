@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createServiceRoleClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import {
   getDefaultSiteContents,
   mergeSiteContents as buildFromRaw,
@@ -8,18 +8,20 @@ import {
   type SiteContentsPayload,
 } from '@/lib/services/admin/site-content';
 
-// Re-export types for convenience
+// Re-export types for convenience.
 export type { SiteContentsPayload, HeroContent, FooterContent, CtaContent, SeoContent } from '@/lib/services/admin/site-content';
 export { getDefaultSiteContents } from '@/lib/services/admin/site-content';
 
 /**
- * Public (no auth required) version of getSiteContents.
- * Uses service role so it bypasses RLS, with fallback to defaults.
- * Safe to call from Server Components in the (site) route group.
+ * Public-safe site content reader.
+ *
+ * This intentionally uses the normal Supabase server client instead of the
+ * service role client. Public reads are already covered by RLS: only active
+ * `site_contents` rows are selectable, and failures fall back to defaults.
  */
 export async function getPublicSiteContents(): Promise<SiteContentsPayload> {
   try {
-    const supabase = createServiceRoleClient();
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('site_contents')
       .select('value')

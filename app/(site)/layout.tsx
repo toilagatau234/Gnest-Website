@@ -17,7 +17,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         phone={siteContents.footer.phone}
         email={siteContents.footer.email}
       />
-      <FloatingCTA />
+      <FloatingCTA content={siteContents.cta} />
       <SiteOverlays />
     </div>
   );

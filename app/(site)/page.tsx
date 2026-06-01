@@ -6,11 +6,14 @@ import { ProductsRender } from '@/components/ProductsRender';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { StaffSection } from '@/components/StaffSection';
 import { WhyUsSection } from '@/components/WhyUsSection';
+import { getPublicSiteContents } from '@/lib/services/site-content';
 
-export default function Home() {
+export default async function Home() {
+  const siteContents = await getPublicSiteContents();
+
   return (
     <>
-      <HeroSection />
+      <HeroSection content={siteContents.hero} />
 
       <ScrollReveal direction="up" delay={0.1}>
         <WhyUsSection />
@@ -33,7 +36,7 @@ export default function Home() {
       </ScrollReveal>
 
       <ScrollReveal direction="up" delay={0.1}>
-        <CtaBanner />
+        <CtaBanner content={siteContents.cta} />
       </ScrollReveal>
     </>
   );
