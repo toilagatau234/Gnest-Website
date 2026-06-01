@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { X } from 'lucide-react';
 
-type ModalSize = 'md' | 'lg' | 'xl';
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 interface AdminModalProps {
   open: boolean;
@@ -14,17 +14,25 @@ interface AdminModalProps {
   children: React.ReactNode;
   /** Sticky footer area, typically the cancel/save actions. */
   footer?: React.ReactNode;
+  /**
+   * When false the modal cannot be dismissed via Escape or overlay click
+   * (e.g. while a submission is pending). The close button is also hidden.
+   */
+  dismissible?: boolean;
 }
 
 const sizeStyles: Record<ModalSize, string> = {
-  md: 'max-w-lg',
-  lg: 'max-w-2xl',
-  xl: 'max-w-4xl',
+  sm: 'sm:max-w-md',
+  md: 'sm:max-w-lg',
+  lg: 'sm:max-w-2xl',
+  xl: 'sm:max-w-4xl',
+  '2xl': 'sm:max-w-[1100px]',
 };
 
 /**
  * Dependency-free modal dialog used to host admin create/edit forms.
- * Locks body scroll while open and closes on Escape or overlay click.
+ * Locks body scroll while open, closes on Escape or overlay click, and keeps
+ * a sticky header/footer so long forms never get cut off on any viewport.
  */
 export function AdminModal({
   open,
@@ -34,27 +42,38 @@ export function AdminModal({
   size = 'lg',
   children,
   footer,
+  dismissible = true,
 }: AdminModalProps) {
+  const headingId = useId();
+  const descriptionId = useId();
+
   useEffect(() => {
     if (!open) {
       return;
     }
 
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && dismissible) {
         onClose();
       }
     };
 
     document.addEventListener('keydown', handleKey);
+    // Lock body scroll without layout shift (compensate for scrollbar width).
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
     document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
 
     return () => {
       document.removeEventListener('keydown', handleKey);
       document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
     };
-  }, [open, onClose]);
+  }, [open, onClose, dismissible]);
 
   if (!open) {
     return null;
@@ -62,35 +81,48 @@ export function AdminModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 backdrop-blur-sm sm:p-6"
-      onMouseDown={onClose}
+      className="admin-modal-overlay fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-950/35 p-3 backdrop-blur-[2px] sm:items-center sm:p-6"
+      onMouseDown={() => {
+        if (dismissible) {
+          onClose();
+        }
+      }}
     >
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby={headingId}
+        aria-describedby={description ? descriptionId : undefined}
         onMouseDown={(event) => event.stopPropagation()}
-        className={`my-auto flex max-h-[calc(100vh-3rem)] w-full ${sizeStyles[size]} flex-col overflow-hidden rounded-xl bg-white shadow-admin-pop ring-1 ring-[#E2E8F0]`}
+        className={`admin-modal-panel flex max-h-[min(92vh,900px)] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-admin-pop ring-1 ring-[#E2E8F0] ${sizeStyles[size]}`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[#EEF2F6] px-5 py-4">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#EEF2F6] px-5 py-4">
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-[#1B3A6B]">{title}</h2>
-            {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
+            <h2 id={headingId} className="text-base font-semibold text-[#1B3A6B]">
+              {title}
+            </h2>
+            {description && (
+              <p id={descriptionId} className="mt-0.5 text-sm text-slate-500">
+                {description}
+              </p>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Đóng"
-            className="admin-focus -mr-1 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          {dismissible && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Đóng"
+              className="admin-focus -mr-1 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</div>
+        <div className="admin-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</div>
 
         {footer && (
-          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#EEF2F6] bg-slate-50/60 px-5 py-3.5">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-[#EEF2F6] bg-slate-50/70 px-5 py-3.5">
             {footer}
           </div>
         )}

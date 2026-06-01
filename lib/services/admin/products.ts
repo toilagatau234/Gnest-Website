@@ -111,6 +111,43 @@ export async function updateAdminProduct(productId: string, payload: ProductPayl
   return { data, error: null };
 }
 
+export async function deleteAdminProduct(productId: string) {
+  const adminUser = await requireAdminAuth(PRODUCT_MUTATION_ROLES);
+  const supabase = createServiceRoleClient();
+
+  const { data: product } = await supabase
+    .from('products')
+    .select('id, name, slug')
+    .eq('id', productId)
+    .maybeSingle();
+
+  if (!product) {
+    return { data: null, error: 'Không tìm thấy sản phẩm cần xóa.' };
+  }
+
+  const { error } = await supabase.from('products').delete().eq('id', productId);
+
+  if (error) {
+    if (error.code === '23503') {
+      return {
+        data: null,
+        error: 'Không thể xóa vì đang có dữ liệu liên quan. Hãy ẩn sản phẩm thay vì xóa.',
+      };
+    }
+    return { data: null, error: error.message };
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_id: adminUser.id,
+    action: 'delete',
+    entity: 'products',
+    entity_id: product.id,
+    metadata: { name: product.name, slug: product.slug },
+  });
+
+  return { data: product, error: null };
+}
+
 export async function setAdminProductActive(productId: string, isActive: boolean) {
   const adminUser = await requireAdminAuth(PRODUCT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();

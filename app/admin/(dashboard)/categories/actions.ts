@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import {
   createAdminCategory,
+  deleteAdminCategory,
   setAdminCategoryActive,
   updateAdminCategory,
   type CategoryPayload,
@@ -64,6 +65,7 @@ export async function createCategoryAction(
   }
 
   revalidatePath('/admin/categories');
+  revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
   return { ok: true };
 }
@@ -90,6 +92,28 @@ export async function updateCategoryAction(
   }
 
   revalidatePath('/admin/categories');
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/danh-muc');
+  return { ok: true };
+}
+
+export async function deleteCategoryAction(categoryId: string): Promise<AdminFormState> {
+  if (!categoryId) {
+    return { ok: false, error: 'Thiếu ID danh mục.' };
+  }
+
+  try {
+    const { error } = await deleteAdminCategory(categoryId);
+
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể xóa danh mục.' };
+  }
+
+  revalidatePath('/admin/categories');
+  revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
   return { ok: true };
 }
@@ -109,5 +133,6 @@ export async function toggleCategoryActiveAction(formData: FormData) {
   }
 
   revalidatePath('/admin/categories');
+  revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
 }

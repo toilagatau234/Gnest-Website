@@ -106,6 +106,46 @@ export async function updateAdminCategory(categoryId: string, payload: CategoryP
   return { data, error: null };
 }
 
+export async function deleteAdminCategory(categoryId: string) {
+  const adminUser = await requireAdminAuth(CATEGORY_MUTATION_ROLES);
+  const supabase = createServiceRoleClient();
+
+  // Read first so we can write a meaningful audit log and guard against
+  // deleting a category that still has children or products attached.
+  const { data: category } = await supabase
+    .from('categories')
+    .select('id, name, slug')
+    .eq('id', categoryId)
+    .maybeSingle();
+
+  if (!category) {
+    return { data: null, error: 'Không tìm thấy danh mục cần xóa.' };
+  }
+
+  const { error } = await supabase.from('categories').delete().eq('id', categoryId);
+
+  if (error) {
+    // 23503 = foreign_key_violation (children categories or products reference it).
+    if (error.code === '23503') {
+      return {
+        data: null,
+        error: 'Không thể xóa vì đang có sản phẩm hoặc danh mục con liên quan. Hãy ẩn danh mục thay vì xóa.',
+      };
+    }
+    return { data: null, error: error.message };
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_id: adminUser.id,
+    action: 'delete',
+    entity: 'categories',
+    entity_id: category.id,
+    metadata: { name: category.name, slug: category.slug },
+  });
+
+  return { data: category, error: null };
+}
+
 export async function setAdminCategoryActive(categoryId: string, isActive: boolean) {
   const adminUser = await requireAdminAuth(CATEGORY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();

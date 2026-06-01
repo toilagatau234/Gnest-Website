@@ -10,9 +10,9 @@ import {
 } from 'lucide-react';
 
 import { ProductFormDialog } from '@/components/admin/ProductFormDialog';
+import { ProductRowActions } from '@/components/admin/ProductRowActions';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { AdminProduct } from '@/lib/services/admin/products';
-import { toggleProductActiveAction } from '@/app/admin/(dashboard)/products/actions';
 import { FormattedDate } from '@/components/admin/FormattedDate';
 
 interface ProductsTableProps {
@@ -307,20 +307,15 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                       </td>
 
                       <td className="p-4">
-                        <form action={toggleProductActiveAction} className="inline-block">
-                          <input type="hidden" name="id" value={p.id} />
-                          <input type="hidden" name="next_is_active" value={String(!p.is_active)} />
-                          <button
-                            type="submit"
-                            className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold transition-all border cursor-pointer ${
-                              p.is_active 
-                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
-                                 : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200/50'
-                            }`}
-                          >
-                            {p.is_active ? 'Hiển thị' : 'Đang ẩn'}
-                          </button>
-                        </form>
+                        <span
+                          className={`inline-block rounded-md border px-2.5 py-0.5 text-[10px] font-bold ${
+                            p.is_active
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                              : 'border-slate-200 bg-slate-100 text-slate-400'
+                          }`}
+                        >
+                          {p.is_active ? 'Hiển thị' : 'Đang ẩn'}
+                        </span>
                       </td>
 
                       <td className="p-4 font-mono text-[10px] text-slate-400">
@@ -328,10 +323,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                       </td>
 
                       <td className="p-4 text-right">
-                        <div className="flex justify-end gap-1.5 items-center">
-                          {/* Sửa dialog trigger styled elegantly */}
-                          <ProductFormDialog categories={categories} product={p} />
-                        </div>
+                        <ProductRowActions categories={categories} product={p} />
                       </td>
 
                     </tr>

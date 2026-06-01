@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import {
   createAdminProduct,
+  deleteAdminProduct,
   setAdminProductActive,
   updateAdminProduct,
   type ProductPayload,
@@ -96,6 +97,7 @@ export async function createProductAction(
   }
 
   revalidatePath('/admin/products');
+  revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
   return { ok: true };
 }
@@ -122,6 +124,28 @@ export async function updateProductAction(
   }
 
   revalidatePath('/admin/products');
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/danh-muc');
+  return { ok: true };
+}
+
+export async function deleteProductAction(productId: string): Promise<AdminFormState> {
+  if (!productId) {
+    return { ok: false, error: 'Thiếu ID sản phẩm.' };
+  }
+
+  try {
+    const { error } = await deleteAdminProduct(productId);
+
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể xóa sản phẩm.' };
+  }
+
+  revalidatePath('/admin/products');
+  revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
   return { ok: true };
 }
@@ -141,5 +165,6 @@ export async function toggleProductActiveAction(formData: FormData) {
   }
 
   revalidatePath('/admin/products');
+  revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
 }

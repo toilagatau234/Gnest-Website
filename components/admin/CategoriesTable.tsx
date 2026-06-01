@@ -13,8 +13,8 @@ import {
 } from 'lucide-react';
 
 import { CategoryFormDialog } from '@/components/admin/CategoryFormDialog';
+import { CategoryRowActions } from '@/components/admin/CategoryRowActions';
 import type { AdminCategory } from '@/lib/services/admin/categories';
-import { toggleCategoryActiveAction } from '@/app/admin/(dashboard)/categories/actions';
 
 interface CategoriesTableProps {
   categories: AdminCategory[];
@@ -221,20 +221,7 @@ export function CategoriesTable({ categories }: CategoriesTableProps) {
                         {parent.is_active ? 'Hiển thị' : 'Đang ẩn'}
                       </span>
 
-                      <div className="flex gap-1.5 items-center">
-                        <CategoryFormDialog categories={categories} category={parent} />
-                        
-                        <form action={toggleCategoryActiveAction} className="inline-block">
-                          <input type="hidden" name="id" value={parent.id} />
-                          <input type="hidden" name="next_is_active" value={String(!parent.is_active)} />
-                          <button
-                            type="submit"
-                            className="admin-focus h-7 rounded-md border border-[#E2E8F0] px-2.5 text-[10px] font-bold text-slate-600 transition hover:border-[#E31E24] hover:text-[#E31E24] cursor-pointer"
-                          >
-                            {parent.is_active ? 'Ẩn' : 'Hiện'}
-                          </button>
-                        </form>
-                      </div>
+                      <CategoryRowActions categories={categories} category={parent} />
                     </div>
                   </div>
 
@@ -271,20 +258,7 @@ export function CategoriesTable({ categories }: CategoriesTableProps) {
                                 {child.is_active ? 'Hiển thị' : 'Đang ẩn'}
                               </span>
 
-                              <div className="flex gap-1.5 items-center">
-                                <CategoryFormDialog categories={categories} category={child} />
-
-                                <form action={toggleCategoryActiveAction} className="inline-block">
-                                  <input type="hidden" name="id" value={child.id} />
-                                  <input type="hidden" name="next_is_active" value={String(!child.is_active)} />
-                                  <button
-                                    type="submit"
-                                    className="admin-focus h-7 rounded-md border border-[#E2E8F0] px-2 text-[10px] font-bold text-slate-500 transition hover:border-[#E31E24] hover:text-[#E31E24] cursor-pointer"
-                                  >
-                                    {child.is_active ? 'Ẩn' : 'Hiện'}
-                                  </button>
-                                </form>
-                              </div>
+                              <CategoryRowActions categories={categories} category={child} compact />
                             </div>
                           </div>
                         ))
@@ -331,19 +305,8 @@ export function CategoriesTable({ categories }: CategoriesTableProps) {
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <div className="flex justify-end gap-1.5 items-center">
-                        <CategoryFormDialog categories={categories} category={cat} />
-
-                        <form action={toggleCategoryActiveAction} className="inline-block">
-                          <input type="hidden" name="id" value={cat.id} />
-                          <input type="hidden" name="next_is_active" value={String(!cat.is_active)} />
-                          <button
-                            type="submit"
-                            className="admin-focus h-7 rounded-md border border-[#E2E8F0] px-2.5 text-[10px] font-bold text-slate-500 transition hover:border-[#E31E24] hover:text-[#E31E24] cursor-pointer"
-                          >
-                            {cat.is_active ? 'Ẩn' : 'Hiện'}
-                          </button>
-                        </form>
+                      <div className="flex justify-end">
+                        <CategoryRowActions categories={categories} category={cat} />
                       </div>
                     </td>
                   </tr>

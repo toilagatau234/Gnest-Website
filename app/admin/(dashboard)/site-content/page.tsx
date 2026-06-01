@@ -13,7 +13,8 @@ import {
   Mail, 
   Sparkles,
   Save,
-  CheckCircle2
+  CheckCircle2,
+  Construction
 } from 'lucide-react';
 
 interface HeroConfig {
@@ -98,17 +99,31 @@ export default function SiteContentPage() {
     seo: { site_title: seoTitle, meta_description: seoDesc }
   };
 
+  const [notice, setNotice] = useState<string | null>(null);
+
   const handleSave = () => {
-    alert("Đã lưu và đồng bộ cấu hình trang chủ/SEO lên database Supabase!");
+    setNotice('Chức năng lưu cấu hình đang phát triển — chưa kết nối Supabase. Thay đổi hiện chỉ áp dụng cho bản xem trước.');
   };
 
   const handlePreviewWeb = () => {
-    alert("Đang kết xuất mô phỏng giao diện Trang chủ Gnest với dữ liệu mới...");
+    setNotice('Bản xem trước landing đang phát triển. Cấu trúc JSON bên phải phản ánh dữ liệu bạn đang nhập.');
   };
 
   return (
+    <div className="space-y-4">
+    {/* Honest development-status banner: this module is not yet wired to Supabase */}
+    <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+      <Construction className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+      <div className="text-xs leading-relaxed">
+        <p className="font-bold text-amber-800">Module đang phát triển</p>
+        <p className="mt-0.5 text-amber-700">
+          Trình soạn thảo nội dung động đang ở chế độ xem trước. Việc lưu cấu hình lên Supabase sẽ được hoàn thiện ở phase tiếp theo.
+        </p>
+      </div>
+    </div>
+
     <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:p-6">
-      
+
       {/* Tab Header layout */}
       <div className="mb-6 flex flex-col justify-between gap-4 border-b border-slate-100 pb-4 lg:flex-row lg:items-center">
         <div className="min-w-0">
@@ -336,6 +351,13 @@ export default function SiteContentPage() {
 
       </div>
 
+      {notice ? (
+        <div role="status" className="mt-6 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <Construction className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <p className="text-xs font-medium text-amber-800">{notice}</p>
+        </div>
+      ) : null}
+
       {/* Buttons submit bar layout */}
       <div className="mt-8 flex flex-wrap justify-end gap-3.5 border-t border-slate-200/80 pt-4">
         <button
@@ -353,6 +375,7 @@ export default function SiteContentPage() {
         </button>
       </div>
 
+    </div>
     </div>
   );
 }

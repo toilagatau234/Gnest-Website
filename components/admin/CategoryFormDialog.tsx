@@ -1,13 +1,19 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useActionState, useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Plus } from 'lucide-react';
+import { Loader2, Pencil, Plus } from 'lucide-react';
 
 import { AdminActionButton } from '@/components/admin/AdminActionButton';
 import { AdminModal } from '@/components/admin/AdminModal';
 import { CategoryForm } from '@/components/admin/CategoryForm';
+import { useToast } from '@/components/admin/AdminToast';
 import type { AdminCategory } from '@/lib/services/admin/categories';
+import {
+  createCategoryAction,
+  updateCategoryAction,
+  type AdminFormState,
+} from '@/app/admin/(dashboard)/categories/actions';
 
 interface CategoryFormDialogProps {
   categories: AdminCategory[];
@@ -15,36 +21,86 @@ interface CategoryFormDialogProps {
   category?: AdminCategory;
 }
 
+const INITIAL_STATE: AdminFormState = { ok: false };
+
 export function CategoryFormDialog({ categories, category }: CategoryFormDialogProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const formId = useId();
   const isEdit = Boolean(category);
 
-  const handleSuccess = useCallback(() => {
+  const [open, setOpen] = useState(false);
+  const action = category ? updateCategoryAction : createCategoryAction;
+  const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
+  const handledOk = useRef(false);
+
+  useEffect(() => {
+    if (open && state.ok && !handledOk.current) {
+      handledOk.current = true;
+      toast(isEdit ? 'Đã lưu thay đổi danh mục.' : 'Đã tạo danh mục mới.', 'success');
+      setOpen(false);
+      router.refresh();
+    }
+  }, [open, state.ok, isEdit, router, toast]);
+
+  const openDialog = () => {
+    handledOk.current = false;
+    setOpen(true);
+  };
+
+  const closeDialog = () => {
+    if (isPending) return;
     setOpen(false);
-    router.refresh();
-  }, [router]);
+  };
 
   return (
     <>
       {isEdit ? (
-        <AdminActionButton variant="secondary" size="sm" icon={<Pencil className="h-3.5 w-3.5" />} onClick={() => setOpen(true)}>
+        <AdminActionButton variant="secondary" size="sm" icon={<Pencil className="h-3.5 w-3.5" />} onClick={openDialog}>
           Sửa
         </AdminActionButton>
       ) : (
-        <AdminActionButton icon={<Plus className="h-4 w-4" />} onClick={() => setOpen(true)}>
+        <AdminActionButton icon={<Plus className="h-4 w-4" />} onClick={openDialog}>
           Thêm danh mục
         </AdminActionButton>
       )}
 
       <AdminModal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={closeDialog}
         title={isEdit ? 'Cập nhật danh mục' : 'Thêm danh mục'}
         description="Quản lý danh mục cha/con hiển thị trên catalog."
         size="lg"
+        dismissible={!isPending}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeDialog}
+              disabled={isPending}
+              className="admin-focus inline-flex h-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white px-5 text-xs font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              form={formId}
+              disabled={isPending}
+              className="admin-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#1B3A6B] px-6 text-xs font-extrabold text-white shadow-sm transition hover:bg-[#16315b] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {isPending ? 'Đang lưu…' : isEdit ? 'Lưu thay đổi' : 'Tạo danh mục'}
+            </button>
+          </>
+        }
       >
-        <CategoryForm categories={categories} category={category} onSuccess={handleSuccess} />
+        <CategoryForm
+          formId={formId}
+          formAction={formAction}
+          state={state}
+          categories={categories}
+          category={category}
+        />
       </AdminModal>
     </>
   );

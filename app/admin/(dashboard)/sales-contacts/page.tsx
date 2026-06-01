@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Edit2, Phone, MessageCircle, ArrowUpDown, Shield, Search } from 'lucide-react';
+import { Plus, Edit2, Phone, MessageCircle, ArrowUpDown, Shield, Search, Construction } from 'lucide-react';
 
 interface Contact {
   id: string;
@@ -59,6 +59,17 @@ export default function SalesContactsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Honest development-status banner: this module is not yet wired to Supabase */}
+      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+        <Construction className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+        <div className="text-xs leading-relaxed">
+          <p className="font-bold text-amber-800">Module đang phát triển</p>
+          <p className="mt-0.5 text-amber-700">
+            Dữ liệu hiển thị bên dưới là dữ liệu mẫu xem trước. Chức năng thêm/sửa/xóa nhân sự tư vấn sẽ được kết nối với Supabase ở phase tiếp theo.
+          </p>
+        </div>
+      </div>
+
       {/* Tab Header layout */}
       <div className="flex flex-col justify-between gap-4 rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm lg:flex-row lg:items-center">
         <div className="min-w-0">
@@ -81,8 +92,10 @@ export default function SalesContactsPage() {
           </div>
 
           <button
-            onClick={() => alert('Tính năng CRUD đầy đủ cho nhân sự sẽ được bổ sung ở phase Storage.')}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1B3A6B] px-4 py-2 text-xs font-bold text-white transition-all hover:bg-[#112546]"
+            type="button"
+            disabled
+            title="Tính năng đang phát triển"
+            className="inline-flex cursor-not-allowed select-none items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-bold text-slate-400"
           >
             <Plus className="w-4 h-4" /> Thêm nhân sự
           </button>
@@ -95,10 +108,11 @@ export default function SalesContactsPage() {
           <div key={contact.id} className="group relative flex min-w-0 flex-col justify-between rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-xs transition-all hover:border-slate-300 hover:shadow-md">
             
             {/* Options absolute header button */}
-            <button 
-              onClick={() => alert('Chi tiết chỉnh sửa nhân sự đang ở chế độ visual mockup.')}
-              className="absolute right-4 top-4 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 opacity-80 shadow-xs transition-all hover:border-slate-300 hover:text-slate-800 group-hover:opacity-100"
-              title="Chỉnh sửa thông tin"
+            <button
+              type="button"
+              disabled
+              className="absolute right-4 top-4 cursor-not-allowed rounded-lg border border-slate-200 bg-white p-1.5 text-slate-300 opacity-80 shadow-xs"
+              title="Chỉnh sửa (đang phát triển)"
             >
               <Edit2 className="w-3.5 h-3.5" />
             </button>

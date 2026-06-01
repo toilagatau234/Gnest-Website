@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AdminTopbar } from '@/components/admin/AdminTopbar';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { AdminToastProvider } from '@/components/admin/AdminToast';
 import type { AdminUser } from '@/lib/types/admin';
 
 interface AdminShellProps {
@@ -17,6 +18,7 @@ export function AdminShell({ children, adminUser }: AdminShellProps) {
   const closeMenu = () => setMenuOpen(false);
 
   return (
+    <AdminToastProvider>
     <div className="min-h-screen bg-[#F7F9FB] font-sans text-slate-800 antialiased selection:bg-[#1B3A6B]/10 selection:text-[#1B3A6B]">
       <AdminSidebar isOpen={menuOpen} adminUser={adminUser} onNavigate={closeMenu} />
 
@@ -36,5 +38,6 @@ export function AdminShell({ children, adminUser }: AdminShellProps) {
         </footer>
       </div>
     </div>
+    </AdminToastProvider>
   );
 }

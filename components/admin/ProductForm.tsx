@@ -1,25 +1,21 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, ImageIcon, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { AlertCircle, ImageIcon } from 'lucide-react';
 
 import { SpecsEditor } from '@/components/admin/SpecsEditor';
+import { AdminToggle } from '@/components/admin/AdminToggle';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { AdminProduct } from '@/lib/services/admin/products';
-
-import {
-  createProductAction,
-  updateProductAction,
-  type AdminFormState,
-} from '@/app/admin/(dashboard)/products/actions';
+import type { AdminFormState } from '@/app/admin/(dashboard)/products/actions';
 
 interface ProductFormProps {
+  formId: string;
+  formAction: (payload: FormData) => void;
+  state: AdminFormState;
   categories: AdminCategory[];
   product?: AdminProduct;
-  onSuccess?: () => void;
 }
-
-const INITIAL_STATE: AdminFormState = { ok: false };
 
 type TabId = 'basic' | 'pricing' | 'specs';
 
@@ -30,41 +26,50 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 const fieldClass =
-  'w-full bg-white border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B] rounded-lg px-3 py-2 text-slate-800 text-xs font-medium transition-all';
-const labelClass = 'mb-1 block text-xs font-bold text-slate-500 uppercase tracking-wide';
+  'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 transition-all focus:border-[#1B3A6B] focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]';
+const labelClass = 'mb-1 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-slate-500';
 
-export function ProductForm({ categories, product, onSuccess }: ProductFormProps) {
-  const action = product ? updateProductAction : createProductAction;
-  const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
+/** Maps a server error message to the tab that owns the offending field. */
+function tabForError(error: string): TabId | null {
+  const text = error.toLowerCase();
+  if (text.includes('specs') || text.includes('json') || text.includes('thông số')) {
+    return 'specs';
+  }
+  if (text.includes('tồn kho') || text.includes('giá') || text.includes('kho')) {
+    return 'pricing';
+  }
+  if (text.includes('tên') || text.includes('slug')) {
+    return 'basic';
+  }
+  return null;
+}
+
+export function ProductForm({ formId, formAction, state, categories, product }: ProductFormProps) {
   const [activeTab, setActiveTab] = useState<TabId>('basic');
-  const activeCategories = categories.filter((category) => category.is_active || category.id === product?.category_id);
+  const [seenError, setSeenError] = useState<string | undefined>(state.error);
+  const activeCategories = categories.filter(
+    (category) => category.is_active || category.id === product?.category_id,
+  );
 
-  useEffect(() => {
-    if (state.ok) {
-      onSuccess?.();
+  // When a *new* server error arrives, jump to the tab holding the offending
+  // field. Adjusting state during render (React's recommended pattern) avoids
+  // the cascading re-render of doing this inside an effect.
+  if (state.error !== seenError) {
+    setSeenError(state.error);
+    if (state.error) {
+      const target = tabForError(state.error);
+      if (target) {
+        setActiveTab(target);
+      }
     }
-  }, [state.ok, onSuccess]);
+  }
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form id={formId} action={formAction} className="space-y-5">
       {product ? <input type="hidden" name="id" value={product.id} /> : null}
 
-      {state.error ? (
-        <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-[#FFF5F5] px-4 py-3">
-          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#E31E24]" />
-          <p className="text-xs text-[#B42318] font-medium">{state.error}</p>
-        </div>
-      ) : null}
-
-      {state.ok ? (
-        <div role="status" className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-          <p className="text-xs text-emerald-700 font-semibold">Đã lưu sản phẩm thành công.</p>
-        </div>
-      ) : null}
-
-      {/* Tabs Layout matching template styling */}
-      <div className="flex gap-1 overflow-x-auto border-b border-slate-100">
+      {/* Sticky tab bar pinned beneath the modal header. */}
+      <div className="sticky -top-5 z-10 -mx-5 -mt-5 mb-1 flex gap-1 overflow-x-auto border-b border-slate-100 bg-white/95 px-5 pt-2 backdrop-blur">
         {TABS.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -73,10 +78,8 @@ export function ProductForm({ categories, product, onSuccess }: ProductFormProps
               type="button"
               onClick={() => setActiveTab(tab.id)}
               aria-current={active ? 'true' : undefined}
-              className={`-mb-px shrink-0 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer ${
-                active
-                  ? 'border-[#1B3A6B] text-[#1B3A6B]'
-                  : 'border-transparent text-slate-400 hover:text-slate-700'
+              className={`-mb-px shrink-0 cursor-pointer border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+                active ? 'border-[#E31E24] text-[#1B3A6B]' : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
               {tab.label}
@@ -85,30 +88,41 @@ export function ProductForm({ categories, product, onSuccess }: ProductFormProps
         })}
       </div>
 
+      {state.error ? (
+        <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-[#FFF5F5] px-4 py-3">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#E31E24]" />
+          <p className="text-xs font-medium text-[#B42318]">{state.error}</p>
+        </div>
+      ) : null}
+
       {/* Basic info — kept mounted so all fields submit regardless of active tab */}
-      <div className={activeTab === 'basic' ? 'space-y-4' : 'hidden'}>
+      <div className={activeTab === 'basic' ? 'animate-fade-in space-y-4' : 'hidden'}>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className={labelClass}>Tên sản phẩm</span>
-            <input 
-              name="name" 
+            <span className={labelClass}>
+              Tên sản phẩm <span className="text-[#E31E24]">*</span>
+            </span>
+            <input
+              name="name"
               type="text"
               required
-              defaultValue={product?.name ?? ''} 
-              className={fieldClass} 
-              placeholder="VD: Hũ thủy tinh 500ml" 
+              defaultValue={product?.name ?? ''}
+              className={fieldClass}
+              placeholder="VD: Hũ thủy tinh 500ml"
             />
           </label>
 
           <label className="block">
-            <span className={labelClass}>Slug / Link dẫn URL</span>
-            <input 
-              name="slug" 
+            <span className={labelClass}>
+              Slug / Link dẫn URL <span className="text-[#E31E24]">*</span>
+            </span>
+            <input
+              name="slug"
               type="text"
               required
-              defaultValue={product?.slug ?? ''} 
-              className={fieldClass} 
-              placeholder="hu-thuy-tinh-500ml" 
+              defaultValue={product?.slug ?? ''}
+              className={`${fieldClass} font-mono`}
+              placeholder="hu-thuy-tinh-500ml"
             />
           </label>
 
@@ -131,72 +145,55 @@ export function ProductForm({ categories, product, onSuccess }: ProductFormProps
             name="description"
             rows={4}
             defaultValue={product?.description ?? ''}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-normal leading-relaxed text-slate-800 transition-all focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
+            className="max-h-48 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-normal leading-relaxed text-slate-800 transition-all focus:border-[#1B3A6B] focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
             placeholder="Mô tả ngắn hiển thị cho đại lý sỉ tham khảo"
           />
         </label>
 
-        <label className="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-medium hover:bg-slate-100 transition-colors">
-          <input 
-            name="is_active" 
-            type="checkbox" 
-            defaultChecked={product?.is_active ?? true} 
-            className="h-4 w-4 rounded border-slate-300 text-[#1B3A6B] focus:ring-[#1B3A6B]" 
+        <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+          <AdminToggle
+            name="is_active"
+            defaultChecked={product?.is_active ?? true}
+            label="Kích hoạt hiển thị công khai"
+            description="Tắt để ẩn sản phẩm khỏi website."
           />
-          <span className="text-xs text-slate-700 font-semibold select-none">Kích hoạt hiển thị công khai trên website</span>
-        </label>
+        </div>
       </div>
 
       {/* Price & stock */}
-      <div className={activeTab === 'pricing' ? 'space-y-4' : 'hidden'}>
+      <div className={activeTab === 'pricing' ? 'animate-fade-in space-y-4' : 'hidden'}>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className={labelClass}>Giá lẻ tham khảo (VNĐ)</span>
-            <input 
-              name="price" 
-              type="number" 
-              min="0" 
-              step="100" 
-              defaultValue={product?.price ?? ''} 
-              className={fieldClass} 
-              placeholder="Để trống nếu hiển thị “Liên hệ”" 
+            <input
+              name="price"
+              type="number"
+              min="0"
+              step="100"
+              defaultValue={product?.price ?? ''}
+              className={fieldClass}
+              placeholder="Để trống nếu hiển thị “Liên hệ”"
             />
-            <span className="mt-1.5 block text-[10px] text-slate-400 font-medium">Để trống nếu muốn hiển thị chữ “Liên hệ” thay vì giá cụ thể.</span>
+            <span className="mt-1.5 block text-[10px] font-medium text-slate-400">
+              Để trống nếu muốn hiển thị chữ “Liên hệ” thay vì giá cụ thể.
+            </span>
           </label>
 
           <label className="block">
             <span className={labelClass}>Tồn kho sẵn sỉ</span>
-            <input 
-              name="stock" 
-              type="number" 
-              min="0" 
-              defaultValue={product?.stock ?? 0} 
-              className={fieldClass} 
-            />
+            <input name="stock" type="number" min="0" defaultValue={product?.stock ?? 0} className={fieldClass} />
           </label>
         </div>
 
-        <div className="flex items-start gap-2.5 rounded-xl border border-[#EEF2F6] bg-slate-50/60 px-4 py-3 text-xs text-slate-500 leading-relaxed">
+        <div className="flex items-start gap-2.5 rounded-xl border border-[#EEF2F6] bg-slate-50/60 px-4 py-3 text-xs leading-relaxed text-slate-500">
           <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
           <p>Ảnh sản phẩm và bảng bậc sỉ được liên kết sẽ kế thừa từ hệ thống Storage Supabase.</p>
         </div>
       </div>
 
-      {/* Specs tab wrap */}
-      <div className={activeTab === 'specs' ? '' : 'hidden'}>
+      {/* Specs tab — kept mounted so the hidden specs JSON input always submits */}
+      <div className={activeTab === 'specs' ? 'animate-fade-in' : 'hidden'}>
         <SpecsEditor initialSpecs={product?.specs} />
-      </div>
-
-      {/* Form Action Buttons Bar */}
-      <div className="flex flex-wrap justify-end gap-2 border-t border-[#EEF2F6] pt-4">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#1B3A6B] hover:bg-[#16315b] px-6 text-xs font-extrabold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-        >
-          {isPending ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : null}
-          {isPending ? 'Đang lưu sỉ...' : product ? 'Cập Nhật Thay Đổi' : 'Đăng Sản Phẩm Mới'}
-        </button>
       </div>
     </form>
   );
