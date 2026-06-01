@@ -93,15 +93,23 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
       >
         <div className="relative flex h-20 shrink-0 items-center border-b border-white/10 px-5">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-xl font-extrabold text-[#1B3A6B] shadow-lg shadow-black/10">
-              G
+            <div className="flex h-11 w-16 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-lg shadow-black/10 transition-transform hover:scale-105">
+              <svg viewBox="0 0 264 174" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-full w-auto">
+                <rect x="0" y="0" width="78" height="108" rx="8" fill="#E31E24"/>
+                <text x="39" y="58" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="66" fontFamily="Arial Black,Arial" fontWeight="900">Đ</text>
+                <rect x="93" y="0" width="78" height="108" rx="8" fill="#E31E24"/>
+                <text x="132" y="58" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="66" fontFamily="Arial Black,Arial" fontWeight="900">T</text>
+                <rect x="186" y="0" width="78" height="108" rx="8" fill="#E31E24"/>
+                <text x="225" y="58" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="66" fontFamily="Arial Black,Arial" fontWeight="900">L</text>
+                <text x="132" y="156" textAnchor="middle" fill="#E31E24" fontSize="24" fontFamily="Arial" fontWeight="800" letterSpacing="1">Đại Tài Lợi</text>
+              </svg>
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-extrabold uppercase tracking-[0.04em] text-white">
-                Đại Tài Lợi
-              </h1>
-              <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">
+              <h1 className="truncate text-sm font-black tracking-[0.06em] text-white uppercase">
                 Admin CMS
+              </h1>
+              <p className="mt-0.5 truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-white/50">
+                Đại Tài Lợi
               </p>
             </div>
           </div>
