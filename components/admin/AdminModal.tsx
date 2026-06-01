@@ -81,7 +81,7 @@ export function AdminModal({
 
   return (
     <div
-      className="admin-modal-overlay fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-950/35 p-3 backdrop-blur-[2px] sm:items-center sm:p-6"
+      className="admin-modal-overlay fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-950/40 p-3 backdrop-blur-sm sm:items-center sm:p-6"
       onMouseDown={() => {
         if (dismissible) {
           onClose();
@@ -94,15 +94,15 @@ export function AdminModal({
         aria-labelledby={headingId}
         aria-describedby={description ? descriptionId : undefined}
         onMouseDown={(event) => event.stopPropagation()}
-        className={`admin-modal-panel flex max-h-[min(92vh,900px)] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-admin-pop ring-1 ring-[#E2E8F0] ${sizeStyles[size]}`}
+        className={`admin-modal-panel flex max-h-[min(92vh,900px)] w-full flex-col overflow-hidden rounded-3xl bg-white shadow-admin-pop ring-1 ring-[#E5E7EF] ${sizeStyles[size]}`}
       >
         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#EEF2F6] px-5 py-4">
           <div className="min-w-0 flex-1">
-            <h2 id={headingId} className="text-base font-semibold text-[#1B3A6B]">
+            <h2 id={headingId} className="text-base font-extrabold text-[#202224]">
               {title}
             </h2>
             {description && (
-              <p id={descriptionId} className="mt-0.5 text-sm text-slate-500">
+              <p id={descriptionId} className="mt-1 text-sm font-medium text-[#646464]">
                 {description}
               </p>
             )}
@@ -112,7 +112,7 @@ export function AdminModal({
               type="button"
               onClick={onClose}
               aria-label="Đóng"
-              className="admin-focus -mr-1 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              className="admin-focus -mr-1 rounded-xl p-1.5 text-slate-400 transition-colors hover:bg-[#F5F6FA] hover:text-slate-600"
             >
               <X className="h-5 w-5" />
             </button>
@@ -122,7 +122,7 @@ export function AdminModal({
         <div className="admin-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</div>
 
         {footer && (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-[#EEF2F6] bg-slate-50/70 px-5 py-3.5">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-[#EEF2F6] bg-[#F7F9FB] px-5 py-3.5">
             {footer}
           </div>
         )}

@@ -5,7 +5,10 @@ import type { CategoryType, Inserts, Tables, Updates } from '@/lib/types/databas
 
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 
-export type AdminCategory = Tables<'categories'>;
+export type AdminCategory = Pick<
+  Tables<'categories'>,
+  'id' | 'name' | 'slug' | 'type' | 'parent_id' | 'sort_order' | 'has_filters' | 'is_active'
+>;
 
 export interface CategoryPayload {
   name: string;
@@ -18,6 +21,22 @@ export interface CategoryPayload {
 }
 
 const CATEGORY_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
+const ADMIN_CATEGORY_SELECT =
+  'id, name, slug, type, parent_id, sort_order, has_filters, is_active';
+const SHOULD_LOG_ADMIN_TIMINGS =
+  process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
+
+function now() {
+  return performance.now();
+}
+
+function logTiming(label: string, durationMs: number) {
+  if (!SHOULD_LOG_ADMIN_TIMINGS) {
+    return;
+  }
+
+  console.info(`[admin:categories] ${label} ${durationMs.toFixed(1)}ms`);
+}
 
 function normalizeCategoryPayload(payload: CategoryPayload): Inserts<'categories'> {
   return {
@@ -32,15 +51,22 @@ function normalizeCategoryPayload(payload: CategoryPayload): Inserts<'categories
 }
 
 export async function getAdminCategories() {
+  const totalStart = now();
+
   try {
+    const authStart = now();
     await requireAdminAuth();
+    logTiming('requireAdminAuth', now() - authStart);
+
     const supabase = createServiceRoleClient();
 
+    const queryStart = now();
     const { data, error } = await supabase
       .from('categories')
-      .select('*')
+      .select(ADMIN_CATEGORY_SELECT)
       .order('sort_order', { ascending: true })
       .order('name', { ascending: true });
+    logTiming('supabaseQuery', now() - queryStart);
 
     if (error) {
       return { data: null, error: error.message };
@@ -50,6 +76,8 @@ export async function getAdminCategories() {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Không thể tải danh mục';
     return { data: null, error: message };
+  } finally {
+    logTiming('total', now() - totalStart);
   }
 }
 

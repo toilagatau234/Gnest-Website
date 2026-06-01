@@ -16,9 +16,9 @@ interface CategoryFormProps {
   category?: AdminCategory;
 }
 
-const fieldClass =
-  'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 transition-all focus:border-[#1B3A6B] focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]';
-const labelClass = 'mb-1 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-slate-500';
+const fieldClass = 'admin-input text-xs';
+const selectClass = 'admin-select text-xs';
+const labelClass = 'mb-1.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#646464]';
 
 function slugify(value: string) {
   return value
@@ -93,7 +93,7 @@ export function CategoryForm({ formId, formAction, state, categories, category }
 
         <label className="block">
           <span className={labelClass}>Loại danh mục</span>
-          <select name="type" defaultValue={defaultType} className={fieldClass}>
+          <select name="type" defaultValue={defaultType} className={selectClass}>
             <option value="product">Sản phẩm</option>
             <option value="service">Dịch vụ</option>
           </select>
@@ -101,7 +101,7 @@ export function CategoryForm({ formId, formAction, state, categories, category }
 
         <label className="block">
           <span className={labelClass}>Danh mục cha</span>
-          <select name="parent_id" defaultValue={category?.parent_id ?? ''} className={fieldClass}>
+          <select name="parent_id" defaultValue={category?.parent_id ?? ''} className={selectClass}>
             <option value="">Không có (danh mục gốc)</option>
             {availableParents.map((item) => (
               <option key={item.id} value={item.id}>
@@ -122,7 +122,7 @@ export function CategoryForm({ formId, formAction, state, categories, category }
         </label>
       </div>
 
-      <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3.5">
+      <div className="admin-soft-panel space-y-2.5 px-4 py-3.5">
         <AdminToggle
           name="has_filters"
           defaultChecked={category?.has_filters ?? false}

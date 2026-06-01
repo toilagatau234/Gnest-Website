@@ -65,7 +65,7 @@ export function AdminConfirmDialog({
   const confirmClass =
     tone === 'danger'
       ? 'bg-[#E31E24] hover:bg-[#C01519]'
-      : 'bg-[#1B3A6B] hover:bg-[#16315b]';
+      : 'bg-[#4880FF] hover:bg-[#3749A6]';
 
   return (
     <AdminModal
@@ -80,7 +80,7 @@ export function AdminConfirmDialog({
             type="button"
             onClick={close}
             disabled={isPending}
-            className="admin-focus inline-flex h-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white px-5 text-xs font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="admin-button-secondary px-5 text-xs"
           >
             {cancelLabel}
           </button>
@@ -88,7 +88,7 @@ export function AdminConfirmDialog({
             type="button"
             onClick={handleConfirm}
             disabled={isPending}
-            className={`admin-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl px-5 text-xs font-extrabold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${confirmClass}`}
+            className={`admin-focus inline-flex h-10 items-center justify-center gap-2 rounded-[10px] px-5 text-xs font-extrabold text-white shadow-sm transition-[transform,background-color] duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${confirmClass}`}
           >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {isPending ? 'Đang xử lý…' : confirmLabel}

@@ -72,65 +72,61 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
 
   return (
     <>
-      {/* Mobile Backdrop overlay */}
-      {isOpen && (
+      {isOpen ? (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[2px] transition-opacity lg:hidden"
           onClick={onNavigate}
         />
-      )}
+      ) : null}
 
-      {/* Main Sidebar */}
       <aside
         id="admin-sidebar"
         aria-label="Điều hướng quản trị"
         className={`
           fixed inset-y-0 left-0 z-50 flex w-72 flex-col
-          border-r border-white/10 bg-gradient-to-b from-[#1B3A6B] to-[#132d56] text-white shadow-2xl shadow-slate-900/10
-          transition-transform duration-300 ease-in-out
+          border-r border-white/10 bg-[#152D5B] text-white shadow-2xl shadow-slate-950/15
+          transition-transform duration-300 ease-out
+          before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_left,rgba(72,128,255,0.34),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_44%)]
           lg:translate-x-0
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        {/* Brand Header */}
-        <div className="p-6 border-b border-white/10 relative flex h-20 items-center shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-              <span className="text-[#1B3A6B] font-extrabold text-xl font-mono">G</span>
+        <div className="relative flex h-20 shrink-0 items-center border-b border-white/10 px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-xl font-extrabold text-[#1B3A6B] shadow-lg shadow-black/10">
+              G
             </div>
-            <div>
-              <h1 className="text-sm font-bold leading-none tracking-tight uppercase flex items-center gap-1.5 text-white">
-                ĐẠI TÀI LỢI
-                <span className="w-2 h-2 rounded-full bg-[#E31E24] animate-pulse"></span>
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-extrabold uppercase tracking-[0.04em] text-white">
+                Đại Tài Lợi
               </h1>
-              <p className="text-[10px] text-white/60 mt-1 uppercase tracking-widest leading-none font-medium">
-                Admin CMS v2.0
+              <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">
+                Admin CMS
               </p>
             </div>
           </div>
 
-          {/* Close button for mobile */}
           <button
             type="button"
             onClick={onNavigate}
             aria-label="Đóng menu"
-            className="absolute top-6 right-4 lg:hidden p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10"
+            className="admin-focus absolute right-4 top-5 inline-flex h-9 w-9 items-center justify-center rounded-xl text-white/70 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="min-h-0 flex-1 space-y-8 overflow-y-auto px-3 py-6">
-          {navSections.map((section, gIdx) => (
-            <div key={gIdx}>
-              <p className="px-4 text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3 select-none">
+        <nav className="admin-scrollbar relative min-h-0 flex-1 space-y-7 overflow-y-auto px-3 py-5">
+          {navSections.map((section) => (
+            <div key={section.title}>
+              <p className="mb-2.5 px-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40">
                 {section.title}
               </p>
               <ul className="space-y-1">
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
+
                   return (
                     <li key={item.href}>
                       <Link
@@ -138,27 +134,31 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
                         onClick={onNavigate}
                         aria-current={active ? 'page' : undefined}
                         className={`
-                          w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm transition-all group duration-150 text-left cursor-pointer
+                          group flex h-[46px] min-w-0 items-center justify-between gap-3 rounded-[10px] px-3.5 text-sm
+                          transition-[transform,background-color,color,box-shadow] duration-200
                           ${
                             active
-                              ? 'bg-white/10 text-white border-l-4 border-white font-medium shadow-sm'
-                              : 'text-white/70 hover:bg-white/5 hover:text-white font-normal'
+                              ? 'bg-[#4C61CC] font-bold text-white shadow-lg shadow-[#0B1534]/20'
+                              : 'text-white/70 hover:translate-x-1 hover:bg-white/10 hover:text-white'
                           }
                         `}
                       >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <Icon
-                            className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
-                              active ? 'text-white scale-105' : 'text-white/60 group-hover:text-white group-hover:scale-105'
+                        <span className="flex min-w-0 items-center gap-3">
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                              active ? 'bg-white/15 text-white' : 'bg-white/5 text-white/60 group-hover:text-white'
                             }`}
-                          />
+                          >
+                            <Icon className="h-4 w-4" />
+                          </span>
                           <span className="truncate">{item.label}</span>
-                        </div>
-                        {item.badge && (
-                          <span className="ml-2 shrink-0 rounded-full bg-[#E31E24] px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider">
+                        </span>
+
+                        {item.badge ? (
+                          <span className="ml-2 shrink-0 rounded-full border border-white/20 bg-white/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white">
                             {item.badge}
                           </span>
-                        )}
+                        ) : null}
                       </Link>
                     </li>
                   );
@@ -168,17 +168,18 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
           ))}
         </nav>
 
-        {/* User / role area */}
-        <div className="p-4 border-t border-white/10 shrink-0">
-          <div className="bg-white/5 rounded-xl p-3 flex items-center gap-3 border border-white/[0.05]">
-            <div className="w-8 h-8 rounded-full bg-[#E31E24] flex items-center justify-center font-bold text-xs uppercase shadow-sm shrink-0">
+        <div className="relative shrink-0 border-t border-white/10 p-4">
+          <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/10 p-3 shadow-inner shadow-white/5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4880FF] text-sm font-extrabold uppercase text-white shadow-sm">
               {emailInitial}
             </div>
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <p className="text-xs font-bold truncate text-slate-100">{emailShort}</p>
-              <p className="text-[10px] text-white/50 truncate font-mono">{adminUser.role ? ADMIN_ROLE_LABELS[adminUser.role] : 'Admin'}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-white">{emailShort}</p>
+              <p className="truncate text-[11px] font-semibold text-white/50">
+                {adminUser.role ? ADMIN_ROLE_LABELS[adminUser.role] : 'Admin'}
+              </p>
             </div>
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.16)]" />
           </div>
         </div>
       </aside>

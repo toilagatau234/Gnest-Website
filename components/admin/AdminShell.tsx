@@ -19,25 +19,25 @@ export function AdminShell({ children, adminUser }: AdminShellProps) {
 
   return (
     <AdminToastProvider>
-    <div className="min-h-screen bg-[#F7F9FB] font-sans text-slate-800 antialiased selection:bg-[#1B3A6B]/10 selection:text-[#1B3A6B]">
-      <AdminSidebar isOpen={menuOpen} adminUser={adminUser} onNavigate={closeMenu} />
+      <div className="min-h-screen bg-[#F5F6FA] bg-[radial-gradient(circle_at_top_right,rgba(72,128,255,0.12),transparent_34%),linear-gradient(180deg,#F8FAFF_0%,#F5F6FA_42%,#F7F9FB_100%)] font-sans text-[#202224] antialiased selection:bg-[#4880FF]/10 selection:text-[#3749A6]">
+        <AdminSidebar isOpen={menuOpen} adminUser={adminUser} onNavigate={closeMenu} />
 
-      <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden lg:pl-72">
-        <AdminTopbar adminUser={adminUser} onMenuToggle={toggleMenu} isMenuOpen={menuOpen} />
+        <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden lg:pl-72">
+          <AdminTopbar adminUser={adminUser} onMenuToggle={toggleMenu} isMenuOpen={menuOpen} />
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-[1440px]">
-            <div className="animate-[fadeIn_0.3s_ease-out_both]">
-              {children}
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-[1440px]">
+              <div className="admin-page-enter">
+                {children}
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
 
-        <footer className="border-t border-slate-200 bg-white px-4 py-4 text-center text-[10px] font-medium text-slate-400">
-          <p>© 2026 Đại Tài Lợi • Gnest Administration Portal. Đồng bộ Supabase TLS 1.3 encrypted secure platform.</p>
-        </footer>
+          <footer className="border-t border-[#E5E7EF] bg-white/80 px-4 py-4 text-center text-[11px] font-medium text-[#646464] backdrop-blur">
+            <p>© 2026 Đại Tài Lợi · Gnest Admin CMS</p>
+          </footer>
+        </div>
       </div>
-    </div>
     </AdminToastProvider>
   );
 }

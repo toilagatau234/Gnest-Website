@@ -41,7 +41,7 @@ export function CategoryRowActions({ categories, category, compact = false }: Ca
     });
   };
 
-  const sizeClass = compact ? 'h-7 px-2 text-[10px]' : 'h-7 px-2.5 text-[10px]';
+  const sizeClass = compact ? 'h-8 px-2 text-[10px]' : 'h-8 px-2.5 text-[10px]';
 
   return (
     <div className="flex items-center gap-1.5">
@@ -51,7 +51,7 @@ export function CategoryRowActions({ categories, category, compact = false }: Ca
         type="button"
         onClick={handleToggle}
         disabled={isToggling}
-        className={`admin-focus inline-flex items-center gap-1 rounded-md border border-[#E2E8F0] font-bold text-slate-600 transition hover:border-[#1B3A6B] hover:text-[#1B3A6B] disabled:cursor-not-allowed disabled:opacity-60 ${sizeClass}`}
+        className={`admin-focus inline-flex items-center gap-1 rounded-lg border border-[#E5E7EF] bg-white font-bold text-slate-600 transition-[transform,border-color,background-color,color] hover:-translate-y-0.5 hover:border-[#4880FF] hover:bg-[#4880FF]/5 hover:text-[#3749A6] active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${sizeClass}`}
       >
         {isToggling ? (
           <Loader2 className="h-3 w-3 animate-spin" />
@@ -68,8 +68,8 @@ export function CategoryRowActions({ categories, category, compact = false }: Ca
         onClick={() => setConfirmOpen(true)}
         aria-label="Xóa danh mục"
         title="Xóa danh mục"
-        className={`admin-focus inline-flex items-center justify-center rounded-md border border-[#E2E8F0] text-slate-500 transition hover:border-[#E31E24] hover:text-[#E31E24] ${
-          compact ? 'h-7 w-7' : 'h-7 w-7'
+        className={`admin-focus inline-flex items-center justify-center rounded-lg border border-[#E5E7EF] bg-white text-slate-500 transition-[transform,border-color,background-color,color] hover:-translate-y-0.5 hover:border-[#E31E24] hover:bg-[#E31E24]/5 hover:text-[#E31E24] active:translate-y-0 active:scale-[0.98] ${
+          compact ? 'h-8 w-8' : 'h-8 w-8'
         }`}
       >
         <Trash2 className="h-3.5 w-3.5" />

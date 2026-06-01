@@ -5,12 +5,13 @@ type ActionVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ActionSize = 'sm' | 'md';
 
 const variantStyles: Record<ActionVariant, string> = {
-  primary: 'bg-[#1B3A6B] text-white hover:bg-[#16315b] shadow-sm',
+  primary:
+    'bg-[#4880FF] text-white shadow-sm shadow-[#4880FF]/20 hover:-translate-y-0.5 hover:bg-[#3749A6] hover:shadow-md hover:shadow-[#4880FF]/25 active:translate-y-0 active:scale-[0.98]',
   secondary:
-    'border border-[#E2E8F0] bg-white text-slate-700 hover:border-[#1B3A6B] hover:text-[#1B3A6B]',
-  ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+    'border border-[#E5E7EF] bg-white text-[#202224] shadow-sm hover:-translate-y-0.5 hover:border-[#C9D2E6] hover:bg-[#F7F9FB] hover:text-[#3749A6] active:translate-y-0 active:scale-[0.98]',
+  ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.98]',
   danger:
-    'border border-[#E2E8F0] bg-white text-slate-600 hover:border-[#E31E24] hover:text-[#E31E24]',
+    'border border-[#E5E7EF] bg-white text-slate-600 hover:border-[#E31E24] hover:bg-[#E31E24]/5 hover:text-[#E31E24] active:scale-[0.98]',
 };
 
 const sizeStyles: Record<ActionSize, string> = {
@@ -19,7 +20,7 @@ const sizeStyles: Record<ActionSize, string> = {
 };
 
 const baseStyles =
-  'admin-focus inline-flex items-center justify-center rounded-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60';
+  'admin-focus inline-flex items-center justify-center rounded-[10px] font-semibold transition-[transform,background-color,border-color,color,box-shadow] duration-200 disabled:cursor-not-allowed disabled:opacity-60';
 
 interface AdminActionButtonProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {

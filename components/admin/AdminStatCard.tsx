@@ -13,7 +13,7 @@ interface AdminStatCardProps {
 }
 
 const iconToneStyles: Record<StatTone, string> = {
-  default: 'bg-[#1B3A6B]/[0.06] text-[#1B3A6B]',
+  default: 'bg-[#4880FF]/10 text-[#4880FF]',
   accent: 'bg-[#E31E24]/[0.07] text-[#E31E24]',
 };
 
@@ -28,18 +28,18 @@ export function AdminStatCard({
   const content = (
     <>
       <div className="flex items-start justify-between gap-3">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">
+        <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#646464]">
           {label}
         </span>
         <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconToneStyles[tone]}`}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconToneStyles[tone]}`}
         >
           {icon}
         </span>
       </div>
       <p
         className={`mt-3 text-[28px] font-bold leading-none tracking-tight ${
-          tone === 'accent' ? 'text-[#E31E24]' : 'text-[#1B3A6B]'
+          tone === 'accent' ? 'text-[#E31E24]' : 'text-[#202224]'
         }`}
       >
         {value}
@@ -51,7 +51,7 @@ export function AdminStatCard({
   );
 
   const baseClass =
-    'block rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-admin admin-stat-lift';
+    'block rounded-2xl border border-[#E5E7EF] bg-white p-5 shadow-admin admin-stat-lift';
 
   if (href) {
     return (
