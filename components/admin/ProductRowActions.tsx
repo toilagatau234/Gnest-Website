@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, Trash2 } from 'lucide-react';
 
 import { ProductFormDialog } from '@/components/admin/ProductFormDialog';
+import { ProductMediaAndDiscountDialog } from '@/components/admin/ProductMediaAndDiscountDialog';
 import { AdminConfirmDialog } from '@/components/admin/AdminConfirmDialog';
 import { useToast } from '@/components/admin/AdminToast';
 import type { AdminCategory } from '@/lib/services/admin/categories';
@@ -52,6 +53,8 @@ export function ProductRowActions({ categories, product }: ProductRowActionsProp
         {isToggling ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
         {product.is_active ? 'Hiển thị' : 'Đang ẩn'}
       </button>
+
+      <ProductMediaAndDiscountDialog product={product} />
 
       <ProductFormDialog categories={categories} product={product} />
 

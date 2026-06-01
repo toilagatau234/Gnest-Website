@@ -154,7 +154,7 @@ export function AdminUsersTable({ users, currentAdminId, currentUserRole }: Admi
                         </span>
                       </td>
                       <td className="p-3.5 text-slate-400 font-medium">
-                        {user.created_at ? <FormattedDate dateString={user.created_at} /> : '-'}
+                        {user.created_at ? <FormattedDate date={user.created_at} /> : '-'}
                       </td>
                       <td className="p-3.5 text-right">
                         <AdminUserRowActions
