@@ -1,15 +1,24 @@
-import { Info, ShieldCheck, UserCog, UserCheck, Key } from 'lucide-react';
+import { Info, ShieldCheck, UserCog, UserCheck, ShieldAlert } from 'lucide-react';
 
 import { getAdminUsers } from '@/lib/services/admin/admin-users';
-import { ADMIN_ROLE_LABELS } from '@/lib/types/admin';
-import { FormattedDate } from '@/components/admin/FormattedDate';
+import { getAdminSessionState } from '@/lib/services/admin/auth';
+import { AdminUsersTable } from '@/components/admin/AdminUsersTable';
+import { AdminUserInviteDialog } from '@/components/admin/AdminUserInviteDialog';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminUsersPage() {
   const { data: adminUsers, error } = await getAdminUsers();
+  const session = await getAdminSessionState();
+
   const safeUsers = adminUsers ?? [];
+  const totalCount = safeUsers.length;
   const activeCount = safeUsers.filter((user) => user.is_active).length;
+  const superAdminCount = safeUsers.filter((user) => user.role === 'super_admin' && user.is_active).length;
+  const suspendedCount = safeUsers.filter((user) => !user.is_active).length;
+
+  const currentAdminId = session.adminUser?.id ?? '';
+  const currentUserRole = session.adminUser?.role ?? 'viewer';
 
   return (
     <div className="space-y-6">
@@ -23,117 +32,86 @@ export default async function AdminUsersPage() {
           </p>
         </div>
 
-        <button 
-          onClick={undefined}
-          disabled
-          className="flex cursor-not-allowed select-none items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-bold text-slate-400"
-        >
-          <Key className="w-4 h-4" /> Cấp quyền mới
-        </button>
+        {currentUserRole === 'super_admin' ? (
+          <AdminUserInviteDialog />
+        ) : (
+          <div className="flex items-center gap-1.5 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-400 select-none">
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" /> Chỉ dành cho Super Admin
+          </div>
+        )}
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-[#FFF5F5] p-4 text-xs text-[#B42318] font-medium">
+        <div role="alert" className="rounded-xl border border-red-200 bg-[#FFF5F5] p-4 text-xs text-[#B42318] font-medium leading-relaxed">
           Không thể tải danh sách quản trị viên: {error}
         </div>
       ) : null}
 
       {/* KPI Stats widgets grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        {/* Widget 1: Total accounts */}
         <div className="flex min-w-0 items-center gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
           <div className="p-3 bg-[#1B3A6B]/5 text-[#1B3A6B] rounded-xl shrink-0">
             <UserCog className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">Tài khoản hiện có</p>
-            <h3 className="text-2xl font-bold text-[#1B3A6B] mt-0.5">{safeUsers.length}</h3>
-            <p className="text-[10px] text-slate-500 mt-0.5">{activeCount} tài khoản hoạt động</p>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">Tài khoản quản trị</p>
+            <h3 className="text-2xl font-bold text-[#1B3A6B] mt-0.5">{totalCount}</h3>
+            <p className="text-[10px] text-slate-500 mt-0.5">Mọi cấp độ phân vai</p>
           </div>
         </div>
 
+        {/* Widget 2: Active accounts */}
         <div className="flex min-w-0 items-center gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
             <UserCheck className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">Vai trò phân nhiệm</p>
-            <h3 className="text-2xl font-bold text-slate-800 mt-0.5">4 Phân hệ</h3>
-            <p className="text-[10px] text-emerald-600 mt-0.5 font-medium">Super Admin · Admin · Editor · Viewer</p>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">Đang hoạt động</p>
+            <h3 className="text-2xl font-bold text-slate-800 mt-0.5">{activeCount}</h3>
+            <p className="text-[10px] text-emerald-600 mt-0.5 font-medium">Sẵn sàng truy cập</p>
           </div>
         </div>
 
+        {/* Widget 3: Super admins */}
         <div className="flex min-w-0 items-center gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl shrink-0">
+          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl shrink-0">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">Trạng thái bảo mật</p>
-            <h3 className="text-2xl font-bold text-slate-800 mt-0.5">Sẵn Sàng</h3>
-            <p className="text-[10px] text-slate-500 mt-0.5">Quyền truy cập mã hóa TLS 1.3</p>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">Super Admin</p>
+            <h3 className="text-2xl font-bold text-slate-800 mt-0.5">{superAdminCount}</h3>
+            <p className="text-[10px] text-rose-600 mt-0.5 font-medium">Đặc quyền cấp 0</p>
+          </div>
+        </div>
+
+        {/* Widget 4: Locked accounts */}
+        <div className="flex min-w-0 items-center gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+          <div className="p-3 bg-slate-50 text-slate-500 rounded-xl shrink-0">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">Đã tạm khóa</p>
+            <h3 className="text-2xl font-bold text-slate-800 mt-0.5">{suspendedCount}</h3>
+            <p className="text-[10px] text-slate-500 mt-0.5">Đình chỉ quyền truy cập</p>
           </div>
         </div>
       </div>
 
-      {/* Main Table card */}
-      <div className="space-y-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:p-6">
-        <div>
-          <h3 className="font-bold text-[#1B3A6B] text-sm">Danh Sách Quản Trị Viên</h3>
-          <p className="text-[10px] text-slate-400 mt-0.5">Danh sách tài khoản có quyền đăng nhập vào CMS</p>
-        </div>
+      {/* Main Datatable View */}
+      <AdminUsersTable
+        users={safeUsers}
+        currentAdminId={currentAdminId}
+        currentUserRole={currentUserRole}
+      />
 
-        <div className="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-          <table className="w-full text-xs text-left min-w-[620px]">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[9px] border-b border-slate-200">
-                <th className="p-3.5">Email quản trị</th>
-                <th className="p-3.5">Vai trò hệ thống</th>
-                <th className="p-3.5">Độ ưu tiên bảo mật</th>
-                <th className="p-3.5">Trạng thái khóa</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {safeUsers.length > 0 ? (
-                safeUsers.map((user, idx) => (
-                  <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-3.5 font-bold text-slate-800 text-[13px]">{user.email}</td>
-                    <td className="p-3.5">
-                      <span className="px-2 py-0.5 bg-blue-50 text-[#1B3A6B] border border-blue-100 rounded-md font-bold uppercase text-[9px]">
-                        {ADMIN_ROLE_LABELS[user.role]}
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-slate-500 font-mono text-[10px]">
-                      {user.role === 'super_admin' ? 'Root Level 0' : 'Editor Level 1'}
-                    </td>
-                    <td className="p-3.5">
-                      <span className={`px-2 py-0.5 text-[10px] rounded-md font-bold ${
-                        user.is_active 
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                          : 'bg-rose-50 text-[#E31E24] border border-rose-200'
-                      }`}>
-                        {user.is_active ? 'Đang hoạt động' : 'Đã tạm khóa'}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="p-10 text-center text-slate-400">
-                    Chưa có quản trị viên nào được thiết lập.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Triển khai note block */}
-      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-5 leading-relaxed">
-        <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 animate-pulse" />
+      {/* Security note block */}
+      <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/20 p-5 leading-relaxed">
+        <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#1B3A6B] animate-pulse" />
         <div className="text-xs">
-          <h2 className="font-bold text-amber-800 uppercase tracking-wider font-mono text-[10px]">Lưu ý kỹ thuật phân bổ nhân sự</h2>
-          <p className="mt-1 text-amber-700 font-normal">
-            Hệ thống CRUD tài khoản quản trị yêu cầu quyền truy xuất đặc quyền cao <code className="font-mono bg-white px-1 py-0.5 border border-amber-200/50 rounded text-[10px]">auth.users</code> của Supabase Service Role để khởi tạo danh sách và gửi mail kích hoạt bảo mật. Tính năng này được hạn chế trong môi trường local để bảo mật tuyệt đối Token API.
+          <h2 className="font-bold text-[#1B3A6B] uppercase tracking-wider font-mono text-[10px]">Hướng dẫn an toàn thông tin quản trị</h2>
+          <p className="mt-1 text-slate-600 font-normal leading-relaxed">
+            Hệ thống phân quyền quản trị sử dụng giao thức bảo mật lớp cao nhất kết nối trực tiếp với dịch vụ xác thực Supabase Auth Admin. Để đảm bảo vận hành liên tục và tránh lockout ngoài ý muốn, tài khoản Super Admin hoạt động duy nhất của hệ thống sẽ bị khóa cứng quyền sửa đổi trạng thái, vai trò cũng như không thể tự khóa/xóa chính mình.
           </p>
         </div>
       </div>

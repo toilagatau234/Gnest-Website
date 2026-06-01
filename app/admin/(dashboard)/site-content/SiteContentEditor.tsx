@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { SiteContentsPayload } from '@/lib/services/admin/site-content';
 import { saveSiteContentAction, type SiteContentFormState } from './actions';
+import { useToast } from '@/components/admin/AdminToast';
 
 interface Props {
   initialContents: SiteContentsPayload;
@@ -48,20 +49,26 @@ export function SiteContentEditor({ initialContents }: Props) {
   const [seoDesc, setSeoDesc] = useState(initialContents.seo.meta_description);
 
   const [formState, formAction, isPending] = useActionState(saveSiteContentAction, initialState);
-
-  // Show toast on success/error
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const { toast } = useToast();
+  const handledOk = useRef(false);
+  const handledError = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!formState.ok && !formState.error) return;
-    if (formState.ok) {
-      setToast({ type: 'success', msg: 'Đã lưu cấu hình nội dung website thành công!' });
-    } else if (formState.error) {
-      setToast({ type: 'error', msg: formState.error });
+    if (isPending) {
+      handledOk.current = false;
+      handledError.current = null;
     }
-    const t = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(t);
-  }, [formState]);
+  }, [isPending]);
+
+  useEffect(() => {
+    if (formState.ok && !handledOk.current) {
+      handledOk.current = true;
+      toast('Đã lưu cấu hình nội dung website thành công!', 'success');
+    } else if (formState.error && handledError.current !== formState.error) {
+      handledError.current = formState.error;
+      toast(formState.error, 'error');
+    }
+  }, [formState, toast]);
 
   const compiledPreview: SiteContentsPayload = {
     hero: { title: heroTitle, subtitle: heroSubtitle, cta_text: heroCta, banner_url: heroBanner },
@@ -75,26 +82,6 @@ export function SiteContentEditor({ initialContents }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Toast */}
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 text-xs font-medium transition-all ${
-            toast.type === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-              : 'border-red-200 bg-red-50 text-red-700'
-          }`}
-        >
-          {toast.type === 'success' ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-          ) : (
-            <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
-          )}
-          {toast.msg}
-        </div>
-      )}
-
       <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:p-6">
         {/* Header */}
         <div className="mb-6 flex flex-col justify-between gap-4 border-b border-slate-100 pb-4 lg:flex-row lg:items-center">
