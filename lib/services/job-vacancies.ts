@@ -1,36 +1,29 @@
-import { createClient } from '@/lib/supabase/client';
+import 'server-only';
+
+import { createClient } from '@/lib/supabase/server';
 import type { Tables } from '@/lib/types/database';
 
-export type JobVacancy = Tables<'job_vacancies'>;
+export type JobVacancy = Pick<
+  Tables<'job_vacancies'>,
+  'id' | 'title' | 'slug' | 'description' | 'location' | 'salary_range' | 'sort_order'
+>;
 
-function isSupabaseConfigured() {
-  return !!(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  );
-}
-
-function getSupabase() {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase environment variables are not configured.');
-  }
-
-  return createClient();
-}
+const PUBLIC_JOB_VACANCY_SELECT = 'id, title, slug, description, location, salary_range, sort_order';
 
 export async function getJobVacancies() {
-  const supabase = getSupabase();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('job_vacancies')
-    .select('*')
+    .select(PUBLIC_JOB_VACANCY_SELECT)
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .returns<JobVacancy[]>();
 
   if (error) {
     throw new Error(`Failed to load job vacancies: ${error.message}`);
   }
 
-  return data;
+  return data || [];
 }
