@@ -207,3 +207,8 @@ Before finishing:
 - Admin route guarded server-side.
 - Catalog/search/modal still works.
 - Important admin mutation logs audit if relevant.
+
+## Supabase Storage Bucket Setup
+- **Bucket name**: `product-images`
+- **Mode**: Public (allows public reading of generated image public URLs)
+- **Security policies**: Direct uploads are server-side checked and executed via service role clients. Public read policy allows anonymous reading of images linked to active products.

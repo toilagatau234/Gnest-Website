@@ -18,7 +18,8 @@ import {
   addProductDiscountAction, 
   updateProductDiscountAction,
   deleteProductDiscountAction, 
-  toggleProductDiscountActiveAction 
+  toggleProductDiscountActiveAction,
+  type ActionState
 } from '@/app/admin/(dashboard)/products/media-discount-actions';
 
 interface ProductDiscount {
@@ -56,7 +57,7 @@ export function ProductBulkDiscountManager({ productId, discounts, retailPrice }
 
   // Action states
   const [addActionState, addAction, isAdding] = useActionState(
-    async (state: any, formData: FormData) => {
+    async (state: ActionState, formData: FormData) => {
       formData.append('product_id', productId);
       formData.append('min_quantity', addMinQuantity);
       formData.append('price_per_unit', addPricePerUnit);
@@ -78,7 +79,7 @@ export function ProductBulkDiscountManager({ productId, discounts, retailPrice }
   );
 
   const [editActionState, editAction, isSavingEdit] = useActionState(
-    async (state: any, formData: FormData) => {
+    async (state: ActionState, formData: FormData) => {
       if (!editingDiscountId) return state;
 
       formData.append('id', editingDiscountId);

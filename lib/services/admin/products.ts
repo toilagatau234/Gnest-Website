@@ -8,6 +8,7 @@ import { requireAdminAuth } from '@/lib/services/admin/auth';
 export type AdminProduct = Tables<'products'> & {
   categories: Pick<Tables<'categories'>, 'id' | 'name' | 'slug'> | null;
   product_images: Pick<Tables<'product_images'>, 'id' | 'public_url' | 'alt' | 'sort_order' | 'is_primary' | 'is_active'>[];
+  product_bulk_discounts: Pick<Tables<'product_bulk_discounts'>, 'id' | 'product_id' | 'min_quantity' | 'price_per_unit' | 'is_active'>[];
 };
 
 export interface ProductPayload {
@@ -43,7 +44,7 @@ export async function getAdminProducts() {
 
     const { data, error } = await supabase
       .from('products')
-      .select('*, categories (id, name, slug), product_images (id, public_url, alt, sort_order, is_primary, is_active)')
+      .select('*, categories (id, name, slug), product_images (id, public_url, alt, sort_order, is_primary, is_active), product_bulk_discounts (id, product_id, min_quantity, price_per_unit, is_active)')
       .order('created_at', { ascending: false })
       .returns<AdminProduct[]>();
 

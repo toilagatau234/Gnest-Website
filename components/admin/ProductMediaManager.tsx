@@ -25,7 +25,8 @@ import {
   deleteProductImageAction, 
   toggleProductImageActiveAction, 
   setProductPrimaryImageAction,
-  reorderProductImagesAction
+  reorderProductImagesAction,
+  type ActionState
 } from '@/app/admin/(dashboard)/products/media-discount-actions';
 
 interface ProductImage {
@@ -62,7 +63,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
 
   // Upload Action
   const [uploadState, uploadAction, isUploading] = useActionState(
-    async (state: any, formData: FormData) => {
+    async (state: ActionState, formData: FormData) => {
       if (file) {
         formData.append('file', file);
       }
@@ -89,7 +90,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
 
   // Edit Action
   const [editState, editAction, isSavingEdit] = useActionState(
-    async (state: any, formData: FormData) => {
+    async (state: ActionState, formData: FormData) => {
       if (!editingImageId) return state;
 
       formData.append('id', editingImageId);

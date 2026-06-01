@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ImageIcon, Percent, Loader2, Settings } from 'lucide-react';
+import { useState } from 'react';
+import { ImageIcon, Percent, Settings } from 'lucide-react';
 
 import { AdminModal } from '@/components/admin/AdminModal';
 import { ProductMediaManager } from '@/components/admin/ProductMediaManager';
 import { ProductBulkDiscountManager } from '@/components/admin/ProductBulkDiscountManager';
-import { createClient } from '@/lib/supabase/client';
 import type { AdminProduct } from '@/lib/services/admin/products';
 
 interface ProductMediaAndDiscountDialogProps {
@@ -16,76 +15,9 @@ interface ProductMediaAndDiscountDialogProps {
 export function ProductMediaAndDiscountDialog({ product }: ProductMediaAndDiscountDialogProps) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'media' | 'discounts'>('media');
-  const [loading, setLoading] = useState(false);
-  
-  // Dynamic details state
-  const [images, setImages] = useState<any[]>([]);
-  const [discounts, setDiscounts] = useState<any[]>([]);
 
-  // Fetch the latest data when dialog opens
-  useEffect(() => {
-    if (!open) return;
-
-    async function fetchDetails() {
-      setLoading(true);
-      try {
-        const supabase = createClient();
-        
-        // 1. Fetch images (to ensure sorting and fresh active state)
-        const { data: imgData, error: imgError } = await supabase
-          .from('product_images')
-          .select('*')
-          .eq('product_id', product.id)
-          .order('sort_order', { ascending: true });
-
-        // 2. Fetch bulk discounts
-        const { data: discData, error: discError } = await supabase
-          .from('product_bulk_discounts')
-          .select('*')
-          .eq('product_id', product.id)
-          .order('min_quantity', { ascending: true });
-
-        if (!imgError && imgData) {
-          setImages(imgData);
-        }
-        if (!discError && discData) {
-          setDiscounts(discData);
-        }
-      } catch (err) {
-        console.error('Lỗi khi tải chi tiết sản phẩm:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchDetails();
-  }, [open, product.id]);
-
-  // Keep internal states synced when router.refresh() happens in parent
-  // (e.g. after uploading image, setImages is updated)
-  useEffect(() => {
-    if (!open || loading) return;
-    
-    // We can refetch or rely on parent updates. Let's do a silent refetch to keep dialog completely synced!
-    const supabase = createClient();
-    supabase
-      .from('product_images')
-      .select('*')
-      .eq('product_id', product.id)
-      .order('sort_order', { ascending: true })
-      .then(({ data }) => {
-        if (data) setImages(data);
-      });
-
-    supabase
-      .from('product_bulk_discounts')
-      .select('*')
-      .eq('product_id', product.id)
-      .order('min_quantity', { ascending: true })
-      .then(({ data }) => {
-        if (data) setDiscounts(data);
-      });
-  }, [product.updated_at, open, loading, product.id]);
+  const images = product.product_images || [];
+  const discounts = product.product_bulk_discounts || [];
 
   return (
     <>
@@ -135,28 +67,21 @@ export function ProductMediaAndDiscountDialog({ product }: ProductMediaAndDiscou
             </button>
           </div>
 
-          {/* Dynamic Content */}
-          {loading ? (
-            <div className="py-20 flex flex-col items-center justify-center text-slate-400">
-              <Loader2 className="w-8 h-8 animate-spin mb-3 text-[#1B3A6B]" />
-              <p className="font-bold text-xs">Đang đồng bộ dữ liệu sỉ từ hệ thống...</p>
-            </div>
-          ) : (
-            <div className="min-h-[300px]">
-              {activeTab === 'media' ? (
-                <ProductMediaManager 
-                  productId={product.id} 
-                  images={images} 
-                />
-              ) : (
-                <ProductBulkDiscountManager 
-                  productId={product.id} 
-                  discounts={discounts}
-                  retailPrice={product.price}
-                />
-              )}
-            </div>
-          )}
+          {/* Tab Content */}
+          <div className="min-h-[300px]">
+            {activeTab === 'media' ? (
+              <ProductMediaManager 
+                productId={product.id} 
+                images={images} 
+              />
+            ) : (
+              <ProductBulkDiscountManager 
+                productId={product.id} 
+                discounts={discounts}
+                retailPrice={product.price}
+              />
+            )}
+          </div>
         </div>
       </AdminModal>
     </>
