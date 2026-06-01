@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   ExternalLink,
   FolderTree,
-  ImageOff,
   Lock,
   Package,
   Phone,
@@ -14,7 +13,6 @@ import {
   ScrollText,
   Server,
   TrendingUp,
-  Zap,
 } from 'lucide-react';
 
 import { AdminLoadingScene } from '@/components/admin/AdminLoadingScene';
@@ -52,34 +50,6 @@ const ENTITY_LABELS: Record<string, string> = {
 
 function zaloLink(phone: string) {
   return `https://zalo.me/${phone.replace(/\D/g, '')}`;
-}
-
-function FeatureCard({
-  href,
-  icon,
-  title,
-  description,
-}: {
-  href: string;
-  icon: ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <Link href={href} className="admin-card admin-card-hover block p-4">
-      <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#4880FF]/10 text-[#4880FF]">
-          {icon}
-        </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-extrabold text-[#202224]">{title}</span>
-          <span className="mt-1 block text-xs font-medium leading-relaxed text-[#646464]">
-            {description}
-          </span>
-        </span>
-      </div>
-    </Link>
-  );
 }
 
 function KpiCard({
@@ -222,13 +192,11 @@ async function DashboardDataPanels() {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="Tổng sản phẩm" value={counts.products} hint="Trong catalog" icon={<Package className="h-4 w-4" />} />
         <KpiCard label="Danh mục" value={counts.categories} hint="Cây menu catalog" icon={<FolderTree className="h-4 w-4" />} tone="emerald" />
-        <KpiCard label="Báo giá mới" value={counts.newInquiries} hint="Cần liên hệ" icon={<Quote className="h-4 w-4" />} tone="red" />
         <KpiCard label="Liên hệ bán hàng" value={counts.activeContacts} hint="Đang hiển thị" icon={<PhoneCall className="h-4 w-4" />} />
-        <KpiCard label="Tồn kho thấp" value={attention.lowStock} hint="Cần kiểm tra" icon={<AlertTriangle className="h-4 w-4" />} tone="amber" />
-        <KpiCard label="Thiếu ảnh" value={attention.missingImages} hint="Cần bổ sung" icon={<ImageOff className="h-4 w-4" />} tone="slate" />
+        <KpiCard label="Tổng yêu cầu báo giá" value={counts.totalInquiries} hint="Toàn bộ CRM" icon={<Quote className="h-4 w-4" />} tone="slate" />
       </div>
 
       <div className="admin-card border-l-4 border-l-[#E31E24] p-5">
@@ -410,28 +378,11 @@ function RecentActivityCard({ data }: { data: DashboardData }) {
 export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
-      <div className="admin-card flex min-w-0 flex-col items-start justify-between gap-4 p-5 lg:flex-row lg:items-center">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#4880FF] animate-pulse" />
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#3749A6]">
-              Đại Tài Lợi · CMS Console
-            </span>
-          </div>
-          <h2 className="mt-1.5 text-lg font-extrabold leading-tight text-[#202224]">
-            Bảng điều khiển quản trị Gnest
-          </h2>
-          <p className="mt-1 max-w-4xl text-xs font-medium leading-relaxed text-[#646464]">
-            Theo dõi catalog, tồn kho, yêu cầu báo giá và các việc cần xử lý trong admin.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <FeatureCard href="/admin/products" icon={<Package className="h-5 w-5" />} title="Sản phẩm" description="Quản lý catalog, giá, tồn kho và hình ảnh." />
-        <FeatureCard href="/admin/categories" icon={<FolderTree className="h-5 w-5" />} title="Danh mục" description="Sắp xếp cấu trúc cây sản phẩm/dịch vụ." />
-        <FeatureCard href="/admin/inquiries" icon={<Quote className="h-5 w-5" />} title="Yêu cầu báo giá" description="Theo dõi khách hàng đang cần phản hồi." />
-        <FeatureCard href="/admin/site-content" icon={<Zap className="h-5 w-5" />} title="Nội dung website" description="Cập nhật thông điệp và khu vực hiển thị." />
+      <div className="min-w-0">
+        <h1 className="text-[24px] font-extrabold tracking-tight text-[#202224]">Tổng quan</h1>
+        <p className="mt-1.5 text-[13px] font-medium text-[#646464]">
+          Số liệu catalog và việc cần xử lý hôm nay.
+        </p>
       </div>
 
       <Suspense
