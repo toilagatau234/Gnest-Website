@@ -1,7 +1,6 @@
 'use client';
 
 import { useDeferredValue, useMemo, useState } from 'react';
-import Image from 'next/image';
 import { Check, MessageCircle, Phone, Search, Shield, UserRound } from 'lucide-react';
 
 import { SalesContactRowActions } from '@/components/admin/SalesContactRowActions';
@@ -80,14 +79,16 @@ export function SalesContactsTable({ contacts }: SalesContactsTableProps) {
             <article key={contact.id} className="rounded-2xl border border-[#E5E7EF] bg-white p-4 shadow-sm transition hover:border-[#D8DEEC] hover:shadow-admin">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 gap-3">
-                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#E5E7EF] bg-[#F7F9FB] text-[#4880FF]">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#E5E7EF] bg-[#F7F9FB] text-[#4880FF]">
                     {contact.avatar_url ? (
-                      <Image
+                      // Use a standard img tag because admins may paste images from arbitrary hosts
+                      // that are not present in next.config remotePatterns.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
                         src={contact.avatar_url}
                         alt={contact.name}
-                        fill
-                        sizes="56px"
-                        className="object-cover"
+                        className="h-full w-full object-cover"
+                        loading="lazy"
                       />
                     ) : (
                       <UserRound className="h-6 w-6" />
