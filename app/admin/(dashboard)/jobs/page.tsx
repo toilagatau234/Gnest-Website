@@ -1,181 +1,78 @@
-'use client';
+import { AlertCircle, Briefcase, Eye, EyeOff, MapPin } from 'lucide-react';
 
-import { useState } from 'react';
-import { Plus, Edit2, Briefcase, MapPin, DollarSign, GraduationCap, Search, Construction } from 'lucide-react';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
+import { AdminSection } from '@/components/admin/AdminSection';
+import { AdminStatCard } from '@/components/admin/AdminStatCard';
+import { JobFormDialog } from '@/components/admin/JobFormDialog';
+import { JobsTable } from '@/components/admin/JobsTable';
+import { getAdminJobs } from '@/lib/services/admin/jobs';
 
-interface JobVacancy {
-  id: string;
-  title: string;
-  slug: string;
-  location: string;
-  salary: string;
-  description: string;
-  requirements: string[];
-  is_active: boolean;
-}
+export const dynamic = 'force-dynamic';
 
-const mockJobs: JobVacancy[] = [
-  {
-    id: 'j-1',
-    title: 'Nhân Viên Vận Hành Xưởng Sản Xuất Thủy Tinh',
-    slug: 'van-hanh-xuong-san-xuat',
-    location: 'Xưởng Bình Chánh, TP.HCM',
-    salary: '8.5 - 12 Triệu',
-    description: 'Vận hành trực tiếp lò đúc và kiểm định chất lượng hũ thủy tinh thành phẩm theo lô. Đảm bảo đúng định mức kỹ thuật quy định.',
-    requirements: [
-      'Có kinh nghiệm làm việc tại xưởng đúc hoặc lò thủy tinh tối thiểu 1 năm',
-      'Đủ sức khỏe lao động, sẵn sàng làm ca xoay'
-    ],
-    is_active: true
-  },
-  {
-    id: 'j-2',
-    title: 'Nhân Viên Kinh Doanh Phát Triển Đại Lý Sỉ (B2B)',
-    slug: 'kinh-doanh-dai-ly-sỉ',
-    location: 'Văn Phòng Quận 6, TP.HCM',
-    salary: '10 - 25 Triệu (Lương cứng + % hoa hồng)',
-    description: 'Chăm sóc nguồn khách hàng đại lý có sẵn và mở rộng tìm kiếm đại lý phân phối thủy tinh gia dụng, hũ thực phẩm khu vực miền Tây.',
-    requirements: [
-      'Giao tiếp tốt, chịu khó đi công tác tỉnh ngắn ngày',
-      'Ưu tiên ứng viên có kinh nghiệm sales ngành hàng tiêu dùng nhanh (FMCG) hoặc thủy tinh'
-    ],
-    is_active: true
-  }
-];
-
-export default function JobsPage() {
-  const [searchText, setSearchText] = useState('');
-  const [jobs] = useState<JobVacancy[]>(mockJobs);
-
-  const filteredJobs = jobs.filter(j =>
-    j.title.toLowerCase().includes(searchText.toLowerCase()) ||
-    j.location.toLowerCase().includes(searchText.toLowerCase()) ||
-    j.description.toLowerCase().includes(searchText.toLowerCase())
-  );
+export default async function JobsPage() {
+  const { data: jobs, error } = await getAdminJobs();
+  const safeJobs = jobs || [];
+  
+  const activeCount = safeJobs.filter((job) => job.is_active).length;
+  const hiddenCount = safeJobs.length - activeCount;
+  const locationCount = safeJobs.filter((job) => Boolean(job.location)).length;
 
   return (
-    <div className="space-y-6">
-      {/* Honest development-status banner: this module is not yet wired to Supabase */}
-      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
-        <Construction className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-        <div className="text-xs leading-relaxed">
-          <p className="font-bold text-amber-800">Module đang phát triển</p>
-          <p className="mt-0.5 text-amber-700">
-            Danh sách tin tuyển dụng bên dưới là dữ liệu mẫu xem trước. Chức năng đăng/sửa/xóa tin sẽ được kết nối với Supabase ở phase tiếp theo.
-          </p>
-        </div>
+    <AdminSection>
+      <AdminPageHeader
+        title="Tin Tuyển Dụng"
+        description="Quản lý tin tuyển dụng và vị trí ứng tuyển hiển thị trên trang /tuyen-dung ngoài website."
+        action={<JobFormDialog />}
+      />
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStatCard
+          label="Tổng tin đăng"
+          value={safeJobs.length}
+          icon={<Briefcase className="h-4 w-4" />}
+          hint="Tổng vị trí tuyển dụng"
+        />
+        <AdminStatCard
+          label="Đang hiển thị"
+          value={activeCount}
+          icon={<Eye className="h-4 w-4" />}
+          hint="Công khai trên website"
+        />
+        <AdminStatCard
+          label="Đã ẩn"
+          value={hiddenCount}
+          icon={<EyeOff className="h-4 w-4" />}
+          hint="Tạm dừng tuyển dụng"
+          tone="accent"
+        />
+        <AdminStatCard
+          label="Tin có địa điểm"
+          value={locationCount}
+          icon={<MapPin className="h-4 w-4" />}
+          hint="Giúp ứng viên định vị"
+        />
       </div>
 
-      {/* Title block */}
-      <div className="flex flex-col justify-between gap-4 rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm lg:flex-row lg:items-center">
-        <div className="min-w-0">
-          <h2 className="text-lg font-bold text-[#1B3A6B]">Tin Tuyển Dụng Đang Đăng</h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Quản trị vị trí ứng tuyển hiển thị trên trang /tuyen-dung ngoài client. Hút nhân tài cho Đại Tài Lợi.
-          </p>
+      {error ? (
+        <div className="flex items-start gap-3 rounded-2xl border border-[#F2C5C7] bg-[#FFF5F5] p-4">
+          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#E31E24]" />
+          <div>
+            <p className="font-medium text-[#7A271A]">Không thể tải tin tuyển dụng</p>
+            <p className="mt-1 text-sm text-[#B42318]">{error}</p>
+          </div>
         </div>
+      ) : null}
 
-        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
-          <div className="relative w-full sm:w-56">
-            <input
-              type="text"
-              placeholder="Tìm kiếm vị trí..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="h-9 w-full rounded-lg border border-[#E2E8F0] bg-[#F7F9FB] py-1.5 pl-8 pr-3 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
-            />
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2 pointer-events-none" />
-          </div>
+      {!error && safeJobs.length === 0 ? (
+        <AdminEmptyState
+          icon={<Briefcase className="h-6 w-6" />}
+          title="Chưa có tin tuyển dụng nào"
+          description="Đăng tuyển vị trí đầu tiên để thu hút và tìm kiếm nhân tài cho Đại Tài Lợi."
+        />
+      ) : null}
 
-          <button
-            type="button"
-            disabled
-            title="Tính năng đang phát triển"
-            className="inline-flex cursor-not-allowed select-none items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-bold text-slate-400"
-          >
-            <Plus className="w-4 h-4" /> Đăng tin mới
-          </button>
-        </div>
-      </div>
-
-      {/* Grid structure for career vacancies */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredJobs.map((job) => (
-          <div key={job.id} className="group relative flex min-w-0 flex-col justify-between rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-xs transition-all hover:border-slate-300 hover:shadow-md">
-            <div>
-              
-              {/* Header icons info */}
-              <div className="flex justify-between items-start gap-4 mb-3">
-                <div className="p-2.5 bg-[#1B3A6B]/5 text-[#1B3A6B] rounded-xl">
-                  <Briefcase className="w-5 h-5" />
-                </div>
-                
-                <button
-                  type="button"
-                  disabled
-                  title="Chỉnh sửa (đang phát triển)"
-                  className="cursor-not-allowed rounded-lg border border-slate-200 bg-white p-1.5 text-slate-300 opacity-80 shadow-xs"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Title & metadata */}
-              <h3 className="text-sm font-bold text-slate-800">{job.title}</h3>
-              <p className="text-[10px] text-slate-400 font-mono mt-0.5">/{job.slug}</p>
-
-              {/* Badges and loc and wage info */}
-              <div className="flex flex-wrap gap-2.5 mt-3 text-xs text-slate-500 font-medium">
-                <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200/40 text-[10px]">
-                  <MapPin className="w-3.5 h-3.5 text-red-500" /> {job.location}
-                </span>
-
-                <span className="flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2 py-1 rounded-lg border border-emerald-100 text-[10px] font-bold">
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-600 animate-pulse" /> {job.salary}
-                </span>
-              </div>
-
-              {/* Description preview */}
-              <p className="text-slate-600 text-xs mt-4 leading-relaxed font-normal">{job.description}</p>
-
-              {/* Requirements sample tags */}
-              <div className="mt-4 pt-3 border-t border-slate-200/40 space-y-1.5">
-                <p className="text-[10px] font-bold text-[#1B3A6B] uppercase tracking-wider font-mono flex items-center gap-1.5">
-                  <GraduationCap className="w-3.5 h-3.5 text-[#1B3A6B]" /> Yêu Cầu Tóm Tắt:
-                </p>
-                <ul className="list-disc list-inside text-[10px] text-slate-500 pl-1 space-y-0.5">
-                  {job.requirements.map((req, rIdx) => (
-                    <li key={rIdx}>{req}</li>
-                  ))}
-                </ul>
-              </div>
-
-            </div>
-
-            {/* Status footer button inside card */}
-            <div className="mt-5 pt-3 border-t border-slate-200/40 flex items-center justify-between text-[11px]">
-              <span className={`px-2.5 py-0.5 rounded-md font-bold ${
-                job.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'
-              }`}>
-                {job.is_active ? 'Đang mở tuyển' : 'Đã đóng tuyển'}
-              </span>
-
-              <span className="text-[10px] font-semibold text-slate-300 select-none">
-                Đang phát triển
-              </span>
-            </div>
-
-          </div>
-        ))}
-
-        {filteredJobs.length === 0 && (
-          <div className="col-span-full py-16 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-            <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-            <p className="text-slate-600 font-bold text-sm">Không tìm thấy vị trí tuyển dụng nào</p>
-            <p className="text-slate-400 text-xs">Vui lòng thay đổi từ khóa tìm kiếm tuyển dụng của bạn.</p>
-          </div>
-        )}
-      </div>
-    </div>
+      {safeJobs.length > 0 ? <JobsTable jobs={safeJobs} /> : null}
+    </AdminSection>
   );
 }
