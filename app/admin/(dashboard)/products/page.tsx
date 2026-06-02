@@ -4,6 +4,7 @@ import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { AdminSection } from '@/components/admin/AdminSection';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { ProductFormDialog } from '@/components/admin/ProductFormDialog';
+import { ProductImportDialog } from '@/components/admin/ProductImportDialog';
 import { ProductsTable } from '@/components/admin/ProductsTable';
 import { getAdminCategories } from '@/lib/services/admin/categories';
 import { getAdminProducts } from '@/lib/services/admin/products';
@@ -24,7 +25,12 @@ export default async function ProductsPage() {
       <AdminPageHeader
         title="Sản phẩm"
         description={`${safeProducts.length} sản phẩm · ${activeCount} đang hiển thị`}
-        action={<ProductFormDialog categories={safeCategories} />}
+        action={
+          <div className="flex items-center gap-2">
+            <ProductImportDialog />
+            <ProductFormDialog categories={safeCategories} />
+          </div>
+        }
       />
 
       {error ? (
