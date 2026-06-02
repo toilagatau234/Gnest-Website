@@ -18,6 +18,15 @@ export async function submitQuoteAction(
   const message = (formData.get('message') as string | null)?.trim() || null;
   const productId = (formData.get('product_id') as string | null)?.trim() || null;
 
+  if (!productId) {
+    return { status: 'error', message: 'Yêu cầu báo giá phải gắn với một sản phẩm cụ thể.' };
+  }
+
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRe.test(productId)) {
+    return { status: 'error', message: 'Mã sản phẩm không hợp lệ.' };
+  }
+
   if (!customerName || customerName.length < 2) {
     return { status: 'error', message: 'Vui lòng nhập họ tên hợp lệ (ít nhất 2 ký tự).' };
   }
@@ -34,25 +43,23 @@ export async function submitQuoteAction(
     }
   }
 
-  let verifiedProductId: string | null = null;
-  let metadata: Record<string, string> = { source: 'product_detail' };
+  let verifiedProductId: string;
+  let metadata: Record<string, string>;
 
-  if (productId) {
-    try {
-      const product = await getActivePublicProductQuoteContextById(productId);
-      if (!product) {
-        return { status: 'error', message: 'Sản phẩm không tồn tại hoặc không còn được bán.' };
-      }
-      verifiedProductId = product.id;
-      metadata = {
-        source: 'product_detail',
-        product_slug: product.slug,
-        product_name: product.name,
-      };
-    } catch (err) {
-      console.error('[submitQuoteAction] product verification failed', err);
-      return { status: 'error', message: 'Gửi yêu cầu thất bại. Vui lòng thử lại sau.' };
+  try {
+    const product = await getActivePublicProductQuoteContextById(productId);
+    if (!product) {
+      return { status: 'error', message: 'Sản phẩm không tồn tại hoặc không còn được bán.' };
     }
+    verifiedProductId = product.id;
+    metadata = {
+      source: 'product_detail',
+      product_slug: product.slug,
+      product_name: product.name,
+    };
+  } catch (err) {
+    console.error('[submitQuoteAction] product verification failed', err);
+    return { status: 'error', message: 'Gửi yêu cầu thất bại. Vui lòng thử lại sau.' };
   }
 
   try {

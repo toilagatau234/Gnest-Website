@@ -31,6 +31,7 @@ interface ModalContextType {
 
   isQuoteModalOpen: boolean;
   quoteProductContext: QuoteProductContext | null;
+  quoteFormKey: number;
   openQuoteModal: (ctx: QuoteProductContext) => void;
   closeQuoteModal: () => void;
 }
@@ -49,6 +50,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quoteProductContext, setQuoteProductContext] = useState<QuoteProductContext | null>(null);
+  const [quoteFormKey, setQuoteFormKey] = useState(0);
 
   const openContactModal = () => {
     setIsContactModalOpen(true);
@@ -77,6 +79,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   const openQuoteModal = (ctx: QuoteProductContext) => {
     setQuoteProductContext(ctx);
     setIsQuoteModalOpen(true);
+    setQuoteFormKey((k) => k + 1);
     document.body.style.overflow = 'hidden';
   };
 
@@ -126,7 +129,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
       isProductDetailOpen, activeProduct, activeProductCategory, openProductDetail, closeProductDetail,
       isContactModalOpen, openContactModal, closeContactModal,
       isCheckoutModalOpen, openCheckoutModal, closeCheckoutModal,
-      isQuoteModalOpen, quoteProductContext, openQuoteModal, closeQuoteModal,
+      isQuoteModalOpen, quoteProductContext, quoteFormKey, openQuoteModal, closeQuoteModal,
     }}>
       {children}
     </ModalContext.Provider>

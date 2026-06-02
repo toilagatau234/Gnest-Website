@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { X, Send, CheckCircle, AlertCircle, Tag } from 'lucide-react';
 import { useModal, type QuoteProductContext } from '@/lib/context';
 import { submitQuoteAction, type QuoteFormState } from '@/app/actions/inquiries';
@@ -44,13 +44,8 @@ function QuoteForm({
 
   return (
     <form ref={formRef} action={formAction} noValidate className="space-y-4">
-      {/* Hidden product context fields */}
       {context && (
-        <>
-          <input type="hidden" name="product_id" value={context.productId} />
-          <input type="hidden" name="product_slug" value={context.productSlug} />
-          <input type="hidden" name="product_name" value={context.productName} />
-        </>
+        <input type="hidden" name="product_id" value={context.productId} />
       )}
 
       {state.status === 'error' && (
@@ -138,16 +133,7 @@ function QuoteForm({
 }
 
 export function QuoteModal() {
-  const { isQuoteModalOpen, quoteProductContext, closeQuoteModal } = useModal();
-  // Increment key each time the modal opens for a new product — remounts QuoteForm,
-  // resetting useActionState to IDLE so the success screen never leaks across sessions.
-  const [formKey, setFormKey] = useState(0);
-
-  useEffect(() => {
-    if (isQuoteModalOpen) {
-      setFormKey((k) => k + 1);
-    }
-  }, [isQuoteModalOpen, quoteProductContext?.productId]);
+  const { isQuoteModalOpen, quoteProductContext, quoteFormKey, closeQuoteModal } = useModal();
 
   return (
     <>
@@ -196,7 +182,7 @@ export function QuoteModal() {
 
         {/* Body — keyed so useActionState resets on each new open */}
         <div className="p-5 overflow-y-auto max-h-[75vh] bg-[#f8f9fa]">
-          <QuoteForm key={formKey} context={quoteProductContext} onClose={closeQuoteModal} />
+          <QuoteForm key={quoteFormKey} context={quoteProductContext} onClose={closeQuoteModal} />
         </div>
       </div>
     </>
