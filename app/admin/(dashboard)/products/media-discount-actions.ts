@@ -1,7 +1,9 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { requireAdminAuth } from '@/lib/services/admin/auth';
 import {
   createAdminProductImage,
   deleteAdminProductImage,
@@ -20,14 +22,22 @@ import {
 
 export type ActionState = { ok: boolean; error?: string };
 
-const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const PRODUCT_IMAGE_ROLES = ['super_admin', 'admin', 'editor'] as const;
 
-function sanitizeFilename(filename: string): string {
-  // Prevent directory traversal and sanitize special characters
-  const base = filename.split(/[/\\]/).pop() || 'image';
-  const clean = base.replace(/[^a-zA-Z0-9._-]/g, '_').toLowerCase();
-  return clean;
+// Canonical MIME → extension map. The stored file extension is derived from the
+// validated MIME type (a trusted value), never from the original filename.
+const MIME_EXTENSION: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function fileExtension(filename: string): string {
+  const parts = filename.split('.');
+  return parts.length > 1 ? (parts.pop() ?? '').toLowerCase() : '';
 }
 
 // -------------------------------------------------------------
@@ -38,21 +48,34 @@ export async function uploadProductImageAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const productId = formData.get('product_id') as string;
-  const file = formData.get('file') as File;
+  // 1. Verify admin permission BEFORE creating the service role client, reading
+  //    the file, or touching Storage. requireAdminAuth redirects on failure, so
+  //    it must stay outside the try/catch (catching would swallow the redirect).
+  await requireAdminAuth(PRODUCT_IMAGE_ROLES);
+
+  const productId = (formData.get('product_id') as string | null)?.trim() ?? '';
+  const file = formData.get('file');
   const alt = (formData.get('alt') as string) || '';
   const sortOrder = Number(formData.get('sort_order') || '0');
   const isPrimary = formData.get('is_primary') === 'true' || formData.get('is_primary') === 'on';
 
+  // 2. Validate product_id as a UUID before it can reach a storage path. This
+  //    blocks path traversal and any user-controlled segment in the path.
   if (!productId) {
     return { ok: false, error: 'Thiếu ID sản phẩm liên kết.' };
   }
-  if (!file || file.size === 0) {
+  if (!UUID_RE.test(productId)) {
+    return { ok: false, error: 'ID sản phẩm không hợp lệ.' };
+  }
+
+  if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: 'Vui lòng chọn hình ảnh để tải lên.' };
   }
 
-  // Upload Validation
-  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+  // 3. Validate file type by BOTH MIME and extension; do not trust either alone.
+  const canonicalExt = MIME_EXTENSION[file.type];
+  const originalExt = fileExtension(file.name);
+  if (!canonicalExt || !ALLOWED_EXTENSIONS.has(originalExt)) {
     return { ok: false, error: 'Định dạng ảnh không hợp lệ. Chỉ chấp nhận JPG, PNG, hoặc WebP.' };
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -60,9 +83,26 @@ export async function uploadProductImageAction(
   }
 
   const supabase = createServiceRoleClient();
-  const timestamp = Date.now();
-  const cleanName = sanitizeFilename(file.name);
-  const storagePath = `products/${productId}/${timestamp}-${cleanName}`;
+
+  // 4. Verify the product exists before uploading anything to Storage so we
+  //    never leave orphaned files for non-existent products.
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .select('id')
+    .eq('id', productId)
+    .maybeSingle();
+
+  if (productError) {
+    return { ok: false, error: 'Không thể xác minh sản phẩm. Vui lòng thử lại.' };
+  }
+  if (!product) {
+    return { ok: false, error: 'Sản phẩm liên kết không tồn tại.' };
+  }
+
+  // 5. Build a fully server-controlled storage path: validated UUID folder +
+  //    random filename + canonical extension from the MIME type. The original
+  //    filename is never used.
+  const storagePath = `products/${productId}/${Date.now()}-${randomUUID()}.${canonicalExt}`;
 
   let uploadedPath = '';
 
