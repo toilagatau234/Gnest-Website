@@ -135,3 +135,52 @@ export async function getAuditLogs(options?: GetAuditLogsOptions): Promise<GetAu
     };
   }
 }
+
+export interface AuditLogStats {
+  total: number;
+  today: number;
+  uniqueActors: number;
+  highRisk: number;
+}
+
+export async function getAuditLogStats(): Promise<{ data: AuditLogStats | null; error: string | null }> {
+  try {
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTodayStr = startOfToday.toISOString();
+
+    const [
+      { count: totalCount, error: totalError },
+      { count: todayCount, error: todayError },
+      { data: recentLogs, error: recentError }
+    ] = await Promise.all([
+      supabase.from('audit_logs').select('*', { count: 'exact', head: true }),
+      supabase.from('audit_logs').select('*', { count: 'exact', head: true }).gte('created_at', startOfTodayStr),
+      supabase.from('audit_logs').select('actor_id, action').limit(5000)
+    ]);
+
+    if (totalError || todayError || recentError) {
+      const errorMsg = totalError?.message || todayError?.message || recentError?.message || 'Lỗi đếm stats';
+      return { data: null, error: errorMsg };
+    }
+
+    const uniqueActors = new Set(recentLogs?.map(log => log.actor_id).filter(Boolean)).size;
+    const highRiskActions = ['delete', 'deactivate', 'remove_admin_user_access', 'update_admin_user_role'];
+    const highRisk = recentLogs?.filter(log => highRiskActions.includes(log.action)).length ?? 0;
+
+    return {
+      data: {
+        total: totalCount ?? 0,
+        today: todayCount ?? 0,
+        uniqueActors,
+        highRisk
+      },
+      error: null
+    };
+  } catch (err) {
+    return { data: null, error: err instanceof Error ? err.message : 'Không thể tải thống kê nhật ký' };
+  }
+}
