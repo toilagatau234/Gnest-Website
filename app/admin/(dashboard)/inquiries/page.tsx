@@ -4,13 +4,24 @@ import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { AdminSection } from '@/components/admin/AdminSection';
 import { InquiriesTable } from '@/components/admin/InquiriesTable';
-import { getInquiries } from '@/lib/services/admin/inquiries';
+import { getAdminUsers } from '@/lib/services/admin/admin-users';
+import { getInquiries, getInquiryStats } from '@/lib/services/admin/inquiries';
 
 export const revalidate = 60;
 
 export default async function AdminInquiriesPage() {
-  const { data: inquiries, error } = await getInquiries({ limit: 100 });
+  const [
+    { data: inquiries, error: inquiriesError },
+    { data: adminUsers, error: adminUsersError },
+    { data: stats },
+  ] = await Promise.all([
+    getInquiries({ limit: 100 }),
+    getAdminUsers(),
+    getInquiryStats(),
+  ]);
   const safeInquiries = inquiries ?? [];
+  const safeAdminUsers = adminUsers.filter((user) => user.is_active);
+  const error = inquiriesError || adminUsersError;
 
   return (
     <AdminSection>
@@ -37,7 +48,9 @@ export default async function AdminInquiriesPage() {
         />
       ) : null}
 
-      {!error && safeInquiries.length > 0 ? <InquiriesTable inquiries={safeInquiries} /> : null}
+      {!error && safeInquiries.length > 0 ? (
+        <InquiriesTable adminUsers={safeAdminUsers} inquiries={safeInquiries} stats={stats} />
+      ) : null}
     </AdminSection>
   );
 }
