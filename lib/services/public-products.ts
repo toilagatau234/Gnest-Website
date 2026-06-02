@@ -113,6 +113,27 @@ export async function getPublicProductBySlug(slug: string): Promise<PublicProduc
   return toPublicProductDetail(data as unknown as RawPublicProduct);
 }
 
+export type PublicProductQuoteContext = Pick<Tables<'products'>, 'id' | 'name' | 'slug'>;
+
+export async function getActivePublicProductQuoteContextById(
+  productId: string
+): Promise<PublicProductQuoteContext | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, name, slug')
+    .eq('id', productId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to verify quote product "${productId}": ${error.message}`);
+  }
+
+  return data;
+}
+
 export async function getPublicProductsByCategorySlug(
   categorySlug: string
 ): Promise<PublicProductDetail[]> {
