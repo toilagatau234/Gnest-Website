@@ -27,7 +27,7 @@ import { AdminTableShell, AdminTh } from '@/components/admin/AdminTableShell';
 import { useToast } from '@/components/admin/AdminToast';
 import type { AdminUserListItem } from '@/lib/services/admin/admin-users';
 import type {
-  Inquiry,
+  AdminInquiry,
   InquiryInternalNote,
   InquiryPriority,
   InquiryStats,
@@ -36,9 +36,10 @@ import type {
 import type { InquiryStatus, Json } from '@/lib/types/database';
 
 interface InquiriesTableProps {
-  inquiries: Inquiry[];
+  inquiries: AdminInquiry[];
   adminUsers: AdminUserListItem[];
   stats: InquiryStats;
+  canMutateWorkflow?: boolean;
 }
 
 type TabId = 'all' | InquiryStatus;
@@ -119,7 +120,7 @@ function isTimelineItem(value: unknown): value is InquiryTimelineItem {
   return typeof item.id === 'string' && typeof item.type === 'string' && typeof item.created_at === 'string';
 }
 
-function getWorkflowMetadata(inquiry: Inquiry): WorkflowMetadata {
+function getWorkflowMetadata(inquiry: AdminInquiry): WorkflowMetadata {
   if (!isRecord(inquiry.metadata)) {
     return {};
   }
@@ -142,7 +143,7 @@ function getWorkflowMetadata(inquiry: Inquiry): WorkflowMetadata {
   };
 }
 
-function QuickActions({ inquiry, compact = false }: { inquiry: Inquiry; compact?: boolean }) {
+function QuickActions({ inquiry, compact = false }: { inquiry: AdminInquiry; compact?: boolean }) {
   const size = compact ? 'h-8 w-8' : 'h-9 w-9';
   return (
     <div className="flex items-center gap-1.5">
@@ -205,7 +206,7 @@ function PriorityBadge({ priority }: { priority: InquiryPriority }) {
   );
 }
 
-export function InquiriesTable({ inquiries, adminUsers, stats }: InquiriesTableProps) {
+export function InquiriesTable({ inquiries, adminUsers, stats, canMutateWorkflow = true }: InquiriesTableProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [tab, setTab] = useState<TabId>('all');
@@ -231,16 +232,22 @@ export function InquiriesTable({ inquiries, adminUsers, stats }: InquiriesTableP
         return false;
       }
       if (normalized) {
+        const assignee = inquiry.assigned_to ? adminUsers.find((u) => u.id === inquiry.assigned_to) : null;
+        const assigneeEmail = assignee ? assignee.email.toLowerCase() : '';
+        const productName = inquiry.products?.name?.toLowerCase() ?? '';
+
         return (
           inquiry.customer_name.toLowerCase().includes(normalized) ||
           inquiry.phone.toLowerCase().includes(normalized) ||
           (inquiry.email ?? '').toLowerCase().includes(normalized) ||
-          (inquiry.message ?? '').toLowerCase().includes(normalized)
+          (inquiry.message ?? '').toLowerCase().includes(normalized) ||
+          productName.includes(normalized) ||
+          assigneeEmail.includes(normalized)
         );
       }
       return true;
     });
-  }, [inquiries, tab, query]);
+  }, [inquiries, tab, query, adminUsers]);
 
   const runAction = (formData: FormData, action: (formData: FormData) => Promise<{ ok: boolean; error?: string }>) => {
     setError(null);
@@ -384,6 +391,13 @@ export function InquiriesTable({ inquiries, adminUsers, stats }: InquiriesTableP
                 </td>
                 <td className="max-w-xs px-5 py-3 text-sm text-slate-600">
                   <span className="line-clamp-1">{inquiry.message || '—'}</span>
+                  {inquiry.products ? (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1 rounded bg-[#4880FF]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#3749A6]" title={`Sản phẩm: ${inquiry.products.name}`}>
+                        🎁 {inquiry.products.name}
+                      </span>
+                    </div>
+                  ) : null}
                 </td>
                 <td className="px-5 py-3 text-sm">
                   <AdminStatusChip tone={meta.tone} dot={isNew}>
@@ -441,6 +455,7 @@ export function InquiriesTable({ inquiries, adminUsers, stats }: InquiriesTableP
             onNoteSubmit={submitNote}
             onPriorityChange={updatePriority}
             onStatusChange={updateStatus}
+            canMutateWorkflow={canMutateWorkflow}
           />
         ) : null}
       </AdminModal>
@@ -459,8 +474,9 @@ function InquiryWorkflowPanel({
   onPriorityChange,
   onNoteChange,
   onNoteSubmit,
+  canMutateWorkflow = true,
 }: {
-  inquiry: Inquiry;
+  inquiry: AdminInquiry;
   adminUsers: AdminUserListItem[];
   isPending: boolean;
   error: string | null;
@@ -470,6 +486,7 @@ function InquiryWorkflowPanel({
   onPriorityChange: (inquiryId: string, priority: InquiryPriority) => void;
   onNoteChange: (value: string) => void;
   onNoteSubmit: () => void;
+  canMutateWorkflow?: boolean;
 }) {
   const workflow = getWorkflowMetadata(inquiry);
   const priority = workflow.priority ?? 'normal';
@@ -502,7 +519,24 @@ function InquiryWorkflowPanel({
 
           <dl className="space-y-3 rounded-2xl border border-[#EEF2F6] bg-slate-50/60 p-4 text-sm">
             <div>
-              <dt className="mb-1 text-slate-500">Nội dung khách gửi</dt>
+              <dt className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500">Sản phẩm quan tâm</dt>
+              <dd className="font-semibold text-slate-900">
+                {inquiry.products ? (
+                  <a
+                    href={`/san-pham/${inquiry.products.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[#3749A6] hover:underline"
+                  >
+                    🎁 {inquiry.products.name}
+                  </a>
+                ) : (
+                  <span className="text-slate-400">Không gắn sản phẩm</span>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500">Nội dung khách gửi</dt>
               <dd className="whitespace-pre-line leading-relaxed text-slate-800">{inquiry.message || '—'}</dd>
             </div>
           </dl>
@@ -512,26 +546,34 @@ function InquiryWorkflowPanel({
               <h3 className="text-sm font-extrabold text-[#202224]">Ghi chú nội bộ</h3>
               <span className="text-xs font-medium text-slate-400">{notes.length} ghi chú</span>
             </div>
-            <textarea
-              value={note}
-              onChange={(event) => onNoteChange(event.target.value)}
-              rows={3}
-              maxLength={1000}
-              className="admin-input min-h-24 py-2 text-sm leading-relaxed"
-              placeholder="Thêm ghi chú xử lý: đã gọi, khách cần báo giá số lượng, yêu cầu đặc biệt..."
-            />
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <span className="text-xs text-slate-400">{note.length}/1000</span>
-              <button
-                type="button"
-                onClick={onNoteSubmit}
-                disabled={isPending || !note.trim()}
-                className="admin-button-primary h-9 px-4 text-xs"
-              >
-                <Send className="h-3.5 w-3.5" />
-                Thêm ghi chú
-              </button>
-            </div>
+            {canMutateWorkflow ? (
+              <>
+                <textarea
+                  value={note}
+                  onChange={(event) => onNoteChange(event.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  className="admin-input min-h-24 py-2 text-sm leading-relaxed"
+                  placeholder="Thêm ghi chú xử lý: đã gọi, khách cần báo giá số lượng, yêu cầu đặc biệt..."
+                />
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className="text-xs text-slate-400">{note.length}/1000</span>
+                  <button
+                    type="button"
+                    onClick={onNoteSubmit}
+                    disabled={isPending || !note.trim()}
+                    className="admin-button-primary h-9 px-4 text-xs"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    Thêm ghi chú
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs italic text-slate-400 bg-slate-50 border border-[#EEF2F6] rounded-xl p-3 text-center">
+                Tài khoản của bạn chỉ có quyền xem (Viewer). Không thể thêm ghi chú nội bộ.
+              </p>
+            )}
 
             <div className="mt-4 space-y-2">
               {notes.length === 0 ? (
@@ -556,49 +598,69 @@ function InquiryWorkflowPanel({
 
             <label className="block">
               <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Trạng thái</span>
-              <select
-                value={inquiry.status}
-                onChange={(event) => onStatusChange(inquiry.id, event.target.value as InquiryStatus)}
-                disabled={isPending}
-                className="admin-select text-sm"
-              >
-                {STATUS_FLOW.map((status) => (
-                  <option key={status} value={status}>
-                    {STATUS_META[status].label}
-                  </option>
-                ))}
-              </select>
+              {canMutateWorkflow ? (
+                <select
+                  value={inquiry.status}
+                  onChange={(event) => onStatusChange(inquiry.id, event.target.value as InquiryStatus)}
+                  disabled={isPending}
+                  className="admin-select text-sm"
+                >
+                  {STATUS_FLOW.map((status) => (
+                    <option key={status} value={status}>
+                      {STATUS_META[status].label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="rounded-lg border border-[#E5E7EF] bg-slate-50 px-3 py-2 text-sm text-slate-700 font-medium">
+                  {STATUS_META[inquiry.status].label}
+                </div>
+              )}
             </label>
 
             <label className="mt-3 block">
               <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Phụ trách</span>
-              <select
-                value={inquiry.assigned_to ?? ''}
-                onChange={(event) => onAssigneeChange(inquiry.id, event.target.value)}
-                disabled={isPending}
-                className="admin-select text-sm"
-              >
-                <option value="">Chưa gán</option>
-                {adminUsers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.email}
-                  </option>
-                ))}
-              </select>
+              {canMutateWorkflow ? (
+                <select
+                  value={inquiry.assigned_to ?? ''}
+                  onChange={(event) => onAssigneeChange(inquiry.id, event.target.value)}
+                  disabled={isPending}
+                  className="admin-select text-sm"
+                >
+                  <option value="">Chưa gán</option>
+                  {adminUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.email}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="rounded-lg border border-[#E5E7EF] bg-slate-50 px-3 py-2 text-sm text-slate-700 font-medium">
+                  {inquiry.assigned_to
+                    ? adminUsers.find((u) => u.id === inquiry.assigned_to)?.email ?? 'Chưa gán'
+                    : 'Chưa gán'}
+                </div>
+              )}
             </label>
 
             <label className="mt-3 block">
               <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Ưu tiên</span>
-              <select
-                value={priority}
-                onChange={(event) => onPriorityChange(inquiry.id, event.target.value as InquiryPriority)}
-                disabled={isPending}
-                className="admin-select text-sm"
-              >
-                <option value="low">Thấp</option>
-                <option value="normal">Bình thường</option>
-                <option value="high">Cao</option>
-              </select>
+              {canMutateWorkflow ? (
+                <select
+                  value={priority}
+                  onChange={(event) => onPriorityChange(inquiry.id, event.target.value as InquiryPriority)}
+                  disabled={isPending}
+                  className="admin-select text-sm"
+                >
+                  <option value="low">Thấp</option>
+                  <option value="normal">Bình thường</option>
+                  <option value="high">Cao</option>
+                </select>
+              ) : (
+                <div className="rounded-lg border border-[#E5E7EF] bg-slate-50 px-3 py-2 text-sm text-slate-700 font-medium">
+                  {PRIORITY_META[priority].label}
+                </div>
+              )}
             </label>
           </div>
 

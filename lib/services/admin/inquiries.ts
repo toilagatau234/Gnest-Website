@@ -7,7 +7,24 @@ import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 export type Inquiry = Tables<'inquiries'>;
 
+export type AdminInquiry = Tables<'inquiries'> & {
+  products?: Pick<Tables<'products'>, 'id' | 'name' | 'slug'> | null;
+};
+
 export type InquiryPriority = 'low' | 'normal' | 'high';
+
+const STATUS_VI: Record<string, string> = {
+  new: 'Mới',
+  contacted: 'Đã liên hệ',
+  quoted: 'Đã báo giá',
+  closed: 'Đã đóng',
+  spam: 'Spam',
+};
+
+function getStatusLabel(status: string | null | undefined): string {
+  if (!status) return '';
+  return STATUS_VI[status] || status;
+}
 
 export interface InquiryInternalNote {
   id: string;
@@ -136,7 +153,11 @@ function makeTimelineItem(
 }
 
 async function readInquiryById(supabase: ReturnType<typeof createServiceRoleClient>, inquiryId: string) {
-  const { data, error } = await supabase.from('inquiries').select('*').eq('id', inquiryId).maybeSingle();
+  const { data, error } = await supabase
+    .from('inquiries')
+    .select('*, products(id, name, slug)')
+    .eq('id', inquiryId)
+    .maybeSingle();
 
   if (error) {
     return { data: null, error: error.message };
@@ -146,7 +167,7 @@ async function readInquiryById(supabase: ReturnType<typeof createServiceRoleClie
     return { data: null, error: 'Không tìm thấy yêu cầu báo giá.' };
   }
 
-  return { data: data as Inquiry, error: null };
+  return { data: data as AdminInquiry, error: null };
 }
 
 async function writeAuditLog(
@@ -156,25 +177,29 @@ async function writeAuditLog(
   inquiryId: string,
   metadata: Json,
 ) {
-  await supabase.from('audit_logs').insert({
-    actor_id: actorId,
-    action,
-    entity: 'inquiries',
-    entity_id: inquiryId,
-    metadata,
-  });
+  try {
+    await supabase.from('audit_logs').insert({
+      actor_id: actorId,
+      action,
+      entity: 'inquiries',
+      entity_id: inquiryId,
+      metadata,
+    });
+  } catch (err) {
+    console.error('Lỗi khi ghi audit log:', err);
+  }
 }
 
 export function getInquiryMetadata(inquiry: Inquiry): InquiryWorkflowMetadata {
   return normalizeMetadata(inquiry.metadata);
 }
 
-export async function getInquiries(options?: GetInquiriesOptions) {
+export async function getInquiries(options?: GetInquiriesOptions): Promise<{ data: AdminInquiry[] | null; error: string | null }> {
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
 
-    let query = supabase.from('inquiries').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('inquiries').select('*, products(id, name, slug)').order('created_at', { ascending: false });
 
     if (options?.status) {
       query = query.eq('status', options.status);
@@ -192,7 +217,7 @@ export async function getInquiries(options?: GetInquiriesOptions) {
       return { data: null, error: error.message };
     }
 
-    return { data: (data || []) as Inquiry[], error: null };
+    return { data: (data || []) as AdminInquiry[], error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Lỗi không xác định';
     return { data: null, error: message };
@@ -212,7 +237,7 @@ export async function getInquiryById(inquiryId: string) {
   }
 }
 
-export async function updateInquiryStatus(inquiryId: string, nextStatus: InquiryStatus) {
+export async function updateInquiryStatus(inquiryId: string, nextStatus: InquiryStatus): Promise<{ data: AdminInquiry | null; error: string | null }> {
   try {
     const actor = await requireAdminAuth(INQUIRY_MUTATION_ROLES);
 
@@ -241,7 +266,7 @@ export async function updateInquiryStatus(inquiryId: string, nextStatus: Inquiry
           type: 'status_changed',
           from: previousStatus,
           to: nextStatus,
-          message: `Chuyển trạng thái từ ${previousStatus} sang ${nextStatus}.`,
+          message: `Chuyển trạng thái từ ${getStatusLabel(previousStatus)} sang ${getStatusLabel(nextStatus)}.`,
         }),
         ...timeline,
       ],
@@ -251,7 +276,7 @@ export async function updateInquiryStatus(inquiryId: string, nextStatus: Inquiry
       .from('inquiries')
       .update({ status: nextStatus, metadata: toJson(nextMetadata) })
       .eq('id', inquiryId)
-      .select('*')
+      .select('*, products(id, name, slug)')
       .single();
 
     if (error) {
@@ -282,7 +307,7 @@ export async function updateInquiryStatus(inquiryId: string, nextStatus: Inquiry
   }
 }
 
-export async function assignInquiry(inquiryId: string, adminUserId: string | null) {
+export async function assignInquiry(inquiryId: string, adminUserId: string | null): Promise<{ data: AdminInquiry | null; error: string | null }> {
   try {
     const actor = await requireAdminAuth(INQUIRY_MUTATION_ROLES);
     const supabase = createServiceRoleClient();
@@ -296,7 +321,7 @@ export async function assignInquiry(inquiryId: string, adminUserId: string | nul
     if (adminUserId) {
       const { data: assignee, error: assigneeError } = await supabase
         .from('admin_users')
-        .select('id, email, is_active')
+        .select('id, email, role, is_active')
         .eq('id', adminUserId)
         .maybeSingle();
 
@@ -304,8 +329,8 @@ export async function assignInquiry(inquiryId: string, adminUserId: string | nul
         return { data: null, error: assigneeError.message };
       }
 
-      if (!assignee || !assignee.is_active) {
-        return { data: null, error: 'Người phụ trách không tồn tại hoặc đã bị vô hiệu hóa.' };
+      if (!assignee || !assignee.is_active || !['super_admin', 'admin', 'editor'].includes(assignee.role)) {
+        return { data: null, error: 'Người phụ trách phải là tài khoản quản trị đang hoạt động với quyền xử lý phù hợp.' };
       }
 
       assigneeEmail = assignee.email;
@@ -330,7 +355,7 @@ export async function assignInquiry(inquiryId: string, adminUserId: string | nul
       .from('inquiries')
       .update({ assigned_to: adminUserId, metadata: toJson(nextMetadata) })
       .eq('id', inquiryId)
-      .select('*')
+      .select('*, products(id, name, slug)')
       .single();
 
     if (error) {
@@ -353,7 +378,7 @@ export async function assignInquiry(inquiryId: string, adminUserId: string | nul
   }
 }
 
-export async function addInquiryInternalNote(inquiryId: string, note: string) {
+export async function addInquiryInternalNote(inquiryId: string, note: string): Promise<{ data: AdminInquiry | null; error: string | null }> {
   try {
     const actor = await requireAdminAuth(INQUIRY_MUTATION_ROLES);
     const trimmedNote = note.trim();
@@ -405,7 +430,7 @@ export async function addInquiryInternalNote(inquiryId: string, note: string) {
       .from('inquiries')
       .update({ metadata: toJson(nextMetadata) })
       .eq('id', inquiryId)
-      .select('*')
+      .select('*, products(id, name, slug)')
       .single();
 
     if (error) {
@@ -429,7 +454,7 @@ export async function addInquiryInternalNote(inquiryId: string, note: string) {
 export async function updateInquiryMetadata(
   inquiryId: string,
   metadataPatch: Pick<InquiryWorkflowMetadata, 'priority'>,
-) {
+): Promise<{ data: AdminInquiry | null; error: string | null }> {
   try {
     const actor = await requireAdminAuth(INQUIRY_MUTATION_ROLES);
 
@@ -464,7 +489,7 @@ export async function updateInquiryMetadata(
       .from('inquiries')
       .update({ metadata: toJson(nextMetadata) })
       .eq('id', inquiryId)
-      .select('*')
+      .select('*, products(id, name, slug)')
       .single();
 
     if (error) {
