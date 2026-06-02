@@ -22,20 +22,37 @@ const ACTION_OPTIONS = [
   { value: 'create', label: 'Tạo mới' },
   { value: 'update', label: 'Cập nhật' },
   { value: 'delete', label: 'Xóa' },
-  { value: 'activate', label: 'Hiển thị' },
-  { value: 'deactivate', label: 'Mở ẩn' },
-  { value: 'status_update', label: 'Cập nhật trạng thái' },
+  { value: 'activate', label: 'Kích hoạt' },
+  { value: 'deactivate', label: 'Ngưng hoạt động' },
+  { value: 'status_update', label: 'Đổi trạng thái' },
   { value: 'assign', label: 'Phân công' },
   { value: 'note_add', label: 'Thêm ghi chú' },
+  { value: 'metadata_update', label: 'Cập nhật metadata' },
+  { value: 'mark_spam', label: 'Đánh dấu spam' },
+  { value: 'close', label: 'Đóng' },
+  { value: 'reopen', label: 'Mở lại' },
+  { value: 'invite', label: 'Gửi thư mời' },
+  { value: 'role_update', label: 'Đổi quyền' },
+  { value: 'remove_access', label: 'Xóa truy cập' },
+  { value: 'upload', label: 'Tải lên' },
+  { value: 'set_primary', label: 'Đặt ảnh chính' },
+  { value: 'reorder', label: 'Sắp xếp' },
 ];
 
 const ENTITY_OPTIONS = [
   { value: '', label: 'Tất cả phân hệ' },
   { value: 'products', label: 'Sản phẩm' },
+  { value: 'product_images', label: 'Ảnh sản phẩm' },
+  { value: 'product_bulk_discounts', label: 'Bậc giá sỉ' },
   { value: 'categories', label: 'Danh mục' },
-  { value: 'inquiries', label: 'Yêu cầu báo giá sỉ' },
-  { value: 'admin_users', label: 'Quản trị viên' },
+  { value: 'inquiries', label: 'Yêu cầu báo giá' },
+  { value: 'sales_contacts', label: 'Danh bạ bán hàng' },
+  { value: 'job_vacancies', label: 'Tin tuyển dụng' },
+  { value: 'site_contents', label: 'Nội dung website' },
+  { value: 'admin_users', label: 'Tài khoản quản trị' },
+  { value: 'audit_logs', label: 'Nhật ký hệ thống' },
 ];
+
 
 export function AuditLogsFilterBar({ adminUsers, currentFilters }: AuditLogsFilterBarProps) {
   const router = useRouter();

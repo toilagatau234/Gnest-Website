@@ -3,56 +3,10 @@ import Link from 'next/link';
 
 import { getAuditLogs, getAuditLogStats } from '@/lib/services/admin/audit-logs';
 import { getAdminUsers } from '@/lib/services/admin/admin-users';
-import { FormattedDate } from '@/components/admin/FormattedDate';
 import { AuditLogsFilterBar } from '@/components/admin/AuditLogsFilterBar';
+import { AuditLogsTable } from '@/components/admin/AuditLogsTable';
 
 export const dynamic = 'force-dynamic';
-
-const ACTION_META: Record<string, { label: string; toneClass: string }> = {
-  create: { label: 'Tạo mới', toneClass: 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold' },
-  update: { label: 'Cập nhật', toneClass: 'bg-sky-50 text-sky-800 border border-sky-200 font-bold' },
-  activate: { label: 'Hiển thị', toneClass: 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold' },
-  deactivate: { label: 'Mở ẩn', toneClass: 'bg-slate-100 text-slate-700 border border-slate-200 font-bold' },
-  assign: { label: 'Phân công', toneClass: 'bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold' },
-  note_add: { label: 'Ghi chú', toneClass: 'bg-amber-50 text-amber-800 border border-amber-200 font-bold' },
-  status_update: { label: 'Trạng thái', toneClass: 'bg-purple-50 text-purple-800 border border-purple-200 font-bold' },
-  metadata_update: { label: 'Cập nhật', toneClass: 'bg-sky-50 text-sky-800 border border-sky-200 font-bold' },
-  mark_spam: { label: 'Spam', toneClass: 'bg-rose-50 text-rose-800 border border-rose-200 font-bold' },
-  close: { label: 'Đóng', toneClass: 'bg-slate-100 text-slate-800 border border-slate-200 font-bold' },
-  reopen: { label: 'Mở lại', toneClass: 'bg-teal-50 text-teal-800 border border-teal-200 font-bold' },
-};
-
-const ENTITY_LABELS: Record<string, string> = {
-  products: 'Sản phẩm',
-  categories: 'Danh mục',
-  inquiries: 'Yêu cầu báo giá sỉ',
-  admin_users: 'Quản trị viên',
-  site_contents: 'Nội dung website',
-  sales_contacts: 'Danh bạ bán hàng',
-  job_vacancies: 'Tin tuyển dụng',
-};
-
-function metadataName(metadata: unknown): string | null {
-  if (metadata && typeof metadata === 'object') {
-    const meta = metadata as Record<string, unknown>;
-    if ('name' in meta && typeof meta.name === 'string') {
-      return meta.name;
-    }
-    if ('email' in meta && typeof meta.email === 'string') {
-      return meta.email;
-    }
-    if ('customer_name' in meta && typeof meta.customer_name === 'string') {
-      return meta.customer_name;
-    }
-    if ('patch' in meta && meta.patch && typeof meta.patch === 'object') {
-      const patch = meta.patch as Record<string, unknown>;
-      if ('priority' in patch && typeof patch.priority === 'string') {
-        return `Ưu tiên: ${patch.priority}`;
-      }
-    }
-  }
-  return null;
-}
 
 interface PageProps {
   searchParams: Promise<{
@@ -192,45 +146,7 @@ export default async function AuditLogsPage({ searchParams }: PageProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-              <table className="w-full text-xs text-left min-w-[760px]">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[9px] border-b border-slate-200">
-                    <th className="p-3.5">Hành động</th>
-                    <th className="p-3.5">Phân hệ đối tượng</th>
-                    <th className="p-3.5">Tên đối tượng ảnh hưởng</th>
-                    <th className="p-3.5">Quản trị viên thực hiện</th>
-                    <th className="p-3.5 text-right">Mốc thời gian ghi nhận</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {safeLogs.map((log) => {
-                    const meta = ACTION_META[log.action] ?? { label: log.action, toneClass: 'bg-slate-100 text-slate-500 border border-slate-200' };
-                    const name = metadataName(log.metadata);
-                    const actorShort = log.actorEmail ? log.actorEmail.split('@')[0] : 'Hệ thống';
-
-                    return (
-                      <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="p-3.5">
-                          <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase ${meta.toneClass}`}>
-                            {meta.label}
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-slate-600 font-medium">{ENTITY_LABELS[log.entity] ?? log.entity}</td>
-                        <td className="p-3.5 font-bold text-slate-800 text-xs">{name ?? '—'}</td>
-                        <td className="p-3.5 font-mono text-slate-500">
-                          <span className="font-bold text-slate-700 font-sans">{actorShort}</span>
-                          {log.actorEmail ? ` (${log.actorEmail})` : ''}
-                        </td>
-                        <td className="whitespace-nowrap p-3.5 text-right font-mono text-slate-400 text-[10px]">
-                          <FormattedDate date={log.created_at} type="both" />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <AuditLogsTable logs={safeLogs} />
 
             {/* Pagination Controls */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 pt-4">
