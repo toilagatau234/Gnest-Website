@@ -295,10 +295,10 @@ export async function updateInquiryStatus(inquiryId: string, nextStatus: Inquiry
     await writeAuditLog(supabase, actor.id, auditAction, inquiryId, {
       from: previousStatus,
       to: nextStatus,
-      customer_name: data.customer_name,
+      customer_name: (data as any).customer_name,
     });
 
-    return { data: data as Inquiry, error: null };
+    return { data: data as any as AdminInquiry, error: null };
   } catch (err) {
     return {
       data: null,
@@ -366,10 +366,10 @@ export async function assignInquiry(inquiryId: string, adminUserId: string | nul
       from: current.data.assigned_to,
       to: adminUserId,
       assignee_email: assigneeEmail,
-      customer_name: data.customer_name,
+      customer_name: (data as any).customer_name,
     });
 
-    return { data: data as Inquiry, error: null };
+    return { data: data as any as AdminInquiry, error: null };
   } catch (err) {
     return {
       data: null,
@@ -439,10 +439,10 @@ export async function addInquiryInternalNote(inquiryId: string, note: string): P
 
     await writeAuditLog(supabase, actor.id, 'note_add', inquiryId, {
       note_id: newNote.id,
-      customer_name: data.customer_name,
+      customer_name: (data as any).customer_name,
     });
 
-    return { data: data as Inquiry, error: null };
+    return { data: data as any as AdminInquiry, error: null };
   } catch (err) {
     return {
       data: null,
@@ -498,10 +498,10 @@ export async function updateInquiryMetadata(
 
     await writeAuditLog(supabase, actor.id, 'metadata_update', inquiryId, {
       patch: toJson(metadataPatch),
-      customer_name: data.customer_name,
+      customer_name: (data as any).customer_name,
     });
 
-    return { data: data as Inquiry, error: null };
+    return { data: data as any as AdminInquiry, error: null };
   } catch (err) {
     return {
       data: null,
