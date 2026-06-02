@@ -12,11 +12,17 @@ const ContactModal = dynamic(
   { ssr: false, loading: () => null }
 );
 
+const QuoteModal = dynamic(
+  () => import('@/components/QuoteModal').then((mod) => mod.QuoteModal),
+  { ssr: false, loading: () => null }
+);
+
 export function SiteOverlays() {
   return (
     <>
       <ProductModal />
       <ContactModal />
+      <QuoteModal />
     </>
   );
 }
