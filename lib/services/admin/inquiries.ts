@@ -1,16 +1,172 @@
 import 'server-only';
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
-import type { InquiryStatus, Tables } from '@/lib/types/database';
+import type { InquiryStatus, Json, Tables } from '@/lib/types/database';
 
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 export type Inquiry = Tables<'inquiries'>;
 
+export type InquiryPriority = 'low' | 'normal' | 'high';
+
+export interface InquiryInternalNote {
+  id: string;
+  note: string;
+  actor_id: string;
+  actor_email: string;
+  created_at: string;
+}
+
+export interface InquiryTimelineItem {
+  id: string;
+  type: 'status_changed' | 'assigned' | 'note_added' | 'quick_action';
+  actor_id: string;
+  actor_email: string;
+  created_at: string;
+  from?: string | null;
+  to?: string | null;
+  message?: string;
+}
+
+export interface InquiryWorkflowMetadata {
+  priority?: InquiryPriority;
+  internal_notes?: InquiryInternalNote[];
+  timeline?: InquiryTimelineItem[];
+}
+
+export interface InquiryStats {
+  total: number;
+  byStatus: Record<InquiryStatus, number>;
+  assigned: number;
+  unassigned: number;
+  highPriority: number;
+}
+
 export interface GetInquiriesOptions {
   status?: InquiryStatus;
   limit?: number;
   offset?: number;
+}
+
+const INQUIRY_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
+const INQUIRY_STATUSES: readonly InquiryStatus[] = ['new', 'contacted', 'quoted', 'closed', 'spam'];
+const INQUIRY_PRIORITIES: readonly InquiryPriority[] = ['low', 'normal', 'high'];
+
+function isRecord(value: Json): value is Record<string, Json | undefined> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeMetadata(metadata: Json): InquiryWorkflowMetadata {
+  if (!isRecord(metadata)) {
+    return {};
+  }
+
+  const priority = INQUIRY_PRIORITIES.includes(metadata.priority as InquiryPriority)
+    ? (metadata.priority as InquiryPriority)
+    : undefined;
+  const internalNotes = Array.isArray(metadata.internal_notes)
+    ? (metadata.internal_notes as unknown[]).filter(isWorkflowNote)
+    : [];
+  const timeline = Array.isArray(metadata.timeline)
+    ? (metadata.timeline as unknown[]).filter(isTimelineItem)
+    : [];
+  const baseMetadata = metadata;
+
+  return {
+    ...baseMetadata,
+    priority,
+    internal_notes: internalNotes,
+    timeline,
+  };
+}
+
+function toJson(value: unknown): Json {
+  return JSON.parse(JSON.stringify(value)) as Json;
+}
+
+function isWorkflowNote(value: unknown): value is InquiryInternalNote {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const note = value as Partial<InquiryInternalNote>;
+  return (
+    typeof note.id === 'string' &&
+    typeof note.note === 'string' &&
+    typeof note.actor_id === 'string' &&
+    typeof note.actor_email === 'string' &&
+    typeof note.created_at === 'string'
+  );
+}
+
+function isTimelineItem(value: unknown): value is InquiryTimelineItem {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const item = value as Partial<InquiryTimelineItem>;
+  return (
+    typeof item.id === 'string' &&
+    typeof item.type === 'string' &&
+    typeof item.actor_id === 'string' &&
+    typeof item.actor_email === 'string' &&
+    typeof item.created_at === 'string'
+  );
+}
+
+function validateInquiryStatus(status: string): status is InquiryStatus {
+  return INQUIRY_STATUSES.includes(status as InquiryStatus);
+}
+
+function validateInquiryPriority(priority: string): priority is InquiryPriority {
+  return INQUIRY_PRIORITIES.includes(priority as InquiryPriority);
+}
+
+function makeTimelineItem(
+  actor: { id: string; email: string },
+  item: Omit<InquiryTimelineItem, 'id' | 'actor_id' | 'actor_email' | 'created_at'>,
+): InquiryTimelineItem {
+  return {
+    id: crypto.randomUUID(),
+    actor_id: actor.id,
+    actor_email: actor.email,
+    created_at: new Date().toISOString(),
+    ...item,
+  };
+}
+
+async function readInquiryById(supabase: ReturnType<typeof createServiceRoleClient>, inquiryId: string) {
+  const { data, error } = await supabase.from('inquiries').select('*').eq('id', inquiryId).maybeSingle();
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  if (!data) {
+    return { data: null, error: 'Không tìm thấy yêu cầu báo giá.' };
+  }
+
+  return { data: data as Inquiry, error: null };
+}
+
+async function writeAuditLog(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  actorId: string,
+  action: string,
+  inquiryId: string,
+  metadata: Json,
+) {
+  await supabase.from('audit_logs').insert({
+    actor_id: actorId,
+    action,
+    entity: 'inquiries',
+    entity_id: inquiryId,
+    metadata,
+  });
+}
+
+export function getInquiryMetadata(inquiry: Inquiry): InquiryWorkflowMetadata {
+  return normalizeMetadata(inquiry.metadata);
 }
 
 export async function getInquiries(options?: GetInquiriesOptions) {
@@ -24,26 +180,366 @@ export async function getInquiries(options?: GetInquiriesOptions) {
       query = query.eq('status', options.status);
     }
 
-    if (options?.limit) {
-      query = query.limit(options.limit);
-    }
-
-    if (options?.offset) {
+    if (options?.offset !== undefined) {
       query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
+    } else if (options?.limit) {
+      query = query.limit(options.limit);
     }
 
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching inquiries:', error.message);
       return { data: null, error: error.message };
     }
 
-    return { data: data || [], error: null };
+    return { data: (data || []) as Inquiry[], error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Lỗi không xác định';
-    console.error('Failed to fetch inquiries:', message);
     return { data: null, error: message };
+  }
+}
+
+export async function getInquiryById(inquiryId: string) {
+  try {
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
+    return readInquiryById(supabase, inquiryId);
+  } catch (err) {
+    return {
+      data: null,
+      error: err instanceof Error ? err.message : 'Không thể tải yêu cầu báo giá.',
+    };
+  }
+}
+
+export async function updateInquiryStatus(inquiryId: string, nextStatus: InquiryStatus) {
+  try {
+    const actor = await requireAdminAuth(INQUIRY_MUTATION_ROLES);
+
+    if (!validateInquiryStatus(nextStatus)) {
+      return { data: null, error: 'Trạng thái yêu cầu không hợp lệ.' };
+    }
+
+    const supabase = createServiceRoleClient();
+    const current = await readInquiryById(supabase, inquiryId);
+
+    if (current.error || !current.data) {
+      return { data: null, error: current.error };
+    }
+
+    const previousStatus = current.data.status;
+    if (previousStatus === nextStatus) {
+      return { data: current.data, error: null };
+    }
+
+    const metadata = normalizeMetadata(current.data.metadata);
+    const timeline = metadata.timeline ?? [];
+    const nextMetadata: InquiryWorkflowMetadata = {
+      ...metadata,
+      timeline: [
+        makeTimelineItem(actor, {
+          type: 'status_changed',
+          from: previousStatus,
+          to: nextStatus,
+          message: `Chuyển trạng thái từ ${previousStatus} sang ${nextStatus}.`,
+        }),
+        ...timeline,
+      ],
+    };
+
+    const { data, error } = await supabase
+      .from('inquiries')
+      .update({ status: nextStatus, metadata: toJson(nextMetadata) })
+      .eq('id', inquiryId)
+      .select('*')
+      .single();
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    const auditAction =
+      nextStatus === 'spam'
+        ? 'mark_spam'
+        : nextStatus === 'closed'
+          ? 'close'
+          : previousStatus === 'closed'
+            ? 'reopen'
+            : 'status_update';
+
+    await writeAuditLog(supabase, actor.id, auditAction, inquiryId, {
+      from: previousStatus,
+      to: nextStatus,
+      customer_name: data.customer_name,
+    });
+
+    return { data: data as Inquiry, error: null };
+  } catch (err) {
+    return {
+      data: null,
+      error: err instanceof Error ? err.message : 'Không thể cập nhật trạng thái yêu cầu.',
+    };
+  }
+}
+
+export async function assignInquiry(inquiryId: string, adminUserId: string | null) {
+  try {
+    const actor = await requireAdminAuth(INQUIRY_MUTATION_ROLES);
+    const supabase = createServiceRoleClient();
+    const current = await readInquiryById(supabase, inquiryId);
+
+    if (current.error || !current.data) {
+      return { data: null, error: current.error };
+    }
+
+    let assigneeEmail: string | null = null;
+    if (adminUserId) {
+      const { data: assignee, error: assigneeError } = await supabase
+        .from('admin_users')
+        .select('id, email, is_active')
+        .eq('id', adminUserId)
+        .maybeSingle();
+
+      if (assigneeError) {
+        return { data: null, error: assigneeError.message };
+      }
+
+      if (!assignee || !assignee.is_active) {
+        return { data: null, error: 'Người phụ trách không tồn tại hoặc đã bị vô hiệu hóa.' };
+      }
+
+      assigneeEmail = assignee.email;
+    }
+
+    const metadata = normalizeMetadata(current.data.metadata);
+    const timeline = metadata.timeline ?? [];
+    const nextMetadata: InquiryWorkflowMetadata = {
+      ...metadata,
+      timeline: [
+        makeTimelineItem(actor, {
+          type: 'assigned',
+          from: current.data.assigned_to,
+          to: adminUserId,
+          message: assigneeEmail ? `Gán cho ${assigneeEmail}.` : 'Bỏ phân công người phụ trách.',
+        }),
+        ...timeline,
+      ],
+    };
+
+    const { data, error } = await supabase
+      .from('inquiries')
+      .update({ assigned_to: adminUserId, metadata: toJson(nextMetadata) })
+      .eq('id', inquiryId)
+      .select('*')
+      .single();
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    await writeAuditLog(supabase, actor.id, 'assign', inquiryId, {
+      from: current.data.assigned_to,
+      to: adminUserId,
+      assignee_email: assigneeEmail,
+      customer_name: data.customer_name,
+    });
+
+    return { data: data as Inquiry, error: null };
+  } catch (err) {
+    return {
+      data: null,
+      error: err instanceof Error ? err.message : 'Không thể phân công yêu cầu.',
+    };
+  }
+}
+
+export async function addInquiryInternalNote(inquiryId: string, note: string) {
+  try {
+    const actor = await requireAdminAuth(INQUIRY_MUTATION_ROLES);
+    const trimmedNote = note.trim();
+
+    if (!trimmedNote) {
+      return { data: null, error: 'Nội dung ghi chú là bắt buộc.' };
+    }
+
+    if (trimmedNote.length > 1000) {
+      return { data: null, error: 'Ghi chú không được vượt quá 1000 ký tự.' };
+    }
+
+    const supabase = createServiceRoleClient();
+    const current = await readInquiryById(supabase, inquiryId);
+
+    if (current.error || !current.data) {
+      return { data: null, error: current.error };
+    }
+
+    const metadata = normalizeMetadata(current.data.metadata);
+    const internalNotes = metadata.internal_notes ?? [];
+    const timeline = metadata.timeline ?? [];
+    const createdAt = new Date().toISOString();
+    const newNote: InquiryInternalNote = {
+      id: crypto.randomUUID(),
+      note: trimmedNote,
+      actor_id: actor.id,
+      actor_email: actor.email,
+      created_at: createdAt,
+    };
+
+    const nextMetadata: InquiryWorkflowMetadata = {
+      ...metadata,
+      internal_notes: [newNote, ...internalNotes],
+      timeline: [
+        {
+          id: crypto.randomUUID(),
+          type: 'note_added',
+          actor_id: actor.id,
+          actor_email: actor.email,
+          created_at: createdAt,
+          message: trimmedNote,
+        },
+        ...timeline,
+      ],
+    };
+
+    const { data, error } = await supabase
+      .from('inquiries')
+      .update({ metadata: toJson(nextMetadata) })
+      .eq('id', inquiryId)
+      .select('*')
+      .single();
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    await writeAuditLog(supabase, actor.id, 'note_add', inquiryId, {
+      note_id: newNote.id,
+      customer_name: data.customer_name,
+    });
+
+    return { data: data as Inquiry, error: null };
+  } catch (err) {
+    return {
+      data: null,
+      error: err instanceof Error ? err.message : 'Không thể thêm ghi chú nội bộ.',
+    };
+  }
+}
+
+export async function updateInquiryMetadata(
+  inquiryId: string,
+  metadataPatch: Pick<InquiryWorkflowMetadata, 'priority'>,
+) {
+  try {
+    const actor = await requireAdminAuth(INQUIRY_MUTATION_ROLES);
+
+    if (metadataPatch.priority && !validateInquiryPriority(metadataPatch.priority)) {
+      return { data: null, error: 'Mức ưu tiên không hợp lệ.' };
+    }
+
+    const supabase = createServiceRoleClient();
+    const current = await readInquiryById(supabase, inquiryId);
+
+    if (current.error || !current.data) {
+      return { data: null, error: current.error };
+    }
+
+    const metadata = normalizeMetadata(current.data.metadata);
+    const timeline = metadata.timeline ?? [];
+    const nextMetadata: InquiryWorkflowMetadata = {
+      ...metadata,
+      ...metadataPatch,
+      timeline: [
+        makeTimelineItem(actor, {
+          type: 'quick_action',
+          from: metadata.priority ?? null,
+          to: metadataPatch.priority ?? null,
+          message: 'Cập nhật metadata workflow.',
+        }),
+        ...timeline,
+      ],
+    };
+
+    const { data, error } = await supabase
+      .from('inquiries')
+      .update({ metadata: toJson(nextMetadata) })
+      .eq('id', inquiryId)
+      .select('*')
+      .single();
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    await writeAuditLog(supabase, actor.id, 'metadata_update', inquiryId, {
+      patch: toJson(metadataPatch),
+      customer_name: data.customer_name,
+    });
+
+    return { data: data as Inquiry, error: null };
+  } catch (err) {
+    return {
+      data: null,
+      error: err instanceof Error ? err.message : 'Không thể cập nhật workflow metadata.',
+    };
+  }
+}
+
+export async function getInquiryStats(): Promise<{ data: InquiryStats; error: string | null }> {
+  try {
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase.from('inquiries').select('status, assigned_to, metadata');
+
+    if (error) {
+      return {
+        data: {
+          total: 0,
+          byStatus: { new: 0, contacted: 0, quoted: 0, closed: 0, spam: 0 },
+          assigned: 0,
+          unassigned: 0,
+          highPriority: 0,
+        },
+        error: error.message,
+      };
+    }
+
+    const rows = (data ?? []) as Pick<Inquiry, 'status' | 'assigned_to' | 'metadata'>[];
+    const byStatus: Record<InquiryStatus, number> = { new: 0, contacted: 0, quoted: 0, closed: 0, spam: 0 };
+    let assigned = 0;
+    let highPriority = 0;
+
+    for (const row of rows) {
+      byStatus[row.status] += 1;
+      if (row.assigned_to) {
+        assigned += 1;
+      }
+      if (normalizeMetadata(row.metadata).priority === 'high') {
+        highPriority += 1;
+      }
+    }
+
+    return {
+      data: {
+        total: rows.length,
+        byStatus,
+        assigned,
+        unassigned: rows.length - assigned,
+        highPriority,
+      },
+      error: null,
+    };
+  } catch (err) {
+    return {
+      data: {
+        total: 0,
+        byStatus: { new: 0, contacted: 0, quoted: 0, closed: 0, spam: 0 },
+        assigned: 0,
+        unassigned: 0,
+        highPriority: 0,
+      },
+      error: err instanceof Error ? err.message : 'Không thể tải thống kê yêu cầu.',
+    };
   }
 }
 
@@ -55,14 +551,12 @@ export async function getInquiryCount() {
     const { count, error } = await supabase.from('inquiries').select('*', { count: 'exact', head: true });
 
     if (error) {
-      console.error('Error counting inquiries:', error.message);
       return { count: 0, error: error.message };
     }
 
     return { count: count || 0, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Lỗi không xác định';
-    console.error('Failed to count inquiries:', message);
     return { count: 0, error: message };
   }
 }
@@ -78,14 +572,12 @@ export async function getNewInquiriesCount() {
       .eq('status', 'new');
 
     if (error) {
-      console.error('Error counting new inquiries:', error.message);
       return { count: 0, error: error.message };
     }
 
     return { count: count || 0, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Lỗi không xác định';
-    console.error('Failed to count new inquiries:', message);
     return { count: 0, error: message };
   }
 }

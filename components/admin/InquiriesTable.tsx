@@ -1,21 +1,53 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Eye, Mail, MessageCircle, Phone } from 'lucide-react';
+import { useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  AlertCircle,
+  Clock,
+  Eye,
+  Mail,
+  MessageCircle,
+  Phone,
+  Send,
+  UserCheck,
+} from 'lucide-react';
 
+import {
+  addInquiryInternalNoteAction,
+  assignInquiryAction,
+  updateInquiryPriorityAction,
+  updateInquiryStatusAction,
+} from '@/app/admin/(dashboard)/inquiries/actions';
 import { AdminFilterBar } from '@/components/admin/AdminFilterBar';
 import { AdminModal } from '@/components/admin/AdminModal';
 import { AdminSearchInput } from '@/components/admin/AdminSearchInput';
 import { AdminStatusChip, type AdminStatusTone } from '@/components/admin/AdminStatusChip';
 import { AdminTableShell, AdminTh } from '@/components/admin/AdminTableShell';
-import type { Inquiry } from '@/lib/services/admin/inquiries';
-import type { InquiryStatus } from '@/lib/types/database';
+import { useToast } from '@/components/admin/AdminToast';
+import type { AdminUserListItem } from '@/lib/services/admin/admin-users';
+import type {
+  Inquiry,
+  InquiryInternalNote,
+  InquiryPriority,
+  InquiryStats,
+  InquiryTimelineItem,
+} from '@/lib/services/admin/inquiries';
+import type { InquiryStatus, Json } from '@/lib/types/database';
 
 interface InquiriesTableProps {
   inquiries: Inquiry[];
+  adminUsers: AdminUserListItem[];
+  stats: InquiryStats;
 }
 
 type TabId = 'all' | InquiryStatus;
+
+interface WorkflowMetadata {
+  priority?: InquiryPriority;
+  internal_notes?: InquiryInternalNote[];
+  timeline?: InquiryTimelineItem[];
+}
 
 const STATUS_META: Record<InquiryStatus, { label: string; tone: AdminStatusTone }> = {
   new: { label: 'Mới', tone: 'info' },
@@ -23,6 +55,12 @@ const STATUS_META: Record<InquiryStatus, { label: string; tone: AdminStatusTone 
   quoted: { label: 'Đã báo giá', tone: 'success' },
   closed: { label: 'Đã đóng', tone: 'neutral' },
   spam: { label: 'Spam', tone: 'alert' },
+};
+
+const PRIORITY_META: Record<InquiryPriority, { label: string; className: string }> = {
+  low: { label: 'Thấp', className: 'border-slate-200 bg-slate-50 text-slate-500' },
+  normal: { label: 'Bình thường', className: 'border-[#DDE5F8] bg-[#4880FF]/10 text-[#3749A6]' },
+  high: { label: 'Cao', className: 'border-red-200 bg-red-50 text-[#E31E24]' },
 };
 
 const TABS: { id: TabId; label: string }[] = [
@@ -33,6 +71,8 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'closed', label: 'Đã đóng' },
   { id: 'spam', label: 'Spam' },
 ];
+
+const STATUS_FLOW: InquiryStatus[] = ['new', 'contacted', 'quoted', 'closed', 'spam'];
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString('vi-VN', {
@@ -52,6 +92,56 @@ function statusMeta(status: string) {
   return STATUS_META[status as InquiryStatus] ?? STATUS_META.new;
 }
 
+function isRecord(value: Json): value is Record<string, Json | undefined> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isWorkflowNote(value: unknown): value is InquiryInternalNote {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const note = value as Partial<InquiryInternalNote>;
+  return (
+    typeof note.id === 'string' &&
+    typeof note.note === 'string' &&
+    typeof note.actor_email === 'string' &&
+    typeof note.created_at === 'string'
+  );
+}
+
+function isTimelineItem(value: unknown): value is InquiryTimelineItem {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const item = value as Partial<InquiryTimelineItem>;
+  return typeof item.id === 'string' && typeof item.type === 'string' && typeof item.created_at === 'string';
+}
+
+function getWorkflowMetadata(inquiry: Inquiry): WorkflowMetadata {
+  if (!isRecord(inquiry.metadata)) {
+    return {};
+  }
+
+  const priority =
+    inquiry.metadata.priority === 'low' ||
+    inquiry.metadata.priority === 'normal' ||
+    inquiry.metadata.priority === 'high'
+      ? inquiry.metadata.priority
+      : undefined;
+
+  return {
+    priority,
+    internal_notes: Array.isArray(inquiry.metadata.internal_notes)
+      ? (inquiry.metadata.internal_notes as unknown[]).filter(isWorkflowNote)
+      : [],
+    timeline: Array.isArray(inquiry.metadata.timeline)
+      ? (inquiry.metadata.timeline as unknown[]).filter(isTimelineItem)
+      : [],
+  };
+}
+
 function QuickActions({ inquiry, compact = false }: { inquiry: Inquiry; compact?: boolean }) {
   const size = compact ? 'h-8 w-8' : 'h-9 w-9';
   return (
@@ -60,7 +150,7 @@ function QuickActions({ inquiry, compact = false }: { inquiry: Inquiry; compact?
         href={`tel:${inquiry.phone}`}
         title="Gọi điện"
         aria-label="Gọi điện"
-        className={`admin-focus flex ${size} items-center justify-center rounded-lg border border-[#E2E8F0] text-slate-500 transition-colors hover:border-[#1B3A6B] hover:text-[#1B3A6B]`}
+        className={`admin-focus flex ${size} items-center justify-center rounded-lg border border-[#E5E7EF] text-slate-500 transition-colors hover:border-[#4880FF] hover:text-[#3749A6]`}
       >
         <Phone className="h-4 w-4" />
       </a>
@@ -70,7 +160,7 @@ function QuickActions({ inquiry, compact = false }: { inquiry: Inquiry; compact?
         rel="noopener noreferrer"
         title="Nhắn Zalo"
         aria-label="Nhắn Zalo"
-        className={`admin-focus flex ${size} items-center justify-center rounded-lg border border-[#E2E8F0] text-slate-500 transition-colors hover:border-[#1B3A6B] hover:text-[#1B3A6B]`}
+        className={`admin-focus flex ${size} items-center justify-center rounded-lg border border-[#E5E7EF] text-slate-500 transition-colors hover:border-[#4880FF] hover:text-[#3749A6]`}
       >
         <MessageCircle className="h-4 w-4" />
       </a>
@@ -79,7 +169,7 @@ function QuickActions({ inquiry, compact = false }: { inquiry: Inquiry; compact?
           href={`mailto:${inquiry.email}`}
           title="Gửi email"
           aria-label="Gửi email"
-          className={`admin-focus flex ${size} items-center justify-center rounded-lg border border-[#E2E8F0] text-slate-500 transition-colors hover:border-[#1B3A6B] hover:text-[#1B3A6B]`}
+          className={`admin-focus flex ${size} items-center justify-center rounded-lg border border-[#E5E7EF] text-slate-500 transition-colors hover:border-[#4880FF] hover:text-[#3749A6]`}
         >
           <Mail className="h-4 w-4" />
         </a>
@@ -88,21 +178,51 @@ function QuickActions({ inquiry, compact = false }: { inquiry: Inquiry; compact?
   );
 }
 
-export function InquiriesTable({ inquiries }: InquiriesTableProps) {
+function AssigneeLabel({
+  assignedTo,
+  adminUsers,
+}: {
+  assignedTo: string | null;
+  adminUsers: AdminUserListItem[];
+}) {
+  const assignee = assignedTo ? adminUsers.find((user) => user.id === assignedTo) : null;
+
+  return (
+    <span className="inline-flex max-w-40 items-center gap-1.5 truncate rounded-full border border-[#E5E7EF] bg-white px-2.5 py-1 text-[11px] font-bold text-[#646464]">
+      <UserCheck className="h-3 w-3 shrink-0" />
+      {assignee ? assignee.email.split('@')[0] : 'Chưa gán'}
+    </span>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: InquiryPriority }) {
+  const meta = PRIORITY_META[priority];
+
+  return (
+    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${meta.className}`}>
+      {meta.label}
+    </span>
+  );
+}
+
+export function InquiriesTable({ inquiries, adminUsers, stats }: InquiriesTableProps) {
+  const router = useRouter();
+  const { toast } = useToast();
   const [tab, setTab] = useState<TabId>('all');
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<Inquiry | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const selected = selectedId ? inquiries.find((inquiry) => inquiry.id === selectedId) ?? null : null;
 
   const counts = useMemo(() => {
-    const map: Record<TabId, number> = { all: inquiries.length, new: 0, contacted: 0, quoted: 0, closed: 0, spam: 0 };
-    for (const inquiry of inquiries) {
-      const status = inquiry.status as InquiryStatus;
-      if (status in map) {
-        map[status] += 1;
-      }
-    }
-    return map;
-  }, [inquiries]);
+    return {
+      all: stats.total,
+      ...stats.byStatus,
+    };
+  }, [stats]);
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -114,6 +234,7 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
         return (
           inquiry.customer_name.toLowerCase().includes(normalized) ||
           inquiry.phone.toLowerCase().includes(normalized) ||
+          (inquiry.email ?? '').toLowerCase().includes(normalized) ||
           (inquiry.message ?? '').toLowerCase().includes(normalized)
         );
       }
@@ -121,9 +242,79 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
     });
   }, [inquiries, tab, query]);
 
+  const runAction = (formData: FormData, action: (formData: FormData) => Promise<{ ok: boolean; error?: string }>) => {
+    setError(null);
+    startTransition(async () => {
+      const result = await action(formData);
+      if (!result.ok) {
+        setError(result.error ?? 'Không thể cập nhật yêu cầu.');
+        toast(result.error ?? 'Không thể cập nhật yêu cầu.', 'error');
+        return;
+      }
+
+      toast('Đã cập nhật yêu cầu báo giá.', 'success');
+      router.refresh();
+    });
+  };
+
+  const updateStatus = (inquiryId: string, status: InquiryStatus) => {
+    const formData = new FormData();
+    formData.set('inquiry_id', inquiryId);
+    formData.set('status', status);
+    runAction(formData, updateInquiryStatusAction);
+  };
+
+  const updateAssignee = (inquiryId: string, assignedTo: string) => {
+    const formData = new FormData();
+    formData.set('inquiry_id', inquiryId);
+    formData.set('assigned_to', assignedTo);
+    runAction(formData, assignInquiryAction);
+  };
+
+  const updatePriority = (inquiryId: string, priority: InquiryPriority) => {
+    const formData = new FormData();
+    formData.set('inquiry_id', inquiryId);
+    formData.set('priority', priority);
+    runAction(formData, updateInquiryPriorityAction);
+  };
+
+  const submitNote = () => {
+    if (!selected || !note.trim()) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.set('inquiry_id', selected.id);
+    formData.set('note', note);
+    setNote('');
+    runAction(formData, addInquiryInternalNoteAction);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Status tabs */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="admin-card p-4">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#646464]">Tổng yêu cầu</p>
+          <p className="mt-2 text-2xl font-extrabold text-[#202224]">{stats.total}</p>
+        </div>
+        <div className="admin-card p-4">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#646464]">Mới</p>
+          <p className="mt-2 text-2xl font-extrabold text-[#E31E24]">{stats.byStatus.new}</p>
+        </div>
+        <div className="admin-card p-4">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#646464]">Đã gán</p>
+          <p className="mt-2 text-2xl font-extrabold text-[#3749A6]">{stats.assigned}</p>
+        </div>
+        <div className="admin-card p-4">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#646464]">Chưa gán</p>
+          <p className="mt-2 text-2xl font-extrabold text-amber-600">{stats.unassigned}</p>
+        </div>
+        <div className="admin-card p-4">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#646464]">Ưu tiên cao</p>
+          <p className="mt-2 text-2xl font-extrabold text-[#E31E24]">{stats.highPriority}</p>
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-1.5 border-b border-[#EEF2F6] pb-px">
         {TABS.map((item) => {
           const active = tab === item.id;
@@ -133,13 +324,13 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
               type="button"
               onClick={() => setTab(item.id)}
               className={`admin-focus -mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
-                active ? 'border-[#1B3A6B] text-[#1B3A6B]' : 'border-transparent text-slate-500 hover:text-slate-800'
+                active ? 'border-[#4880FF] text-[#3749A6]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               {item.label}
               <span
                 className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${
-                  active ? 'bg-[#1B3A6B]/10 text-[#1B3A6B]' : 'bg-slate-100 text-slate-500'
+                  active ? 'bg-[#4880FF]/10 text-[#3749A6]' : 'bg-slate-100 text-slate-500'
                 }`}
               >
                 {counts[item.id]}
@@ -150,18 +341,20 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
       </div>
 
       <AdminFilterBar>
-        <AdminSearchInput value={query} onChange={setQuery} placeholder="Tìm theo tên, SĐT hoặc nội dung…" />
+        <AdminSearchInput value={query} onChange={setQuery} placeholder="Tìm theo tên, SĐT, email hoặc nội dung..." />
         <span className="text-sm text-slate-400">{filtered.length} yêu cầu</span>
       </AdminFilterBar>
 
       <AdminTableShell
-        minWidth={880}
+        minWidth={1040}
         head={
           <>
             <AdminTh>Khách hàng</AdminTh>
             <AdminTh>Liên hệ</AdminTh>
             <AdminTh>Nội dung</AdminTh>
             <AdminTh>Trạng thái</AdminTh>
+            <AdminTh>Ưu tiên</AdminTh>
+            <AdminTh>Phụ trách</AdminTh>
             <AdminTh>Ngày gửi</AdminTh>
             <AdminTh align="right">Thao tác</AdminTh>
           </>
@@ -169,19 +362,22 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
       >
         {filtered.length === 0 ? (
           <tr>
-            <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-500">
+            <td colSpan={8} className="px-5 py-10 text-center text-sm text-slate-500">
               Không có yêu cầu nào trong mục này.
             </td>
           </tr>
         ) : (
           filtered.map((inquiry) => {
             const meta = statusMeta(inquiry.status);
+            const workflow = getWorkflowMetadata(inquiry);
+            const priority = workflow.priority ?? 'normal';
             const isNew = inquiry.status === 'new';
+
             return (
-              <tr key={inquiry.id} className={`transition-colors hover:bg-[#F8FAFC] ${isNew ? 'bg-[#1B3A6B]/[0.02]' : ''}`}>
+              <tr key={inquiry.id} className={`transition-colors hover:bg-[#F8FAFC] ${isNew ? 'bg-[#4880FF]/[0.03]' : ''}`}>
                 <td className="px-5 py-3 text-sm font-semibold text-slate-900">{inquiry.customer_name}</td>
                 <td className="px-5 py-3 text-sm">
-                  <a href={`tel:${inquiry.phone}`} className="font-medium text-[#1B3A6B] hover:underline">
+                  <a href={`tel:${inquiry.phone}`} className="font-medium text-[#3749A6] hover:underline">
                     {inquiry.phone}
                   </a>
                   {inquiry.email ? <p className="truncate text-xs text-slate-400">{inquiry.email}</p> : null}
@@ -194,16 +390,26 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
                     {meta.label}
                   </AdminStatusChip>
                 </td>
+                <td className="px-5 py-3 text-sm">
+                  <PriorityBadge priority={priority} />
+                </td>
+                <td className="px-5 py-3 text-sm">
+                  <AssigneeLabel assignedTo={inquiry.assigned_to} adminUsers={adminUsers} />
+                </td>
                 <td className="whitespace-nowrap px-5 py-3 text-sm text-slate-500">{formatDateTime(inquiry.created_at)}</td>
                 <td className="px-5 py-3">
                   <div className="flex items-center justify-end gap-2">
                     <QuickActions inquiry={inquiry} compact />
                     <button
                       type="button"
-                      onClick={() => setSelected(inquiry)}
+                      onClick={() => {
+                        setSelectedId(inquiry.id);
+                        setNote('');
+                        setError(null);
+                      }}
                       title="Xem chi tiết"
                       aria-label="Xem chi tiết"
-                      className="admin-focus flex h-8 w-8 items-center justify-center rounded-lg border border-[#E2E8F0] text-slate-500 transition-colors hover:border-[#1B3A6B] hover:text-[#1B3A6B]"
+                      className="admin-focus flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EF] text-slate-500 transition-colors hover:border-[#4880FF] hover:text-[#3749A6]"
                     >
                       <Eye className="h-4 w-4" />
                     </button>
@@ -217,43 +423,207 @@ export function InquiriesTable({ inquiries }: InquiriesTableProps) {
 
       <AdminModal
         open={selected !== null}
-        onClose={() => setSelected(null)}
+        onClose={() => setSelectedId(null)}
         title="Chi tiết yêu cầu"
         description={selected ? formatDateTime(selected.created_at) : undefined}
-        size="md"
+        size="xl"
+        footer={selected ? <QuickActions inquiry={selected} /> : undefined}
       >
         {selected ? (
-          <div className="space-y-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-base font-semibold text-slate-900">{selected.customer_name}</p>
-                <a href={`tel:${selected.phone}`} className="text-sm font-medium text-[#1B3A6B] hover:underline">
-                  {selected.phone}
-                </a>
-              </div>
-              <AdminStatusChip tone={statusMeta(selected.status).tone} dot>
-                {statusMeta(selected.status).label}
-              </AdminStatusChip>
-            </div>
-
-            <dl className="space-y-3 rounded-lg border border-[#EEF2F6] bg-slate-50/60 p-4 text-sm">
-              <div className="flex justify-between gap-4">
-                <dt className="text-slate-500">Email</dt>
-                <dd className="text-right text-slate-800">{selected.email || '—'}</dd>
-              </div>
-              <div>
-                <dt className="mb-1 text-slate-500">Nội dung</dt>
-                <dd className="whitespace-pre-line leading-relaxed text-slate-800">{selected.message || '—'}</dd>
-              </div>
-            </dl>
-
-            <div className="flex items-center justify-between gap-3 border-t border-[#EEF2F6] pt-4">
-              <span className="text-xs text-slate-400">Cập nhật trạng thái sẽ được bổ sung ở phase sau.</span>
-              <QuickActions inquiry={selected} />
-            </div>
-          </div>
+          <InquiryWorkflowPanel
+            adminUsers={adminUsers}
+            error={error}
+            inquiry={selected}
+            isPending={isPending}
+            note={note}
+            onAssigneeChange={updateAssignee}
+            onNoteChange={setNote}
+            onNoteSubmit={submitNote}
+            onPriorityChange={updatePriority}
+            onStatusChange={updateStatus}
+          />
         ) : null}
       </AdminModal>
+    </div>
+  );
+}
+
+function InquiryWorkflowPanel({
+  inquiry,
+  adminUsers,
+  isPending,
+  error,
+  note,
+  onStatusChange,
+  onAssigneeChange,
+  onPriorityChange,
+  onNoteChange,
+  onNoteSubmit,
+}: {
+  inquiry: Inquiry;
+  adminUsers: AdminUserListItem[];
+  isPending: boolean;
+  error: string | null;
+  note: string;
+  onStatusChange: (inquiryId: string, status: InquiryStatus) => void;
+  onAssigneeChange: (inquiryId: string, assignedTo: string) => void;
+  onPriorityChange: (inquiryId: string, priority: InquiryPriority) => void;
+  onNoteChange: (value: string) => void;
+  onNoteSubmit: () => void;
+}) {
+  const workflow = getWorkflowMetadata(inquiry);
+  const priority = workflow.priority ?? 'normal';
+  const notes = workflow.internal_notes ?? [];
+  const timeline = workflow.timeline ?? [];
+
+  return (
+    <div className="space-y-5">
+      {error ? (
+        <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-[#FFF5F5] px-4 py-3">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#E31E24]" />
+          <p className="text-xs font-medium text-[#B42318]">{error}</p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-base font-semibold text-slate-900">{inquiry.customer_name}</p>
+              <a href={`tel:${inquiry.phone}`} className="text-sm font-medium text-[#3749A6] hover:underline">
+                {inquiry.phone}
+              </a>
+              {inquiry.email ? <p className="text-sm text-slate-500">{inquiry.email}</p> : null}
+            </div>
+            <AdminStatusChip tone={statusMeta(inquiry.status).tone} dot>
+              {statusMeta(inquiry.status).label}
+            </AdminStatusChip>
+          </div>
+
+          <dl className="space-y-3 rounded-2xl border border-[#EEF2F6] bg-slate-50/60 p-4 text-sm">
+            <div>
+              <dt className="mb-1 text-slate-500">Nội dung khách gửi</dt>
+              <dd className="whitespace-pre-line leading-relaxed text-slate-800">{inquiry.message || '—'}</dd>
+            </div>
+          </dl>
+
+          <div className="rounded-2xl border border-[#EEF2F6] bg-white p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-sm font-extrabold text-[#202224]">Ghi chú nội bộ</h3>
+              <span className="text-xs font-medium text-slate-400">{notes.length} ghi chú</span>
+            </div>
+            <textarea
+              value={note}
+              onChange={(event) => onNoteChange(event.target.value)}
+              rows={3}
+              maxLength={1000}
+              className="admin-input min-h-24 py-2 text-sm leading-relaxed"
+              placeholder="Thêm ghi chú xử lý: đã gọi, khách cần báo giá số lượng, yêu cầu đặc biệt..."
+            />
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <span className="text-xs text-slate-400">{note.length}/1000</span>
+              <button
+                type="button"
+                onClick={onNoteSubmit}
+                disabled={isPending || !note.trim()}
+                className="admin-button-primary h-9 px-4 text-xs"
+              >
+                <Send className="h-3.5 w-3.5" />
+                Thêm ghi chú
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {notes.length === 0 ? (
+                <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">Chưa có ghi chú nội bộ.</p>
+              ) : (
+                notes.map((item) => (
+                  <div key={item.id} className="rounded-xl border border-[#EEF2F6] bg-[#F7F9FB] p-3 text-sm">
+                    <p className="whitespace-pre-line text-slate-800">{item.note}</p>
+                    <p className="mt-2 text-[11px] font-medium text-slate-400">
+                      {item.actor_email} · {formatDateTime(item.created_at)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        <aside className="space-y-4">
+          <div className="rounded-2xl border border-[#EEF2F6] bg-[#F7F9FB] p-4">
+            <h3 className="mb-3 text-sm font-extrabold text-[#202224]">Workflow</h3>
+
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Trạng thái</span>
+              <select
+                value={inquiry.status}
+                onChange={(event) => onStatusChange(inquiry.id, event.target.value as InquiryStatus)}
+                disabled={isPending}
+                className="admin-select text-sm"
+              >
+                {STATUS_FLOW.map((status) => (
+                  <option key={status} value={status}>
+                    {STATUS_META[status].label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Phụ trách</span>
+              <select
+                value={inquiry.assigned_to ?? ''}
+                onChange={(event) => onAssigneeChange(inquiry.id, event.target.value)}
+                disabled={isPending}
+                className="admin-select text-sm"
+              >
+                <option value="">Chưa gán</option>
+                {adminUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.email}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Ưu tiên</span>
+              <select
+                value={priority}
+                onChange={(event) => onPriorityChange(inquiry.id, event.target.value as InquiryPriority)}
+                disabled={isPending}
+                className="admin-select text-sm"
+              >
+                <option value="low">Thấp</option>
+                <option value="normal">Bình thường</option>
+                <option value="high">Cao</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="rounded-2xl border border-[#EEF2F6] bg-white p-4">
+            <h3 className="mb-3 flex items-center gap-1.5 text-sm font-extrabold text-[#202224]">
+              <Clock className="h-4 w-4 text-[#4880FF]" />
+              Timeline
+            </h3>
+            <div className="space-y-3">
+              {timeline.length === 0 ? (
+                <p className="text-sm text-slate-500">Chưa có hoạt động workflow.</p>
+              ) : (
+                timeline.slice(0, 8).map((item) => (
+                  <div key={item.id} className="border-l-2 border-[#DDE5F8] pl-3 text-sm">
+                    <p className="font-semibold text-[#202224]">{item.message || item.type}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      {item.actor_email} · {formatDateTime(item.created_at)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

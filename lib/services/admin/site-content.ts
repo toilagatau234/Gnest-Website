@@ -73,7 +73,6 @@ export async function saveSiteContents(payload: SiteContentsPayload) {
     .upsert(
       {
         key: SITE_CONTENT_KEY,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         value: payload as any,
         is_active: true,
       },

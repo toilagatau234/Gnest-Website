@@ -15,6 +15,7 @@ import {
   Loader2, 
   AlertCircle 
 } from 'lucide-react';
+import Image from 'next/image';
 
 import { AdminActionButton } from '@/components/admin/AdminActionButton';
 import { useToast } from '@/components/admin/AdminToast';
@@ -25,7 +26,8 @@ import {
   deleteProductImageAction, 
   toggleProductImageActiveAction, 
   setProductPrimaryImageAction,
-  reorderProductImagesAction
+  reorderProductImagesAction,
+  type ActionState
 } from '@/app/admin/(dashboard)/products/media-discount-actions';
 
 interface ProductImage {
@@ -62,7 +64,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
 
   // Upload Action
   const [uploadState, uploadAction, isUploading] = useActionState(
-    async (state: any, formData: FormData) => {
+    async (state: ActionState, formData: FormData) => {
       if (file) {
         formData.append('file', file);
       }
@@ -89,7 +91,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
 
   // Edit Action
   const [editState, editAction, isSavingEdit] = useActionState(
-    async (state: any, formData: FormData) => {
+    async (state: ActionState, formData: FormData) => {
       if (!editingImageId) return state;
 
       formData.append('id', editingImageId);
@@ -350,7 +352,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                   {/* Thumbnail Image display */}
                   <div className="w-full aspect-video rounded-lg overflow-hidden border border-slate-100 relative bg-slate-50 flex items-center justify-center mb-3">
                     {hasUrl ? (
-                      <img src={img.public_url!} alt={img.alt || 'Ảnh sản phẩm'} className="w-full h-full object-cover" />
+                      <Image src={img.public_url!} alt={img.alt || 'Ảnh sản phẩm'} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" unoptimized />
                     ) : (
                       <ImageIcon className="w-6 h-6 text-slate-300" />
                     )}
