@@ -6,6 +6,7 @@ import { AdminSection } from '@/components/admin/AdminSection';
 import { InquiriesTable } from '@/components/admin/InquiriesTable';
 import { getAdminUsers } from '@/lib/services/admin/admin-users';
 import { getInquiries, getInquiryStats } from '@/lib/services/admin/inquiries';
+import { getAdminUserIfExists } from '@/lib/services/admin/auth';
 
 export const revalidate = 60;
 
@@ -14,13 +15,18 @@ export default async function AdminInquiriesPage() {
     { data: inquiries, error: inquiriesError },
     { data: adminUsers, error: adminUsersError },
     { data: stats },
+    adminUser,
   ] = await Promise.all([
     getInquiries({ limit: 100 }),
     getAdminUsers(),
     getInquiryStats(),
+    getAdminUserIfExists(),
   ]);
   const safeInquiries = inquiries ?? [];
-  const safeAdminUsers = adminUsers.filter((user) => user.is_active);
+  const safeAdminUsers = adminUsers.filter(
+    (user) => user.is_active && ['super_admin', 'admin', 'editor'].includes(user.role)
+  );
+  const canMutateWorkflow = adminUser ? ['super_admin', 'admin', 'editor'].includes(adminUser.role) : false;
   const error = inquiriesError || adminUsersError;
 
   return (
@@ -49,7 +55,12 @@ export default async function AdminInquiriesPage() {
       ) : null}
 
       {!error && safeInquiries.length > 0 ? (
-        <InquiriesTable adminUsers={safeAdminUsers} inquiries={safeInquiries} stats={stats} />
+        <InquiriesTable
+          adminUsers={safeAdminUsers}
+          inquiries={safeInquiries}
+          stats={stats}
+          canMutateWorkflow={canMutateWorkflow}
+        />
       ) : null}
     </AdminSection>
   );
