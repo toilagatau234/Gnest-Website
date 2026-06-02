@@ -424,85 +424,92 @@ export function CatalogPage({ slug }: { slug: string }) {
               return (
                 <div
                   key={idx}
-                  className="bg-white border border-dtl-border rounded-lg overflow-hidden transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:border-dtl-navy/40 hover:-translate-y-1 flex flex-col group cursor-pointer"
-                  onClick={() => openProductDetail(item, cat)}
+                  className="relative bg-white border border-dtl-border rounded-lg overflow-hidden transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:border-dtl-navy/40 hover:-translate-y-1 flex flex-col group cursor-pointer"
                 >
-                  <div className="relative w-full aspect-square bg-[#fff] p-4 border-b border-dtl-bg-alt overflow-hidden flex items-center justify-center">
-                    {item.stock !== undefined && (
-                      <div className="absolute top-2 right-2 z-20 font-black uppercase tracking-wide leading-none">
-                        {item.stock === 0 ? (
-                          <span className="bg-red-50 text-red-600 px-1.5 py-1 text-[9px] rounded border border-red-200 shadow-sm block">
-                            Hết hàng
-                          </span>
-                        ) : item.stock <= 15 ? (
-                          <span className="bg-amber-50 text-amber-600 px-1.5 py-1 text-[9px] rounded border border-amber-200 shadow-sm block">
-                            Chỉ còn {item.stock}
-                          </span>
-                        ) : null}
-                      </div>
-                    )}
-                    <ProductImageDisplay
-                      imgs={item.imgs}
-                      img={item.img}
-                      alt={item.name}
-                    />
+                  {/* Full-card navigation link — z-[1] below button */}
+                  <Link
+                    href={`/san-pham/${item.id}`}
+                    className="absolute inset-0 z-[1] rounded-lg"
+                    aria-label={`Xem chi tiết ${item.name}`}
+                  />
+
+                  {/* Card content — pointer-events-none so link overlay handles card clicks */}
+                  <div className="pointer-events-none">
+                    <div className="relative w-full aspect-square bg-[#fff] p-4 border-b border-dtl-bg-alt overflow-hidden flex items-center justify-center">
+                      {item.stock !== undefined && (
+                        <div className="absolute top-2 right-2 z-20 font-black uppercase tracking-wide leading-none">
+                          {item.stock === 0 ? (
+                            <span className="bg-red-50 text-red-600 px-1.5 py-1 text-[9px] rounded border border-red-200 shadow-sm block">
+                              Hết hàng
+                            </span>
+                          ) : item.stock <= 15 ? (
+                            <span className="bg-amber-50 text-amber-600 px-1.5 py-1 text-[9px] rounded border border-amber-200 shadow-sm block">
+                              Chỉ còn {item.stock}
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+                      <ProductImageDisplay
+                        imgs={item.imgs}
+                        img={item.img}
+                        alt={item.name}
+                      />
+                    </div>
+
+                    <div className="p-3 md:p-4 bg-white flex-1 flex flex-col items-center">
+                      <h3 className="text-[13px] md:text-[14.5px] font-bold text-dtl-dark text-center leading-[1.4] transition-colors group-hover:text-dtl-red mb-2.5 h-10 line-clamp-2 overflow-hidden text-ellipsis">
+                        {item.name}
+                      </h3>
+
+                      {item.price && item.price > 0 ? (
+                        <div className="mb-3 text-center">
+                          <div className="text-dtl-red text-[15px] font-extrabold">
+                            {item.price.toLocaleString("vi-VN")}đ
+                          </div>
+                          {item.bulkDiscounts &&
+                            item.bulkDiscounts.length > 0 && (
+                              <div className="text-[10px] text-dtl-gray mt-0.5">
+                                Sỉ từ{" "}
+                                {item.bulkDiscounts[
+                                  item.bulkDiscounts.length - 1
+                                ].pricePerUnit.toLocaleString("vi-VN")}
+                                đ
+                              </div>
+                            )}
+                        </div>
+                      ) : (
+                        <div className="mb-3 text-dtl-gray text-xs font-semibold">
+                          Báo giá qua hotline
+                        </div>
+                      )}
+
+                      {cat.filterDefs && (
+                        <div className="flex flex-wrap gap-1.5 justify-center mb-3">
+                          {cat.filterDefs.map((def) => {
+                            const val = (item as any)[def.key];
+                            if (!val) return null;
+                            return (
+                              <span
+                                key={def.key}
+                                className="text-[10px] bg-dtl-bg-alt text-dtl-navy font-semibold px-2 py-0.5 rounded border border-dtl-border/60 uppercase tracking-tight"
+                              >
+                                {val}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="p-3 md:p-4 bg-white flex-1 flex flex-col items-center">
-                    <h3 className="text-[13px] md:text-[14.5px] font-bold text-dtl-dark text-center leading-[1.4] transition-colors group-hover:text-dtl-red mb-2.5 h-10 line-clamp-2 overflow-hidden text-ellipsis">
-                      {item.name}
-                    </h3>
-
-                    {item.price && item.price > 0 ? (
-                      <div className="mb-3 text-center">
-                        <div className="text-dtl-red text-[15px] font-extrabold">
-                          {item.price.toLocaleString("vi-VN")}đ
-                        </div>
-                        {item.bulkDiscounts &&
-                          item.bulkDiscounts.length > 0 && (
-                            <div className="text-[10px] text-dtl-gray mt-0.5">
-                              Sỉ từ{" "}
-                              {item.bulkDiscounts[
-                                item.bulkDiscounts.length - 1
-                              ].pricePerUnit.toLocaleString("vi-VN")}
-                              đ
-                            </div>
-                          )}
-                      </div>
-                    ) : (
-                      <div className="mb-3 text-dtl-gray text-xs font-semibold">
-                        Báo giá qua hotline
-                      </div>
-                    )}
-
-                    {cat.filterDefs && (
-                      <div className="flex flex-wrap gap-1.5 justify-center mb-3">
-                        {cat.filterDefs.map((def) => {
-                          const val = (item as any)[def.key];
-                          if (!val) return null;
-                          return (
-                            <span
-                              key={def.key}
-                              className="text-[10px] bg-dtl-bg-alt text-dtl-navy font-semibold px-2 py-0.5 rounded border border-dtl-border/60 uppercase tracking-tight"
-                            >
-                              {val}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    <div className="mt-auto w-full pt-2 flex">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openProductDetail(item, cat);
-                        }}
-                        className="w-full bg-[#f8f9fa] group-hover:bg-dtl-red text-dtl-navy group-hover:text-white font-bold text-[11px] md:text-xs py-[9px] rounded transition-all border border-dtl-border group-hover:border-dtl-red flex items-center justify-center gap-1.5 cursor-pointer shadow-sm duration-300"
-                      >
-                        <Info className="w-3.5 h-3.5" /> Chi Tiết & Báo Giá Sỉ
-                      </button>
-                    </div>
+                  {/* Button re-enables pointer events at z-[2] above the link overlay */}
+                  <div className="px-3 md:px-4 pb-3 md:pb-4 relative z-[2] pointer-events-auto">
+                    <button
+                      onClick={() => openProductDetail(item, cat)}
+                      className="w-full bg-[#f8f9fa] group-hover:bg-dtl-red text-dtl-navy group-hover:text-white font-bold text-[11px] md:text-xs py-[9px] rounded transition-all border border-dtl-border group-hover:border-dtl-red flex items-center justify-center gap-1.5 cursor-pointer shadow-sm duration-300"
+                    >
+                      <Info className="w-3.5 h-3.5" /> Chi Tiết & Báo Giá Sỉ
+                    </button>
                   </div>
                 </div>
               );

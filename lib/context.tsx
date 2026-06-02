@@ -3,12 +3,18 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { CatalogCategory, CatalogItem } from './data';
 
+export interface QuoteProductContext {
+  productId: string;
+  productSlug: string;
+  productName: string;
+}
+
 interface ModalContextType {
   isCatalogOpen: boolean;
   activeCatalogSlug: string | null;
   openCatalog: (slug: string) => void;
   closeCatalog: () => void;
-  
+
   isProductDetailOpen: boolean;
   activeProduct: CatalogItem | null;
   activeProductCategory: CatalogCategory | null;
@@ -22,6 +28,11 @@ interface ModalContextType {
   isCheckoutModalOpen: boolean;
   openCheckoutModal: () => void;
   closeCheckoutModal: () => void;
+
+  isQuoteModalOpen: boolean;
+  quoteProductContext: QuoteProductContext | null;
+  openQuoteModal: (ctx: QuoteProductContext) => void;
+  closeQuoteModal: () => void;
 }
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
@@ -36,6 +47,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
 
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [quoteProductContext, setQuoteProductContext] = useState<QuoteProductContext | null>(null);
 
   const openContactModal = () => {
     setIsContactModalOpen(true);
@@ -60,6 +73,20 @@ export function ModalProvider({ children }: { children: ReactNode }) {
       document.body.style.overflow = '';
     }
   }
+
+  const openQuoteModal = (ctx: QuoteProductContext) => {
+    setQuoteProductContext(ctx);
+    setIsQuoteModalOpen(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeQuoteModal = () => {
+    setIsQuoteModalOpen(false);
+    setTimeout(() => setQuoteProductContext(null), 300);
+    if (!isCatalogOpen && !isProductDetailOpen && !isContactModalOpen && !isCheckoutModalOpen) {
+      document.body.style.overflow = '';
+    }
+  };
 
   const openCatalog = (slug: string) => {
     setActiveCatalogSlug(slug);
@@ -98,7 +125,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
       isCatalogOpen, activeCatalogSlug, openCatalog, closeCatalog,
       isProductDetailOpen, activeProduct, activeProductCategory, openProductDetail, closeProductDetail,
       isContactModalOpen, openContactModal, closeContactModal,
-      isCheckoutModalOpen, openCheckoutModal, closeCheckoutModal
+      isCheckoutModalOpen, openCheckoutModal, closeCheckoutModal,
+      isQuoteModalOpen, quoteProductContext, openQuoteModal, closeQuoteModal,
     }}>
       {children}
     </ModalContext.Provider>

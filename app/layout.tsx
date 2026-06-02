@@ -13,6 +13,7 @@ const beVietnamPro = Be_Vietnam_Pro({
 export async function generateMetadata(): Promise<Metadata> {
   const contents = await getPublicSiteContents();
   return {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
     title: contents.seo.site_title,
     description: contents.seo.meta_description,
   };

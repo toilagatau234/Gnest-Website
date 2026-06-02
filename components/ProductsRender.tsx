@@ -56,15 +56,20 @@ export function ProductsRender() {
                 <div className="grid grid-cols-1 min-[340px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
                   {overviewItems.map((item, idx) => {
                     return (
-                      <Interactive3DTilt 
-                        key={idx} 
+                      <Interactive3DTilt
+                        key={idx}
                         className="bg-white border border-dtl-border rounded-lg overflow-hidden flex flex-col group cursor-pointer shadow-sm hover:shadow-[0_16px_40px_rgba(0,0,0,0.12)] transition-shadow duration-300"
                         maxTilt={10}
                       >
-                        <div 
-                          className="flex flex-col h-full w-full"
-                          onClick={() => openProductDetail(item, cat)}
-                        >
+                        {/* Full-card navigation link — z-[1] below button */}
+                        <Link
+                          href={`/san-pham/${item.id}`}
+                          className="absolute inset-0 z-[1] rounded-lg"
+                          aria-label={`Xem chi tiết ${item.name}`}
+                        />
+
+                        {/* Card content — pointer-events-none so link overlay handles card clicks */}
+                        <div className="flex flex-col h-full w-full pointer-events-none">
                           <div className="w-full aspect-square bg-[#fff] p-4 relative overflow-hidden border-b border-dtl-bg-alt flex items-center justify-center">
                             {item.bulkDiscounts && item.bulkDiscounts.length > 0 && (
                               <div className="absolute top-2.5 left-2.5 z-10 bg-gradient-to-r from-dtl-red to-orange-500 text-white text-[9px] min-[340px]:text-[10px] font-bold px-2 py-0.5 rounded shadow-sm tracking-wide uppercase">
@@ -73,11 +78,9 @@ export function ProductsRender() {
                             )}
                             <LazyProductImageDisplay imgs={item.imgs} img={item.img} alt={item.name} />
                           </div>
-                          
+
                           <div className="p-3.5 bg-white flex-1 flex flex-col items-center">
-                            <div 
-                              className="text-[13px] md:text-[14px] font-bold text-dtl-dark text-center leading-[1.45] transition-colors group-hover:text-dtl-red mb-2 h-10 line-clamp-2 overflow-hidden text-ellipsis font-sans"
-                            >
+                            <div className="text-[13px] md:text-[14px] font-bold text-dtl-dark text-center leading-[1.45] transition-colors group-hover:text-dtl-red mb-2 h-10 line-clamp-2 overflow-hidden text-ellipsis font-sans">
                               {item.name}
                             </div>
 
@@ -96,12 +99,10 @@ export function ProductsRender() {
                               <div className="mb-3 text-dtl-gray text-xs font-semibold">Liên hệ báo giá sỉ</div>
                             )}
 
-                            <div className="mt-auto w-full pt-1 flex">
+                            {/* Button re-enables pointer events at z-[2] above the link overlay */}
+                            <div className="mt-auto w-full pt-1 flex relative z-[2] pointer-events-auto">
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openProductDetail(item, cat);
-                                }}
+                                onClick={() => openProductDetail(item, cat)}
                                 className="w-full bg-[#f8f9fa] group-hover:bg-dtl-red font-bold text-[11px] md:text-[12px] py-[8.5px] rounded text-dtl-navy group-hover:text-white transition-all border border-dtl-border group-hover:border-dtl-red flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                               >
                                 <Info className="w-3.5 h-3.5" />
