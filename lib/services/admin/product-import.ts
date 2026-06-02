@@ -47,12 +47,24 @@ function normalizeSlug(value: unknown): string {
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-function parseIsActive(value: unknown): boolean {
-  if (value === null || value === undefined || value === '') return true;
+const IS_ACTIVE_TRUE = new Set(['true', '1', 'yes', 'active']);
+const IS_ACTIVE_FALSE = new Set(['false', '0', 'no', 'hidden']);
+
+function isEmptyish(value: unknown): boolean {
+  return value === null || value === undefined || value === '';
+}
+
+/** True when is_active is empty (default) or one of the accepted tokens. */
+function isValidIsActive(value: unknown): boolean {
+  if (isEmptyish(value)) return true;
   const s = String(value).trim().toLowerCase();
-  if (['true', '1', 'yes', 'active'].includes(s)) return true;
-  if (['false', '0', 'no', 'hidden'].includes(s)) return false;
-  return true;
+  return IS_ACTIVE_TRUE.has(s) || IS_ACTIVE_FALSE.has(s);
+}
+
+function parseIsActive(value: unknown): boolean {
+  if (isEmptyish(value)) return true; // default
+  const s = String(value).trim().toLowerCase();
+  return !IS_ACTIVE_FALSE.has(s);
 }
 
 function parsePrice(value: unknown): number | null {
@@ -67,14 +79,25 @@ function parseStock(value: unknown): number {
   return Number.isFinite(n) && Number.isInteger(n) ? n : NaN;
 }
 
-function parseSpecs(value: unknown): object | null {
-  if (value === null || value === undefined || value === '') return null;
+type SpecsResult =
+  | { ok: true; value: Record<string, unknown> | null }
+  | { ok: false };
+
+/**
+ * Parse the optional specs cell. Empty → valid null. A JSON object → valid.
+ * Invalid JSON, arrays, or non-objects → `{ ok: false }` so callers can raise a
+ * field-level error instead of guessing from a sentinel value.
+ */
+function parseSpecs(value: unknown): SpecsResult {
+  if (isEmptyish(value)) return { ok: true, value: null };
   try {
-    const parsed = JSON.parse(String(value));
-    if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) return undefined as unknown as null;
-    return parsed;
+    const parsed: unknown = JSON.parse(String(value));
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return { ok: false };
+    }
+    return { ok: true, value: parsed as Record<string, unknown> };
   } catch {
-    return undefined as unknown as null;
+    return { ok: false };
   }
 }
 
@@ -186,10 +209,20 @@ export function validateImportRows(
       });
     }
 
+    // is_active
+    if (!isValidIsActive(row.is_active)) {
+      errors.push({
+        row: r,
+        field: 'is_active',
+        value: String(row.is_active),
+        message: 'Trạng thái hiển thị không hợp lệ.',
+        suggestion: 'Dùng: true/false, 1/0, yes/no, active/hidden (hoặc để trống = hiển thị).',
+      });
+    }
+
     // specs
-    if (row.specs !== null && row.specs !== undefined && row.specs !== '') {
-      const specsVal = parseSpecs(row.specs);
-      if (specsVal === undefined) {
+    if (!isEmptyish(row.specs)) {
+      if (!parseSpecs(row.specs).ok) {
         errors.push({
           row: r,
           field: 'specs',
@@ -216,26 +249,38 @@ export async function bulkImportProducts(rows: ImportRow[]): Promise<ImportResul
     return { ok: false, error: 'Không có dữ liệu để nhập.' };
   }
 
-  // Load reference data for validation
-  const [{ data: categories }, { data: existingSlugs }] = await Promise.all([
+  // Load reference data for validation. If either query fails we must abort the
+  // whole import — validating against partial data could let bad rows through.
+  const [categoriesResult, existingSlugsResult] = await Promise.all([
     supabase.from('categories').select('id, slug').eq('is_active', true),
     supabase.from('products').select('slug'),
   ]);
 
+  if (categoriesResult.error) {
+    return { ok: false, error: 'Không thể tải danh mục để kiểm tra. Vui lòng thử lại.' };
+  }
+  if (existingSlugsResult.error) {
+    return { ok: false, error: 'Không thể kiểm tra slug hiện có. Vui lòng thử lại.' };
+  }
+
   const activeCategoryMap = new Map<string, string>(
-    (categories ?? []).map((c) => [c.slug, c.id]),
+    (categoriesResult.data ?? []).map((c) => [c.slug, c.id]),
   );
-  const existingProductSlugs = new Set<string>((existingSlugs ?? []).map((p) => p.slug));
+  const existingProductSlugs = new Set<string>(
+    (existingSlugsResult.data ?? []).map((p) => p.slug),
+  );
 
   const errors = validateImportRows(rows, new Set(activeCategoryMap.keys()), existingProductSlugs);
   if (errors.length > 0) {
     return { ok: false, errors };
   }
 
-  // Build insert payloads
+  // Build insert payloads. Rows are already validated above, so parsing here
+  // cannot fail — specs falls back to an empty object when absent.
   const inserts: Inserts<'products'>[] = rows.map((row) => {
     const slug = normalizeSlug(row.slug);
     const catSlug = String(row.category_slug).trim().toLowerCase();
+    const specsResult = parseSpecs(row.specs);
     return {
       name: String(row.name).trim(),
       slug,
@@ -244,7 +289,7 @@ export async function bulkImportProducts(rows: ImportRow[]): Promise<ImportResul
       price: parsePrice(row.price) ?? null,
       stock: parseStock(row.stock) || 0,
       is_active: parseIsActive(row.is_active),
-      specs: (parseSpecs(row.specs) ?? {}) as Json,
+      specs: (specsResult.ok && specsResult.value ? specsResult.value : {}) as Json,
     };
   });
 
