@@ -81,10 +81,11 @@ export function StaffSection() {
                   <div className="relative w-[54px] h-[54px] sm:w-[62px] sm:h-[62px] mx-auto mb-3 shrink-0 overflow-hidden rounded-full border border-dtl-border">
                     <Image
                       src={person.avatar}
-                      alt={person.name}
+                      alt={person.name.includes('CSKH') ? 'CSKH' : person.name}
                       fill
                       sizes="62px"
                       className="object-cover"
+                      unoptimized={person.avatar.startsWith('http')}
                     />
                   </div>
                 ) : (

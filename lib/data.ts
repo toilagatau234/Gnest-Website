@@ -19,9 +19,9 @@ export interface SaleContact {
 }
 
 export const SALE_CONTACTS: SaleContact[] = [
-  { id: '1', name: 'CSKH / Hotline', role: 'Tổng đài', phone: '0939991551', zalo: '0939991551', avatar: 'https://ui-avatars.com/api/?name=CSKH&background=e31e24&color=fff' },
-  { id: '2', name: 'Nguyễn Văn Bình', role: 'Chuyên viên tư vấn', phone: '0901234567', zalo: '0901234567', avatar: 'https://ui-avatars.com/api/?name=Binh&background=1a3060&color=fff' },
-  { id: '3', name: 'Trần Thị An', role: 'Chuyên viên tư vấn', phone: '0909876543', zalo: '0909876543', avatar: 'https://ui-avatars.com/api/?name=An&background=1a3060&color=fff' },
+  { id: '1', name: 'CSKH / Hotline', role: 'Tổng đài', phone: '0939991551', zalo: '0939991551', avatar: '/images/cskh-avatar.png' },
+  { id: '2', name: 'Nguyễn Văn Bình', role: 'Chuyên viên tư vấn', phone: '0901234567', zalo: '0901234567' },
+  { id: '3', name: 'Trần Thị An', role: 'Chuyên viên tư vấn', phone: '0909876543', zalo: '0909876543' },
 ];
 
 export interface CatalogItem {

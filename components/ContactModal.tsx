@@ -23,6 +23,10 @@ export function ContactModal() {
   const [contacts, setContacts] = useState<ContactCard[]>(SALE_CONTACTS);
 
   useEffect(() => {
+    if (!isContactModalOpen) {
+      return;
+    }
+
     let isMounted = true;
 
     async function loadContacts() {
@@ -57,7 +61,7 @@ export function ContactModal() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isContactModalOpen]);
 
   const visibleContacts = useMemo(
     () => contacts.filter((contact) => contact.phone && contact.zalo),
@@ -100,47 +104,50 @@ export function ContactModal() {
             Vui lòng chọn nhân viên kinh doanh để được hỗ trợ và nhận báo giá tốt nhất:
           </p>
 
-          <div className="space-y-3">
-            {visibleContacts.map((contact) => (
-              <div
-                key={contact.id}
-                className="bg-white border border-dtl-border rounded-lg p-3.5 flex items-center gap-3.5 shadow-sm hover:border-dtl-red/30 hover:shadow-md transition-all"
-              >
-                {contact.avatar && (
-                  <div className="relative w-[46px] h-[46px] shrink-0 overflow-hidden rounded-full border border-dtl-border">
-                    <Image
-                      src={contact.avatar}
-                      alt={contact.name}
-                      fill
-                      sizes="46px"
-                      className="object-cover"
-                    />
+          {isContactModalOpen && (
+            <div className="space-y-3">
+              {visibleContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="bg-white border border-dtl-border rounded-lg p-3.5 flex items-center gap-3.5 shadow-sm hover:border-dtl-red/30 hover:shadow-md transition-all"
+                >
+                  {contact.avatar && (
+                    <div className="relative w-[46px] h-[46px] shrink-0 overflow-hidden rounded-full border border-dtl-border">
+                      <Image
+                        src={contact.avatar}
+                        alt={contact.name.includes('CSKH') ? 'CSKH' : contact.name}
+                        fill
+                        sizes="46px"
+                        className="object-cover"
+                        unoptimized={contact.avatar.startsWith('http')}
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-[14px] text-dtl-dark truncate">{contact.name}</h3>
+                    <div className="text-[12px] text-dtl-gray truncate mt-0.5">{contact.role}</div>
                   </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-[14px] text-dtl-dark truncate">{contact.name}</h3>
-                  <div className="text-[12px] text-dtl-gray truncate mt-0.5">{contact.role}</div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                      href={contact.zalo.startsWith('http') ? contact.zalo : `https://zalo.me/${contact.zalo}`}
+                      target="_blank"
+                      className="w-[36px] h-[36px] flex items-center justify-center rounded-full bg-[#E5F1FF] text-[#0068FF] hover:bg-[#0068FF] hover:text-white transition-colors"
+                      title="Chat Zalo"
+                    >
+                      <span className="font-extrabold font-arial-black text-[15px]">Z</span>
+                    </Link>
+                    <a
+                      href={`tel:${contact.phone}`}
+                      className="w-[36px] h-[36px] flex items-center justify-center rounded-full bg-dtl-red/10 text-dtl-red hover:bg-dtl-red hover:text-white transition-colors"
+                      title="Gọi ngay"
+                    >
+                      <Phone className="w-4 h-4" strokeWidth={2.5} />
+                    </a>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Link
-                    href={contact.zalo.startsWith('http') ? contact.zalo : `https://zalo.me/${contact.zalo}`}
-                    target="_blank"
-                    className="w-[36px] h-[36px] flex items-center justify-center rounded-full bg-[#E5F1FF] text-[#0068FF] hover:bg-[#0068FF] hover:text-white transition-colors"
-                    title="Chat Zalo"
-                  >
-                    <span className="font-extrabold font-arial-black text-[15px]">Z</span>
-                  </Link>
-                  <a
-                    href={`tel:${contact.phone}`}
-                    className="w-[36px] h-[36px] flex items-center justify-center rounded-full bg-dtl-red/10 text-dtl-red hover:bg-dtl-red hover:text-white transition-colors"
-                    title="Gọi ngay"
-                  >
-                    <Phone className="w-4 h-4" strokeWidth={2.5} />
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>
