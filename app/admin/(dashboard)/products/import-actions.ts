@@ -2,9 +2,16 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { bulkImportProducts, type ImportResult, type ImportRow } from '@/lib/services/admin/product-import';
+import { getRequestContext } from '@/lib/services/admin/audit-metadata';
+import {
+  bulkImportProducts,
+  type ImportResult,
+  type ImportRow,
+  type ImportRowError,
+  type ImportRowWarning,
+} from '@/lib/services/admin/product-import';
 
-export type { ImportResult, ImportRow };
+export type { ImportResult, ImportRow, ImportRowError, ImportRowWarning };
 
 export async function importProductsAction(
   _prev: ImportResult,
@@ -30,7 +37,8 @@ export async function importProductsAction(
     return { ok: false, error: 'Tối đa 500 sản phẩm mỗi lần nhập.' };
   }
 
-  const result = await bulkImportProducts(rows);
+  const requestContext = await getRequestContext();
+  const result = await bulkImportProducts(rows, requestContext);
 
   if (result.ok) {
     revalidatePath('/admin/products');
