@@ -66,11 +66,11 @@ interface QueuedFile {
 function validateFileClient(file: File): string | null {
   const ext = `.${(file.name.split('.').pop() ?? '').toLowerCase()}`;
   if (!ALLOWED_MIME_TYPES.has(file.type) || !ALLOWED_EXTENSIONS.has(ext)) {
-    return 'Chi chap nhan JPG, PNG, WebP.';
+    return 'Chỉ chấp nhận JPG, PNG, WebP.';
   }
 
   if (file.size > MAX_FILE_BYTES) {
-    return `Vuot qua 5 MB (${(file.size / 1024 / 1024).toFixed(1)} MB).`;
+    return `Vượt quá 5 MB (${(file.size / 1024 / 1024).toFixed(1)} MB).`;
   }
 
   return null;
@@ -114,10 +114,10 @@ function DropZone({ onFiles, disabled }: { onFiles: (files: File[]) => void; dis
       <Upload className={`h-8 w-8 transition ${dragOver ? 'text-[#1B3A6B]' : 'text-slate-300'}`} />
       <div className="text-center">
         <p className="text-xs font-semibold text-slate-600">
-          Keo tha anh vao day, hoac <span className="text-[#1B3A6B] underline underline-offset-2">chon tu may tinh</span>
+          Kéo thả ảnh vào đây, hoặc <span className="text-[#1B3A6B] underline underline-offset-2">chọn từ máy tính</span>
         </p>
         <p className="mt-0.5 text-[10px] text-slate-400">
-          JPG · PNG · WebP · Toi da 5 MB/anh · {MAX_FILES_PER_BATCH} anh moi lan
+          JPG · PNG · WebP · Tối đa 5 MB/ảnh · {MAX_FILES_PER_BATCH} ảnh mỗi lần
         </p>
       </div>
       <input
@@ -186,7 +186,7 @@ function QueueCard({
                 type="button"
                 onClick={() => onRemove(item.localId)}
                 className="shrink-0 rounded p-0.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
-                title="Bo anh nay"
+                title="Bỏ ảnh này"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -214,7 +214,7 @@ function QueueCard({
               type="text"
               value={item.alt}
               onChange={(event) => onAltChange(item.localId, event.target.value)}
-              placeholder="Alt text (tuy chon)"
+              placeholder="Alt text (tùy chọn)"
               className="w-full rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] placeholder-slate-300 focus:border-[#1B3A6B] focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]/20"
             />
           ) : null}
@@ -229,7 +229,7 @@ function QueueCard({
             onChange={() => onPrimaryChange(item.localId)}
             className="rounded border-slate-300 text-[#1B3A6B] focus:ring-[#1B3A6B]/30"
           />
-          {isFirst ? 'Dat lam anh dai dien chinh' : 'Anh dai dien chinh'}
+          {isFirst ? 'Đặt làm ảnh đại diện chính' : 'Ảnh đại diện chính'}
         </label>
       ) : null}
     </div>
@@ -261,7 +261,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
   function handleNewFiles(files: File[]) {
     const remaining = MAX_FILES_PER_BATCH - queue.length;
     if (remaining <= 0) {
-      toast(`Toi da ${MAX_FILES_PER_BATCH} anh moi lan tai len.`, 'error');
+      toast(`Tối đa ${MAX_FILES_PER_BATCH} ảnh mỗi lần tải lên.`, 'error');
       return;
     }
 
@@ -279,7 +279,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
     setQueue((prev) => [...prev, ...newItems]);
 
     if (files.length > remaining) {
-      toast(`Chi them duoc ${remaining} anh do da dat gioi han ${MAX_FILES_PER_BATCH}.`, 'info');
+      toast(`Chỉ thêm được ${remaining} ảnh do đã đạt giới hạn ${MAX_FILES_PER_BATCH}.`, 'info');
     }
   }
 
@@ -344,7 +344,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
         setQueue((prev) =>
           prev.map((entry) =>
             entry.localId === item.localId
-              ? { ...entry, status: 'error', error: result.error ?? 'Tai len that bai.' }
+              ? { ...entry, status: 'error', error: result.error ?? 'Tải lên thất bại.' }
               : entry,
           ),
         );
@@ -356,8 +356,8 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
     if (successCount > 0) {
       toast(
         successCount === uploadable.length
-          ? `Da tai len ${successCount} anh thanh cong.`
-          : `Tai len ${successCount}/${uploadable.length} anh thanh cong.`,
+          ? `Đã tải lên ${successCount} ảnh thành công.`
+          : `Tải lên ${successCount}/${uploadable.length} ảnh thành công.`,
         successCount === uploadable.length ? 'success' : 'error',
       );
       router.refresh();
@@ -368,7 +368,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
         });
       }, 1200);
     } else {
-      toast('Tat ca anh deu tai len that bai. Vui long thu lai.', 'error');
+      toast('Tất cả ảnh đều tải lên thất bại. Vui lòng thử lại.', 'error');
     }
   }
 
@@ -382,10 +382,10 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
     startTransition(async () => {
       const result = await setProductPrimaryImageAction(productId, imageId);
       if (result.ok) {
-        toast('Da thiet lap lam anh chinh.', 'success');
+        toast('Đã thiết lập làm ảnh chính.', 'success');
         router.refresh();
       } else {
-        toast(result.error || 'Khong the thiet lap anh chinh.', 'error');
+        toast(result.error || 'Không thể thiết lập ảnh chính.', 'error');
       }
     });
   }
@@ -394,10 +394,10 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
     startTransition(async () => {
       const result = await toggleProductImageActiveAction(imageId, !currentActive);
       if (result.ok) {
-        toast(!currentActive ? 'Da hien thi hinh anh.' : 'Da an hinh anh.', 'success');
+        toast(!currentActive ? 'Đã hiển thị hình ảnh.' : 'Đã ẩn hình ảnh.', 'success');
         router.refresh();
       } else {
-        toast(result.error || 'Khong the thay doi trang thai hinh anh.', 'error');
+        toast(result.error || 'Không thể thay đổi trạng thái hình ảnh.', 'error');
       }
     });
   }
@@ -416,10 +416,10 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
 
       const result = await reorderProductImagesAction(productId, reordered.map((image) => image.id));
       if (result.ok) {
-        toast('Da thay doi thu tu hinh anh.', 'success');
+        toast('Đã thay đổi thứ tự hình ảnh.', 'success');
         router.refresh();
       } else {
-        toast(result.error || 'Khong the thay doi thu tu.', 'error');
+        toast(result.error || 'Không thể thay đổi thứ tự.', 'error');
       }
     });
   }
@@ -442,11 +442,11 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
     setIsSavingEdit(false);
 
     if (result.ok) {
-      toast('Da cap nhat hinh anh.', 'success');
+      toast('Đã cập nhật hình ảnh.', 'success');
       setEditingImageId(null);
       router.refresh();
     } else {
-      setEditError(result.error ?? 'Cap nhat that bai.');
+      setEditError(result.error ?? 'Cập nhật thất bại.');
     }
   }
 
@@ -457,32 +457,32 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
           <div>
             <h4 className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#1B3A6B]">
               <ImageIcon className="h-4 w-4 text-blue-600" />
-              Tai len hinh anh moi
+              Tải lên hình ảnh mới
             </h4>
             <p className="mt-1 text-[10px] font-medium leading-relaxed text-slate-500">
-              Uu tien danh dau anh dai dien ngay trong hang doi de san pham luon co thumbnail dung sau khi upload.
+              Ưu tiên đánh dấu ảnh đại diện ngay trong hàng đợi để sản phẩm luôn có thumbnail đúng sau khi upload.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-white p-3 text-[10px] font-medium text-slate-500 sm:grid-cols-4">
             <div>
-              <p className="text-slate-400">Tong anh</p>
+              <p className="text-slate-400">Tổng ảnh</p>
               <p className="mt-1 text-sm font-bold text-slate-800">{sortedImages.length}</p>
             </div>
             <div>
-              <p className="text-slate-400">Anh chinh</p>
+              <p className="text-slate-400">Ảnh chính</p>
               <p className="mt-1 text-sm font-bold text-slate-800">
-                {sortedImages.some((image) => image.is_primary) ? 'Da co' : 'Chua co'}
+                {sortedImages.some((image) => image.is_primary) ? 'Đã có' : 'Chưa có'}
               </p>
             </div>
             <div>
-              <p className="text-slate-400">Dang hien</p>
+              <p className="text-slate-400">Đang hiện</p>
               <p className="mt-1 text-sm font-bold text-emerald-700">
                 {sortedImages.filter((image) => image.is_active).length}
               </p>
             </div>
             <div>
-              <p className="text-slate-400">Dang an</p>
+              <p className="text-slate-400">Đang ẩn</p>
               <p className="mt-1 text-sm font-bold text-slate-600">
                 {sortedImages.filter((image) => !image.is_active).length}
               </p>
@@ -507,9 +507,9 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
 
             <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-[10px] text-slate-500">
-                {pendingCount > 0 ? <span>{pendingCount} anh san sang tai len</span> : null}
+                {pendingCount > 0 ? <span>{pendingCount} ảnh sẵn sàng tải lên</span> : null}
                 {invalidCount > 0 ? (
-                  <span className="ml-2 text-red-500">· {invalidCount} anh khong hop le (se bo qua)</span>
+                  <span className="ml-2 text-red-500">· {invalidCount} ảnh không hợp lệ (sẽ bỏ qua)</span>
                 ) : null}
               </div>
               <div className="flex items-center gap-2">
@@ -522,7 +522,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                   disabled={isUploading}
                   className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
                 >
-                  Xoa tat ca
+                  Xóa tất cả
                 </button>
                 <button
                   type="button"
@@ -531,7 +531,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[#1B3A6B] px-4 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-[#0c1a30] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                  {isUploading ? 'Dang tai len...' : `Tai len ${pendingCount} anh`}
+                  {isUploading ? 'Đang tải lên...' : `Tải lên ${pendingCount} ảnh`}
                 </button>
               </div>
             </div>
@@ -542,7 +542,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
       {editingImageId ? (
         <div className="space-y-4 rounded-xl border border-blue-200 bg-blue-50/20 p-4">
           <h4 className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#1B3A6B]">
-            Cap nhat chi tiet anh
+            Cập nhật chi tiết ảnh
           </h4>
 
           {editError ? (
@@ -554,7 +554,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="block font-bold text-slate-700">Mo ta anh (Alt text)</label>
+              <label className="block font-bold text-slate-700">Mô tả ảnh (Alt text)</label>
               <input
                 type="text"
                 value={editAlt}
@@ -565,7 +565,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
 
             <div className="flex items-end gap-4">
               <div className="flex-1 space-y-2">
-                <label className="block font-bold text-slate-700">Thu tu sap xep</label>
+                <label className="block font-bold text-slate-700">Thứ tự sắp xếp</label>
                 <input
                   type="number"
                   min="0"
@@ -581,7 +581,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                   onChange={(event) => setEditIsActive(event.target.checked)}
                   className="rounded border-slate-300 text-[#1B3A6B] focus:ring-[#1B3A6B]/30"
                 />
-                Hien thi
+                Hiển thị
               </label>
             </div>
           </div>
@@ -595,7 +595,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
               }}
               className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 font-bold text-slate-600 transition hover:bg-slate-50"
             >
-              Huy
+              Hủy
             </button>
             <button
               type="button"
@@ -604,7 +604,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSavingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-              Luu thay doi
+              Lưu thay đổi
             </button>
           </div>
         </div>
@@ -612,15 +612,15 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
 
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h4 className="text-xs font-extrabold text-slate-800">Danh sach hinh anh hien co ({sortedImages.length})</h4>
-          <span className="text-[10px] font-medium text-slate-400">Keo thu tu, dat anh chinh, hoac an anh khong dung.</span>
+          <h4 className="text-xs font-extrabold text-slate-800">Danh sách hình ảnh hiện có ({sortedImages.length})</h4>
+          <span className="text-[10px] font-medium text-slate-400">Kéo thứ tự, đặt ảnh chính, hoặc ẩn ảnh không dùng.</span>
         </div>
 
         {sortedImages.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/20 p-8 text-center text-slate-400">
             <ImageIcon className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-            <p className="font-bold">San pham nay chua co hinh anh nao.</p>
-            <p className="mt-0.5 text-[10px]">Tai len hinh anh dau tien o khu vuc ben tren.</p>
+            <p className="font-bold">Sản phẩm này chưa có hình ảnh nào.</p>
+            <p className="mt-0.5 text-[10px]">Tải lên hình ảnh đầu tiên ở khu vực bên trên.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -637,12 +637,12 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                   {image.is_primary ? (
                     <span className="flex items-center gap-0.5 rounded bg-blue-600 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-white shadow-sm">
                       <Star className="h-2.5 w-2.5 shrink-0 fill-white" />
-                      Anh dai dien
+                      Ảnh đại diện
                     </span>
                   ) : null}
                   {!image.is_active ? (
                     <span className="rounded bg-slate-500 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-white shadow-sm">
-                      Dang an
+                      Đang ẩn
                     </span>
                   ) : null}
                 </div>
@@ -651,7 +651,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                   {image.public_url ? (
                     <Image
                       src={image.public_url}
-                      alt={image.alt || 'Anh san pham'}
+                      alt={image.alt || 'Ảnh sản phẩm'}
                       fill
                       sizes="(max-width: 768px) 100vw, 33vw"
                       className="object-cover"
@@ -666,11 +666,11 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
 
                 <div className="mb-3 flex flex-1 flex-col justify-between space-y-2">
                   <div>
-                    <p className="line-clamp-1 font-bold text-slate-800" title={image.alt || 'Khong co mo ta'}>
-                      {image.alt || <span className="font-medium italic text-slate-400">Khong co mo ta (alt)</span>}
+                    <p className="line-clamp-1 font-bold text-slate-800" title={image.alt || 'Không có mô tả'}>
+                      {image.alt || <span className="font-medium italic text-slate-400">Không có mô tả (alt)</span>}
                     </p>
                     <p className="mt-0.5 font-mono text-[10px] text-slate-400">
-                      Lop xep: <span className="font-bold text-slate-700">#{image.sort_order}</span>
+                      Lớp xếp: <span className="font-bold text-slate-700">#{image.sort_order}</span>
                     </p>
                   </div>
 
@@ -679,21 +679,21 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                       type="button"
                       onClick={() => handleMove(index, 'up')}
                       disabled={index === 0 || isPending}
-                      className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-                      title="Di chuyen len truoc"
+                      className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                      title="Di chuyển lên trước"
                     >
                       <ArrowUp className="h-3.5 w-3.5" />
-                      Len
+                      Lên
                     </button>
                     <button
                       type="button"
                       onClick={() => handleMove(index, 'down')}
                       disabled={index === sortedImages.length - 1 || isPending}
-                      className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-                      title="Di chuyen xuong sau"
+                      className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                      title="Di chuyển xuống sau"
                     >
                       <ArrowDown className="h-3.5 w-3.5" />
-                      Xuong
+                      Xuống
                     </button>
                   </div>
                 </div>
@@ -704,9 +704,10 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                       type="button"
                       onClick={() => handleSetPrimary(image.id)}
                       disabled={isPending || !image.is_active}
-                      className="inline-flex items-center justify-center rounded-md bg-blue-50 px-3 py-2 text-[10px] font-bold text-blue-700 transition hover:bg-blue-100 disabled:opacity-40"
+                      title={!image.is_active ? 'Cần hiển thị ảnh trước khi đặt làm ảnh chính' : undefined}
+                      className="inline-flex items-center justify-center rounded-md bg-blue-50 px-3 py-2 text-[10px] font-bold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Dat anh chinh
+                      Đặt ảnh chính
                     </button>
                   ) : null}
 
@@ -715,10 +716,10 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                     onClick={() => handleToggleActive(image.id, image.is_active)}
                     disabled={isPending}
                     className="inline-flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-bold text-slate-500 transition hover:bg-slate-100"
-                    title={image.is_active ? 'An anh' : 'Hien anh'}
+                    title={image.is_active ? 'Ẩn ảnh' : 'Hiện ảnh'}
                   >
                     {image.is_active ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    {image.is_active ? 'An anh' : 'Hien anh'}
+                    {image.is_active ? 'Ẩn ảnh' : 'Hiện ảnh'}
                   </button>
 
                   <button
@@ -733,7 +734,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                     disabled={isPending}
                     className="inline-flex items-center justify-center rounded-md bg-slate-100 px-3 py-2 text-[10px] font-bold text-slate-600 transition hover:bg-slate-200"
                   >
-                    Chinh sua
+                    Chỉnh sửa
                   </button>
 
                   <button
@@ -741,10 +742,10 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
                     onClick={() => setConfirmDeleteId(image.id)}
                     disabled={isPending}
                     className="inline-flex items-center justify-center gap-1 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-bold text-red-600 transition hover:bg-red-100"
-                    title="Xoa hinh anh"
+                    title="Xóa hình ảnh"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Xoa anh
+                    Xóa ảnh
                   </button>
                 </div>
               </div>
@@ -756,19 +757,19 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
       <AdminConfirmDialog
         open={!!confirmDeleteId}
         onClose={() => setConfirmDeleteId(null)}
-        title="Xoa hinh anh san pham"
-        description="Hanh dong nay se xoa vinh vien hinh anh khoi du lieu va don dep bo nho Storage. Ban co chac chan muon tiep tuc?"
-        itemName="Hinh anh da chon"
-        confirmLabel="Xoa hinh anh"
+        title="Xóa hình ảnh sản phẩm"
+        description="Hành động này sẽ xóa vĩnh viễn hình ảnh khỏi dữ liệu và dọn dẹp bộ nhớ Storage. Bạn có chắc chắn muốn tiếp tục?"
+        itemName="Hình ảnh đã chọn"
+        confirmLabel="Xóa hình ảnh"
         onConfirm={async () => {
           if (!confirmDeleteId) {
-            return { ok: false, error: 'Thieu ID hinh anh.' };
+            return { ok: false, error: 'Thiếu ID hình ảnh.' };
           }
 
           return deleteProductImageAction(confirmDeleteId);
         }}
         onSuccess={() => {
-          toast('Da xoa hinh anh san pham.', 'success');
+          toast('Đã xóa hình ảnh sản phẩm.', 'success');
           setConfirmDeleteId(null);
           router.refresh();
         }}

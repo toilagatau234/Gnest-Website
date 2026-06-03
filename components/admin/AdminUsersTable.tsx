@@ -59,7 +59,7 @@ export function AdminUsersTable({ users, currentAdminId, currentUserRole }: Admi
         <div className="relative max-w-md flex-1">
           <input
             type="search"
-            placeholder="Tim theo ten, username, email dang nhap..."
+            placeholder="Tìm theo tên, username, email đăng nhập..."
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
@@ -73,7 +73,7 @@ export function AdminUsersTable({ users, currentAdminId, currentUserRole }: Admi
             onChange={(event) => setRoleFilter(event.target.value)}
             className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
           >
-            <option value="all">Tat ca vai tro</option>
+            <option value="all">Tất cả vai trò</option>
             {Object.entries(ADMIN_ROLE_LABELS).map(([role, label]) => (
               <option key={role} value={role}>
                 {label}
@@ -86,19 +86,19 @@ export function AdminUsersTable({ users, currentAdminId, currentUserRole }: Admi
             onChange={(event) => setStatusFilter(event.target.value)}
             className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
           >
-            <option value="all">Tat ca trang thai</option>
-            <option value="active">Dang hoat dong</option>
-            <option value="suspended">Da tam khoa</option>
-            <option value="reset">Cho doi mat khau</option>
+            <option value="all">Tất cả trạng thái</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="suspended">Đã tạm khóa</option>
+            <option value="reset">Chờ đổi mật khẩu</option>
           </select>
         </div>
       </div>
 
       <div className="space-y-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:p-6">
         <div>
-          <h3 className="text-sm font-extrabold text-[#1B3A6B]">Danh sach nhan su quan tri</h3>
+          <h3 className="text-sm font-extrabold text-[#1B3A6B]">Danh sách nhân sự quản trị</h3>
           <p className="mt-0.5 text-[10px] text-slate-400">
-            Gom email dang nhap noi bo, vai tro, trang thai kich hoat va co doi mat khau lan dau.
+            Gồm email đăng nhập nội bộ, vai trò, trạng thái kích hoạt và cờ đổi mật khẩu lần đầu.
           </p>
         </div>
 
@@ -106,12 +106,12 @@ export function AdminUsersTable({ users, currentAdminId, currentUserRole }: Admi
           <table className="min-w-[980px] w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                <th className="p-3.5">Tai khoan</th>
-                <th className="p-3.5">Vai tro</th>
-                <th className="p-3.5">Bao mat</th>
-                <th className="p-3.5">Trang thai</th>
-                <th className="p-3.5">Ngay tao</th>
-                <th className="p-3.5 text-right">Thao tac</th>
+                <th className="p-3.5">Tài khoản</th>
+                <th className="p-3.5">Vai trò</th>
+                <th className="p-3.5">Bảo mật</th>
+                <th className="p-3.5">Trạng thái</th>
+                <th className="p-3.5">Ngày tạo</th>
+                <th className="p-3.5 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -129,13 +129,13 @@ export function AdminUsersTable({ users, currentAdminId, currentUserRole }: Admi
                             </span>
                             {isSelf ? (
                               <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-blue-800">
-                                Ban
+                                Bạn
                               </span>
                             ) : null}
                             {user.force_password_change ? (
                               <span className="inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-700">
                                 <KeyRound className="h-2.5 w-2.5" />
-                                Doi mat khau
+                                Đổi mật khẩu
                               </span>
                             ) : null}
                           </div>
@@ -145,7 +145,7 @@ export function AdminUsersTable({ users, currentAdminId, currentUserRole }: Admi
                             <span className="font-medium">{user.email}</span>
                           </div>
                           {user.contact_email ? (
-                            <p className="text-[10px] text-slate-400">Lien he: {user.contact_email}</p>
+                            <p className="text-[10px] text-slate-400">Liên hệ: {user.contact_email}</p>
                           ) : null}
                         </div>
                       </td>
@@ -176,11 +176,11 @@ export function AdminUsersTable({ users, currentAdminId, currentUserRole }: Admi
                                 : 'border-rose-200 bg-rose-50 text-[#E31E24]'
                             }`}
                           >
-                            {user.is_active ? 'Dang hoat dong' : 'Da tam khoa'}
+                            {user.is_active ? 'Đang hoạt động' : 'Đã tạm khóa'}
                           </span>
                           {user.force_password_change ? (
                             <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                              Chua doi mat khau
+                              Chưa đổi mật khẩu
                             </span>
                           ) : null}
                         </div>
@@ -204,7 +204,7 @@ export function AdminUsersTable({ users, currentAdminId, currentUserRole }: Admi
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <UserCog className="h-10 w-10 text-slate-300" />
                       <p className="text-xs font-semibold text-slate-500">
-                        Khong tim thay tai khoan quan tri nao khop voi bo loc.
+                        Không tìm thấy tài khoản quản trị nào khớp với bộ lọc.
                       </p>
                     </div>
                   </td>
@@ -218,17 +218,17 @@ export function AdminUsersTable({ users, currentAdminId, currentUserRole }: Admi
       <div className="flex flex-col gap-2 rounded-xl border border-[#E5E7EF] bg-[#F7F9FB] p-3.5 text-[11px] font-medium text-[#646464] sm:flex-row sm:items-center sm:justify-between">
         <p className="flex items-center gap-1.5">
           <Check className="h-3.5 w-3.5 text-emerald-600" />
-          Tai khoan noi bo duoc dong bo voi Supabase Auth va buoc doi mat khau o lan dang nhap dau.
+          Tài khoản nội bộ được đồng bộ với Supabase Auth và buộc đổi mật khẩu ở lần đăng nhập đầu.
         </p>
-        <span className="font-bold text-[#1B3A6B]">{filteredUsers.length} tai khoan</span>
+        <span className="font-bold text-[#1B3A6B]">{filteredUsers.length} tài khoản</span>
       </div>
 
       {users.some((user) => user.force_password_change) ? (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-xs text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <p className="leading-relaxed">
-            Tai khoan co nhan `Doi mat khau` moi chi nhan mat khau tam. Cho den khi nguoi dung tu cap nhat
-            mat khau, dashboard se chuyen ho sang man hinh doi mat khau bat buoc.
+            Tài khoản có nhãn <strong>Đổi mật khẩu</strong> mới chỉ nhận mật khẩu tạm. Cho đến khi người dùng tự cập nhật
+            mật khẩu, dashboard sẽ chuyển họ sang màn hình đổi mật khẩu bắt buộc.
           </p>
         </div>
       ) : null}

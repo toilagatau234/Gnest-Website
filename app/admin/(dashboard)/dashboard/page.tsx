@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ExternalLink,
   FolderTree,
+  ImageIcon,
   Lock,
   Package,
   Phone,
@@ -13,6 +14,7 @@ import {
   ScrollText,
   Server,
   TrendingUp,
+  Warehouse,
 } from 'lucide-react';
 
 import { AdminLoadingScene } from '@/components/admin/AdminLoadingScene';
@@ -52,18 +54,40 @@ function zaloLink(phone: string) {
   return `https://zalo.me/${phone.replace(/\D/g, '')}`;
 }
 
+/** Compact inline mini-bar showing a ratio out of a total. */
+function MiniBar({
+  value,
+  total,
+  colorClass = 'bg-[#4880FF]',
+}: {
+  value: number;
+  total: number;
+  colorClass?: string;
+}) {
+  const pct = total > 0 ? Math.max((value / total) * 100, 2) : 0;
+  return (
+    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-100/80">
+      <div className={`h-full rounded-full transition-all ${colorClass}`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
 function KpiCard({
   label,
   value,
   hint,
   icon,
   tone = 'blue',
+  barValue,
+  barTotal,
 }: {
   label: string;
   value: string | number;
   hint: string;
   icon: ReactNode;
   tone?: 'blue' | 'red' | 'amber' | 'emerald' | 'slate';
+  barValue?: number;
+  barTotal?: number;
 }) {
   const toneClass = {
     blue: 'bg-[#4880FF]/10 text-[#4880FF]',
@@ -71,6 +95,14 @@ function KpiCard({
     amber: 'bg-amber-50 text-amber-600',
     emerald: 'bg-emerald-50 text-emerald-600',
     slate: 'bg-slate-100 text-slate-600',
+  }[tone];
+
+  const barColor = {
+    blue: 'bg-[#4880FF]',
+    red: 'bg-[#E31E24]',
+    amber: 'bg-amber-400',
+    emerald: 'bg-emerald-500',
+    slate: 'bg-slate-400',
   }[tone];
 
   return (
@@ -85,6 +117,9 @@ function KpiCard({
       </div>
       <p className="mt-3 text-2xl font-extrabold tracking-tight text-[#202224]">{value}</p>
       <p className="mt-1 text-[11px] font-medium text-[#646464]">{hint}</p>
+      {barValue !== undefined && barTotal !== undefined && barTotal > 0 ? (
+        <MiniBar value={barValue} total={barTotal} colorClass={barColor} />
+      ) : null}
     </div>
   );
 }
@@ -151,7 +186,7 @@ function ProductInterestChart({ products }: { products: ProductInterestMetric[] 
           <TrendingUp className="mx-auto h-10 w-10 text-slate-300" />
           <p className="mt-3 text-sm font-extrabold text-[#202224]">Chưa đủ dữ liệu quan tâm sản phẩm</p>
           <p className="mt-1 text-xs font-medium text-[#646464]">
-            Khi inquiry có `product_id`, chart này sẽ tự động hiển thị top sản phẩm.
+            Khi inquiry có <code>product_id</code>, chart này sẽ tự động hiển thị top sản phẩm.
           </p>
         </div>
       ) : (
@@ -189,6 +224,75 @@ function ProductInterestChart({ products }: { products: ProductInterestMetric[] 
   );
 }
 
+/** Product overview panel with detailed breakdown cards */
+function ProductOverviewPanel({ counts }: { counts: DashboardData['counts'] }) {
+  const total = counts.products;
+  const active = total - counts.hiddenProducts;
+  const withStock = total - counts.outOfStockProducts;
+
+  return (
+    <div className="admin-card p-5">
+      <div className="mb-4 flex items-center justify-between border-b border-[#EEF2F6] pb-3">
+        <h3 className="flex items-center gap-1.5 text-sm font-extrabold text-[#202224]">
+          <Package className="h-4 w-4 text-[#4880FF]" />
+          Tổng quan sản phẩm
+        </h3>
+        <Link href="/admin/products" className="text-xs font-bold text-[#3749A6] hover:underline">
+          Quản lý
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tổng catalog</p>
+          <p className="mt-1 text-xl font-extrabold text-[#202224]">{total}</p>
+          <MiniBar value={total} total={total} colorClass="bg-[#4880FF]/40" />
+        </div>
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Hiển thị</p>
+          <p className="mt-1 text-xl font-extrabold text-emerald-700">{active}</p>
+          <MiniBar value={active} total={total} colorClass="bg-emerald-500" />
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Đang ẩn</p>
+          <p className="mt-1 text-xl font-extrabold text-slate-600">{counts.hiddenProducts}</p>
+          <MiniBar value={counts.hiddenProducts} total={total} colorClass="bg-slate-400" />
+        </div>
+        <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600">Hết hàng</p>
+          <p className="mt-1 text-xl font-extrabold text-rose-700">{counts.outOfStockProducts}</p>
+          <MiniBar value={counts.outOfStockProducts} total={total} colorClass="bg-rose-500" />
+        </div>
+        <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Tồn thấp</p>
+          <p className="mt-1 text-xl font-extrabold text-amber-700">{counts.lowStockProducts}</p>
+          <p className="mt-0.5 text-[9px] text-amber-600">≤ 5 đơn vị</p>
+          <MiniBar value={counts.lowStockProducts} total={Math.max(withStock, 1)} colorClass="bg-amber-400" />
+        </div>
+        <div className="rounded-xl border border-rose-100 bg-rose-50/40 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-rose-500 flex items-center gap-1">
+            <ImageIcon className="h-3 w-3" /> Thiếu ảnh
+          </p>
+          <p className="mt-1 text-xl font-extrabold text-rose-700">{counts.missingImages}</p>
+          <MiniBar value={counts.missingImages} total={total} colorClass="bg-rose-400" />
+        </div>
+      </div>
+
+      {counts.missingImages > 0 || counts.outOfStockProducts > 0 ? (
+        <p className="mt-3 text-[10px] font-medium text-slate-400">
+          {[
+            counts.missingImages > 0 && `${counts.missingImages} sản phẩm thiếu ảnh`,
+            counts.outOfStockProducts > 0 && `${counts.outOfStockProducts} hết hàng`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}{' '}
+          — cần xử lý.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 async function DashboardDataPanels() {
   const data = await getDashboardData();
   const { counts, attention, recentInquiries, recentActivity, hasSupabase, productInterest } = data;
@@ -196,14 +300,72 @@ async function DashboardDataPanels() {
   return (
     <>
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <KpiCard label="Sản phẩm đang hiển thị" value={counts.products - counts.hiddenProducts} hint={`${counts.products} trong catalog`} icon={<Package className="h-4 w-4" />} />
-        <KpiCard label="Sản phẩm đang ẩn" value={counts.hiddenProducts} hint="Cần kiểm tra trạng thái" icon={<Package className="h-4 w-4" />} tone="slate" />
-        <KpiCard label="Sản phẩm hết kho" value={counts.outOfStockProducts} hint="Không còn hàng sẵn sỉ" icon={<AlertTriangle className="h-4 w-4" />} tone="amber" />
-        <KpiCard label="Sản phẩm thiếu ảnh" value={counts.missingImages} hint="Nên bổ sung media" icon={<Package className="h-4 w-4" />} tone="red" />
-        <KpiCard label="Danh mục hiển thị" value={counts.visibleCategories} hint={`${counts.categories} trong cây menu`} icon={<FolderTree className="h-4 w-4" />} tone="emerald" />
-        <KpiCard label="Liên hệ chưa xử lý" value={counts.newInquiries} hint={`${counts.totalInquiries} yêu cầu CRM`} icon={<Quote className="h-4 w-4" />} tone="red" />
-        <KpiCard label="Liên hệ bán hàng" value={counts.activeContacts} hint="Đang hiển thị công khai" icon={<PhoneCall className="h-4 w-4" />} />
-        <KpiCard label="Tin tuyển dụng / log mới" value={`${counts.activeJobs} / ${counts.recentActivities}`} hint="Việc làm hiện hành và 6 log gần nhất" icon={<ScrollText className="h-4 w-4" />} tone="blue" />
+        <KpiCard
+          label="Sản phẩm đang hiển thị"
+          value={counts.products - counts.hiddenProducts}
+          hint={`${counts.products} trong catalog`}
+          icon={<Package className="h-4 w-4" />}
+          barValue={counts.products - counts.hiddenProducts}
+          barTotal={counts.products}
+        />
+        <KpiCard
+          label="Sản phẩm đang ẩn"
+          value={counts.hiddenProducts}
+          hint="Cần kiểm tra trạng thái"
+          icon={<Package className="h-4 w-4" />}
+          tone="slate"
+          barValue={counts.hiddenProducts}
+          barTotal={counts.products}
+        />
+        <KpiCard
+          label="Hết kho / Tồn thấp"
+          value={`${counts.outOfStockProducts} / ${counts.lowStockProducts}`}
+          hint="Hết hàng và tồn kho ≤ 5"
+          icon={<Warehouse className="h-4 w-4" />}
+          tone="amber"
+          barValue={counts.outOfStockProducts + counts.lowStockProducts}
+          barTotal={counts.products}
+        />
+        <KpiCard
+          label="Sản phẩm thiếu ảnh"
+          value={counts.missingImages}
+          hint="Nên bổ sung media"
+          icon={<ImageIcon className="h-4 w-4" />}
+          tone="red"
+          barValue={counts.missingImages}
+          barTotal={counts.products}
+        />
+        <KpiCard
+          label="Danh mục hiển thị"
+          value={counts.visibleCategories}
+          hint={`${counts.categories} trong cây menu`}
+          icon={<FolderTree className="h-4 w-4" />}
+          tone="emerald"
+          barValue={counts.visibleCategories}
+          barTotal={counts.categories}
+        />
+        <KpiCard
+          label="Liên hệ chưa xử lý"
+          value={counts.newInquiries}
+          hint={`${counts.totalInquiries} yêu cầu CRM`}
+          icon={<Quote className="h-4 w-4" />}
+          tone="red"
+          barValue={counts.newInquiries}
+          barTotal={Math.max(counts.totalInquiries, 1)}
+        />
+        <KpiCard
+          label="Liên hệ bán hàng"
+          value={counts.activeContacts}
+          hint="Đang hiển thị công khai"
+          icon={<PhoneCall className="h-4 w-4" />}
+        />
+        <KpiCard
+          label="Tin tuyển dụng / log mới"
+          value={`${counts.activeJobs} / ${counts.recentActivities}`}
+          hint="Việc làm hiện hành và 6 log gần nhất"
+          icon={<ScrollText className="h-4 w-4" />}
+          tone="blue"
+        />
       </div>
 
       <div className="admin-card border-l-4 border-l-[#E31E24] p-5">
@@ -222,7 +384,10 @@ async function DashboardDataPanels() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <ProductInterestChart products={productInterest} />
-        <QuickHealthCard hasSupabase={hasSupabase} />
+        <div className="space-y-6">
+          <ProductOverviewPanel counts={counts} />
+          <QuickHealthCard hasSupabase={hasSupabase} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">

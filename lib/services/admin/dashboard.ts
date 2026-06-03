@@ -21,6 +21,7 @@ export interface DashboardData {
     visibleCategories: number;
     hiddenProducts: number;
     outOfStockProducts: number;
+    lowStockProducts: number;
     missingImages: number;
     activeContacts: number;
     activeJobs: number;
@@ -56,6 +57,7 @@ const EMPTY: DashboardData = {
     visibleCategories: 0,
     hiddenProducts: 0,
     outOfStockProducts: 0,
+    lowStockProducts: 0,
     missingImages: 0,
     activeContacts: 0,
     activeJobs: 0,
@@ -177,6 +179,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         visibleCategories: categories.filter((category) => category.is_active).length,
         hiddenProducts: products.filter((product) => !product.is_active).length,
         outOfStockProducts: products.filter((product) => product.stock === 0).length,
+        lowStockProducts: products.filter((product) => product.is_active && product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD).length,
         missingImages: products.filter((product) => !product.product_images || product.product_images.length === 0).length,
         activeContacts: contactRes.count ?? 0,
         activeJobs: jobsRes.count ?? 0,

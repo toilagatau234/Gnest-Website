@@ -15,7 +15,7 @@ const INTERNAL_EMAIL_DOMAIN = 'internal.admin.gnest.local';
 function normalizeUsername(value: string) {
   return value
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .replace(/[đĐ]/g, 'd')
     .toLowerCase()
     .trim()
@@ -40,7 +40,7 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
 
   useEffect(() => {
     if (state.ok) {
-      toast('Tai khoan noi bo da duoc tao. Sao chep mat khau tam truoc khi dong.', 'success');
+      toast('Tài khoản nội bộ đã được tạo. Sao chép mật khẩu tạm trước khi đóng.', 'success');
     }
   }, [state.ok, toast]);
 
@@ -59,7 +59,7 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
               {state.createdUser.user.display_name ?? state.createdUser.user.email}
             </p>
             <p className="mt-1 text-xs font-medium text-emerald-800">
-              Tai khoan da duoc kich hoat. Nhan su can doi mat khau ngay sau khi dang nhap lan dau.
+              Tài khoản đã được kích hoạt. Nhân sự cần đổi mật khẩu ngay sau khi đăng nhập lần đầu.
             </p>
           </div>
         </div>
@@ -67,13 +67,13 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Email dang nhap</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Email đăng nhập</p>
           <p className="mt-1 break-all text-sm font-semibold text-slate-900">
             {state.createdUser.loginEmail}
           </p>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">Mat khau tam</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">Mật khẩu tạm</p>
           <p className="mt-1 break-all font-mono text-sm font-bold text-amber-950">
             {state.createdUser.temporaryPassword}
           </p>
@@ -81,16 +81,16 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
-        <p className="font-bold text-slate-800">Luu y ban giao</p>
+        <p className="font-bold text-slate-800">Lưu ý bàn giao</p>
         <p className="mt-1 leading-relaxed">
-          Chia se thong tin dang nhap qua kenh noi bo an toan. Sau khi doi mat khau, co `force_password_change`
-          se tu dong duoc go.
+          Chia sẻ thông tin đăng nhập qua kênh nội bộ an toàn. Sau khi đổi mật khẩu, cờ <code>force_password_change</code>
+          sẽ tự động được gỡ.
         </p>
       </div>
 
       <div className="flex justify-end">
         <button type="button" onClick={onClose} className="admin-button-primary px-6 text-xs">
-          Da sao chep, dong lai
+          Đã sao chép, đóng lại
         </button>
       </div>
     </div>
@@ -99,7 +99,7 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block sm:col-span-2">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            Ten hien thi <span className="text-[#E31E24]">*</span>
+            Tên hiển thị <span className="text-[#E31E24]">*</span>
           </span>
           <input
             name="display_name"
@@ -113,14 +113,14 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
                 setUsername(normalizeUsername(nextValue));
               }
             }}
-            placeholder="VD: Nguyen Van An"
+            placeholder="VD: Nguyễn Văn An"
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
           />
         </label>
 
         <label className="block">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            Ten dang nhap <span className="text-[#E31E24]">*</span>
+            Tên đăng nhập <span className="text-[#E31E24]">*</span>
           </span>
           <input
             name="username"
@@ -135,12 +135,12 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
           />
           <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Chi dung chu thuong, so va cac ky tu `.`, `_`, `-`.
+            Chỉ dùng chữ thường, số và các ký tự <code>.</code>, <code>_</code>, <code>-</code>.
           </span>
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-xs font-bold text-slate-600">Email lien he</span>
+          <span className="mb-1 block text-xs font-bold text-slate-600">Email liên hệ</span>
           <input
             name="contact_email"
             type="email"
@@ -150,13 +150,13 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
           />
           <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Dung de lien he noi bo, khong phai email dang nhap.
+            Dùng để liên hệ nội bộ, không phải email đăng nhập.
           </span>
         </label>
 
         <label className="block sm:col-span-2">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            Vai tro he thong <span className="text-[#E31E24]">*</span>
+            Vai trò hệ thống <span className="text-[#E31E24]">*</span>
           </span>
           <select
             name="role"
@@ -176,11 +176,11 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
       <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
         <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
           <UserPlus2 className="h-3.5 w-3.5 text-[#1B3A6B]" />
-          Login preview
+          Xem trước email đăng nhập
         </p>
         <p className="mt-1 break-all text-sm font-semibold text-slate-900">{previewLoginEmail}</p>
         <p className="mt-1 text-[10px] font-medium text-slate-500">
-          He thong se tao mat khau tam va yeu cau doi mat khau sau khi dang nhap lan dau.
+          Hệ thống sẽ tạo mật khẩu tạm và yêu cầu đổi mật khẩu sau khi đăng nhập lần đầu.
         </p>
       </div>
 
@@ -192,11 +192,11 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
 
       <div className="flex justify-end gap-3">
         <button type="button" onClick={onClose} disabled={isPending} className="admin-button-secondary px-5 text-xs">
-          Huy
+          Hủy
         </button>
         <button type="submit" form={formId} disabled={isPending} className="admin-button-primary px-6 text-xs">
           {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {isPending ? 'Dang tao tai khoan...' : 'Tao tai khoan'}
+          {isPending ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
         </button>
       </div>
     </form>
@@ -220,14 +220,14 @@ export function AdminUserInviteDialog() {
   return (
     <>
       <AdminActionButton icon={<KeyRound className="h-4 w-4" />} onClick={openDialog}>
-        Tao tai khoan
+        Tạo tài khoản
       </AdminActionButton>
 
       <AdminModal
         open={open}
         onClose={closeDialog}
-        title="Tao tai khoan quan tri noi bo"
-        description="Cap tai khoan dang nhap noi bo cho nhan su. He thong se tao email dang nhap noi bo, mat khau tam va bat buoc doi mat khau o lan dang nhap dau tien."
+        title="Tạo tài khoản quản trị nội bộ"
+        description="Cấp tài khoản đăng nhập nội bộ cho nhân sự. Hệ thống sẽ tạo email đăng nhập nội bộ, mật khẩu tạm và bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên."
         size="lg"
         footer={null}
       >

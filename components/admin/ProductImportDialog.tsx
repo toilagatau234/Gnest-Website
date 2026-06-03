@@ -37,8 +37,11 @@ const ALL_COLUMNS = [
   'category_slug',
   'description',
   'price',
+  'wholesale_price',
   'stock',
   'is_active',
+  'image_url',
+  'tags',
   'specs',
 ] as const;
 
@@ -55,8 +58,11 @@ function downloadTemplate() {
       category_slug: 'chai-lo-thuy-tinh',
       description: 'Mô tả ngắn hiển thị cho catalog sỉ.',
       price: 18500,
+      wholesale_price: 15000,
       stock: 240,
       is_active: 'true',
+      image_url: 'https://cdn.example.com/hu-thuy-tinh-500ml.jpg',
+      tags: 'thuy-tinh,nap-nhom,yen-sao',
       specs: '{"dungTich":"500ml","chatLieu":"Thuy tinh","quyCach":"48 chai/thung"}',
     },
     {
@@ -65,51 +71,69 @@ function downloadTemplate() {
       category_slug: 'phu-kien-nganh-yen-sao',
       description: 'Phụ kiện đi kèm cho hũ thủy tinh.',
       price: 2100,
+      wholesale_price: '',
       stock: 1000,
       is_active: 'true',
+      image_url: '',
+      tags: 'nap-thiec,phu-kien',
       specs: '{"duongKinh":"58mm","mauSac":"Vang"}',
     },
     {
-      name: '',
+      name: '← Xóa dòng mẫu này trước khi nhập',
       slug: '',
       category_slug: '',
       description: '',
       price: '',
+      wholesale_price: '',
       stock: '',
       is_active: 'true',
+      image_url: '',
+      tags: '',
       specs: '',
     },
   ];
   const instructions = [
-    ['Hướng dẫn nhanh', 'Chi tiết'],
-    ['1', 'Không đổi tên các cột trong sheet Products Template.'],
-    ['2', 'Cột bắt buộc: name, slug, category_slug.'],
-    ['3', 'slug chỉ dùng chữ thường, số và dấu gạch ngang.'],
-    ['4', 'category_slug phải khớp với slug danh mục đang hiển thị trong CMS.'],
-    ['5', 'price là số không âm. Để trống nếu muốn hiển thị "Liên hệ".'],
-    ['6', 'stock là số nguyên >= 0.'],
-    ['7', 'is_active chấp nhận: true/false, 1/0, yes/no, active/hidden.'],
-    ['8', 'specs là JSON object hợp lệ, ví dụ {"dungTich":"500ml","chatLieu":"Thuy tinh"}.'],
-    ['9', 'Nên nhập tối đa 500 dòng cho mỗi lần import.'],
+    ['#', 'Hướng dẫn', 'Chi tiết'],
+    ['BẮT BUỘC', 'name', 'Tên sản phẩm hiển thị trong catalog.'],
+    ['BẮT BUỘC', 'slug', 'Chỉ dùng chữ thường, số và dấu gạch ngang (không dấu, không khoảng trắng).'],
+    ['BẮT BUỘC', 'category_slug', 'Slug danh mục đang hiển thị — lấy từ trang Danh mục trong admin CMS.'],
+    ['TÙY CHỌN', 'description', 'Mô tả ngắn cho catalog sỉ (text thuần).'],
+    ['TÙY CHỌN', 'price', 'Giá lẻ niêm yết. Số không âm, ví dụ: 18500. Để trống → hiển thị "Liên hệ tư vấn".'],
+    ['TÙY CHỌN', 'wholesale_price', 'Giá sỉ tham khảo (chưa tích hợp bậc sỉ). Để trống nếu không dùng.'],
+    ['TÙY CHỌN', 'stock', 'Số lượng tồn kho (số nguyên ≥ 0). Để trống → mặc định 0.'],
+    ['TÙY CHỌN', 'is_active', 'Trạng thái hiển thị. Chấp nhận: true / false / 1 / 0 / yes / no / active / hidden.'],
+    ['TÙY CHỌN', 'image_url', 'URL ảnh chính (https://...). Chưa tự động import — chỉ lưu metadata.'],
+    ['TÙY CHỌN', 'tags', 'Tags phân cách bằng dấu phẩy, ví dụ: thuy-tinh,yen-sao. Chưa hỗ trợ filtering.'],
+    ['TÙY CHỌN', 'specs', 'JSON object thuộc tính kỹ thuật, ví dụ: {"dungTich":"500ml","chatLieu":"Thuy tinh"}.'],
+    ['', '', ''],
+    ['GHI CHÚ', 'Giới hạn', 'Tối đa 500 dòng dữ liệu mỗi lần import.'],
+    ['GHI CHÚ', 'Không đổi tên cột', 'Tên cột trong sheet "Products Template" phải giữ nguyên.'],
+    ['GHI CHÚ', 'Lỗi import', 'Hệ thống báo lỗi theo từng dòng. Tải file lỗi để xem chi tiết và gợi ý sửa.'],
   ];
   const validValues = [
-    ['Trường', 'Giá trị hợp lệ / ghi chú'],
-    ['category_slug', 'Lấy từ trang Danh mục trong admin'],
-    ['is_active', 'true, false, 1, 0, yes, no, active, hidden'],
-    ['price', 'Số không âm, ví dụ 18500'],
-    ['stock', 'Số nguyên không âm, ví dụ 240'],
-    ['specs', '{"dungTich":"500ml","chatLieu":"Thuy tinh"}'],
+    ['Cột', 'Giá trị hợp lệ / ghi chú', 'Ví dụ'],
+    ['name', 'Văn bản bất kỳ', 'Hũ thủy tinh 500ml nút nhôm'],
+    ['slug', 'Chữ thường + số + gạch ngang, không khoảng trắng', 'hu-thuy-tinh-500ml-nut-nhom'],
+    ['category_slug', 'Lấy từ trang Danh mục trong admin CMS', 'chai-lo-thuy-tinh'],
+    ['price', 'Số không âm hoặc để trống (= Liên hệ)', '18500'],
+    ['wholesale_price', 'Số không âm hoặc để trống', '15000'],
+    ['stock', 'Số nguyên ≥ 0 hoặc để trống (= 0)', '240'],
+    ['is_active', 'true / false / 1 / 0 / yes / no / active / hidden', 'true'],
+    ['image_url', 'URL https:// hoặc để trống', 'https://cdn.example.com/sp.jpg'],
+    ['tags', 'Chuỗi phân cách bằng dấu phẩy hoặc để trống', 'thuy-tinh,yen-sao'],
+    ['specs', 'JSON object hợp lệ hoặc để trống', '{"dungTich":"500ml"}'],
   ];
+
   const ws = XLSX.utils.json_to_sheet(sampleRows, { header: [...ALL_COLUMNS] });
-  ws['!cols'] = [28, 32, 24, 40, 14, 12, 14, 44].map((w) => ({ wch: w }));
-  ws['!autofilter'] = { ref: 'A1:H4' };
+  ws['!cols'] = [28, 32, 24, 40, 14, 16, 12, 14, 44, 28, 44].map((w) => ({ wch: w }));
+  ws['!autofilter'] = { ref: 'A1:K4' };
   ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
 
   const instructionsSheet = XLSX.utils.aoa_to_sheet(instructions);
-  instructionsSheet['!cols'] = [{ wch: 8 }, { wch: 110 }];
+  instructionsSheet['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 100 }];
 
   const validValuesSheet = XLSX.utils.aoa_to_sheet(validValues);
-  validValuesSheet['!cols'] = [{ wch: 18 }, { wch: 80 }];
+  validValuesSheet['!cols'] = [{ wch: 18 }, { wch: 50 }, { wch: 50 }];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Products Template');
   XLSX.utils.book_append_sheet(wb, instructionsSheet, 'Instructions');
@@ -311,17 +335,20 @@ function UploadStep({
         </p>
         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
           {[
-            { col: 'name', note: 'Bắt buộc' },
-            { col: 'slug', note: 'Bắt buộc — chữ thường, gạch ngang' },
-            { col: 'category_slug', note: 'Bắt buộc — slug danh mục đang hiển thị' },
-            { col: 'description', note: 'Tùy chọn' },
-            { col: 'price', note: 'Tùy chọn — số không âm' },
+            { col: 'name', note: 'Bắt buộc', required: true },
+            { col: 'slug', note: 'Bắt buộc — chữ thường, gạch ngang', required: true },
+            { col: 'category_slug', note: 'Bắt buộc — slug danh mục đang hiển thị', required: true },
+            { col: 'description', note: 'Tùy chọn — text thuần' },
+            { col: 'price', note: 'Tùy chọn — số không âm, trống = Liên hệ' },
+            { col: 'wholesale_price', note: 'Tùy chọn — giá sỉ tham khảo' },
             { col: 'stock', note: 'Tùy chọn — số nguyên, mặc định 0' },
             { col: 'is_active', note: 'true/false, 1/0, yes/no, active/hidden' },
-            { col: 'specs', note: 'JSON object — {"key":"value"}' },
-          ].map(({ col, note }) => (
+            { col: 'image_url', note: 'Tùy chọn — URL ảnh chính (chưa auto-import)' },
+            { col: 'tags', note: 'Tùy chọn — phân cách bằng dấu phẩy' },
+            { col: 'specs', note: 'Tùy chọn — JSON object {"key":"value"}' },
+          ].map(({ col, note, required }) => (
             <div key={col} className="flex items-baseline gap-1.5">
-              <code className="rounded bg-[#F0F4FF] px-1.5 py-0.5 font-mono text-[11px] text-[#3749A6]">
+              <code className={`rounded px-1.5 py-0.5 font-mono text-[11px] ${required ? 'bg-[#4880FF]/10 text-[#3749A6] font-bold' : 'bg-slate-100 text-slate-500'}`}>
                 {col}
               </code>
               <span className="text-slate-400">{note}</span>

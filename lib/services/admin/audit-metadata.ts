@@ -2,6 +2,11 @@ import type { Json } from '@/lib/types/database';
 
 type AuditShape = Record<string, unknown>;
 
+export interface RequestContext {
+  ip_address?: string | null;
+  user_agent?: string | null;
+}
+
 function toJsonValue(value: unknown): Json | undefined {
   if (value === undefined) {
     return undefined;
@@ -37,6 +42,7 @@ export function buildAuditMetadata(params: {
   before?: AuditShape | null;
   after?: AuditShape | null;
   extra?: AuditShape | null;
+  requestContext?: RequestContext | null;
 }): Json {
   const before = toCleanObject(params.before);
   const after = toCleanObject(params.after);
@@ -59,6 +65,14 @@ export function buildAuditMetadata(params: {
       ? Object.keys(afterObject).filter((key) => JSON.stringify(beforeObject[key]) !== JSON.stringify(afterObject[key]))
       : [];
 
+  const requestContextFields: Record<string, Json | undefined> = {};
+  if (params.requestContext?.ip_address) {
+    requestContextFields.ip_address = params.requestContext.ip_address;
+  }
+  if (params.requestContext?.user_agent) {
+    requestContextFields.user_agent = params.requestContext.user_agent;
+  }
+
   return {
     status: 'success',
     name: params.label ?? null,
@@ -66,5 +80,25 @@ export function buildAuditMetadata(params: {
     after,
     changed_fields: changed_fields.length > 0 ? changed_fields : undefined,
     ...(extraObject ?? {}),
+    ...requestContextFields,
   };
+}
+
+/**
+ * Extracts request context (IP address and user agent) from Next.js request headers.
+ * Call this inside server actions that record audit logs.
+ */
+export async function getRequestContext(): Promise<RequestContext> {
+  try {
+    const { headers } = await import('next/headers');
+    const headerStore = await headers();
+    const ip =
+      headerStore.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      headerStore.get('x-real-ip') ??
+      null;
+    const ua = headerStore.get('user-agent') ?? null;
+    return { ip_address: ip, user_agent: ua };
+  } catch {
+    return {};
+  }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { User, ShieldAlert, KeyRound, ScrollText, Fingerprint, Clock } from 'lucide-react';
+import { Globe, Monitor, User, ShieldAlert, KeyRound, ScrollText, Fingerprint, Clock } from 'lucide-react';
 import { AdminModal } from '@/components/admin/AdminModal';
 import { FormattedDate } from '@/components/admin/FormattedDate';
 import { AuditLogActionBadge, AuditLogEntityLabel } from '@/components/admin/AuditLogLabels';
@@ -13,8 +13,20 @@ interface AuditLogDetailDialogProps {
   onClose: () => void;
 }
 
+function extractRequestContext(metadata: unknown): { ip_address?: string; user_agent?: string } {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {};
+  const m = metadata as Record<string, unknown>;
+  return {
+    ip_address: typeof m.ip_address === 'string' ? m.ip_address : undefined,
+    user_agent: typeof m.user_agent === 'string' ? m.user_agent : undefined,
+  };
+}
+
 export function AuditLogDetailDialog({ log, onClose }: AuditLogDetailDialogProps) {
   if (!log) return null;
+
+  const reqCtx = extractRequestContext(log.metadata);
+  const hasRequestContext = Boolean(reqCtx.ip_address || reqCtx.user_agent);
 
   return (
     <AdminModal
@@ -32,18 +44,18 @@ export function AuditLogDetailDialog({ log, onClose }: AuditLogDetailDialogProps
               <ShieldAlert className="h-4 w-4 text-[#3749A6]" />
               Thông tin hành vi
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 font-medium">Hành động:</span>
                 <AuditLogActionBadge action={log.action} />
               </div>
-              
+
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 font-medium">Đối tượng tác động:</span>
                 <AuditLogEntityLabel entity={log.entity} />
               </div>
-              
+
               <div className="flex items-start justify-between gap-4 text-xs pt-1 border-t border-slate-100/50">
                 <span className="text-slate-500 font-medium shrink-0">ID Đối tượng:</span>
                 <span className="font-mono text-[10px] text-slate-600 break-all select-all font-bold bg-white border border-slate-100 px-2 py-0.5 rounded shadow-sm">
@@ -67,7 +79,7 @@ export function AuditLogDetailDialog({ log, onClose }: AuditLogDetailDialogProps
                   {log.actorEmail ?? 'Hệ thống'}
                 </span>
               </div>
-              
+
               <div className="flex flex-col text-xs space-y-0.5 border-t border-slate-100/50 pt-1">
                 <span className="text-slate-500 font-medium">Mốc thời gian:</span>
                 <span className="font-semibold text-slate-700 flex items-center gap-1">
@@ -79,13 +91,45 @@ export function AuditLogDetailDialog({ log, onClose }: AuditLogDetailDialogProps
           </div>
         </div>
 
+        {/* Request context (IP + User Agent) */}
+        {hasRequestContext ? (
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-3 shadow-sm">
+            <div className="flex items-center gap-2 text-slate-400 text-[10px] font-extrabold uppercase tracking-widest border-b border-slate-100 pb-1.5">
+              <Globe className="h-4 w-4 text-[#3749A6]" />
+              Ngữ cảnh yêu cầu
+            </div>
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 text-xs">
+              {reqCtx.ip_address ? (
+                <div className="bg-white border border-slate-100 rounded-xl p-2.5 shadow-sm">
+                  <div className="text-[9px] text-slate-400 uppercase font-extrabold tracking-wider mb-1 flex items-center gap-1">
+                    <Globe className="h-3 w-3" /> Địa chỉ IP
+                  </div>
+                  <div className="font-mono text-[11px] font-bold text-slate-700 select-all break-all">
+                    {reqCtx.ip_address}
+                  </div>
+                </div>
+              ) : null}
+              {reqCtx.user_agent ? (
+                <div className="bg-white border border-slate-100 rounded-xl p-2.5 shadow-sm">
+                  <div className="text-[9px] text-slate-400 uppercase font-extrabold tracking-wider mb-1 flex items-center gap-1">
+                    <Monitor className="h-3 w-3" /> User Agent
+                  </div>
+                  <div className="font-mono text-[10px] text-slate-600 break-all leading-relaxed">
+                    {reqCtx.user_agent}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         {/* Technical raw tags container */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-3 shadow-sm">
           <div className="flex items-center gap-2 text-slate-400 text-[10px] font-extrabold uppercase tracking-widest border-b border-slate-100 pb-1.5">
             <KeyRound className="h-4 w-4 text-[#3749A6]" />
             Khóa phân loại kỹ thuật (Technical Keys)
           </div>
-          
+
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-3 text-xs font-mono">
             <div className="bg-white border border-slate-100 rounded-xl p-2.5 shadow-sm">
               <div className="text-[9px] text-slate-400 uppercase font-extrabold tracking-wider mb-1 flex items-center gap-1">
@@ -93,7 +137,7 @@ export function AuditLogDetailDialog({ log, onClose }: AuditLogDetailDialogProps
               </div>
               <div className="text-slate-700 font-bold text-[11px] break-all select-all">{log.action}</div>
             </div>
-            
+
             <div className="bg-white border border-slate-100 rounded-xl p-2.5 shadow-sm">
               <div className="text-[9px] text-slate-400 uppercase font-extrabold tracking-wider mb-1 flex items-center gap-1">
                 <Fingerprint className="h-3 w-3 text-slate-400" /> Entity Key
@@ -116,7 +160,7 @@ export function AuditLogDetailDialog({ log, onClose }: AuditLogDetailDialogProps
             <ScrollText className="h-4 w-4 text-[#3749A6]" />
             Dữ liệu chi tiết (Metadata Payload)
           </div>
-          
+
           <AuditLogMetadataViewer metadata={log.metadata} />
         </div>
       </div>

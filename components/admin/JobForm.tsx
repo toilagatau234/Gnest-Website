@@ -28,7 +28,7 @@ const labelClass = 'mb-1.5 flex items-center gap-1 text-xs font-bold uppercase t
 function slugify(text: string): string {
   return text
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .replace(/[đĐ]/g, 'd')
     .toLowerCase()
     .trim()
@@ -123,9 +123,9 @@ function buildDescriptionHtml(parsed: ParsedJobDescription) {
   }
 
   const listSections = [
-    { title: 'Mo ta cong viec', key: 'responsibilities', items: parsed.responsibilities },
-    { title: 'Yeu cau ung vien', key: 'requirements', items: parsed.requirements },
-    { title: 'Quyen loi', key: 'benefits', items: parsed.benefits },
+    { title: 'Mô tả công việc', key: 'responsibilities', items: parsed.responsibilities },
+    { title: 'Yêu cầu ứng viên', key: 'requirements', items: parsed.requirements },
+    { title: 'Quyền lợi', key: 'benefits', items: parsed.benefits },
   ];
 
   listSections.forEach((section) => {
@@ -155,7 +155,7 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
   const [responsibilities, setResponsibilities] = useState(listToLines(initialDescription.responsibilities));
   const [requirements, setRequirements] = useState(listToLines(initialDescription.requirements));
   const [benefits, setBenefits] = useState(listToLines(initialDescription.benefits));
-  const [customHtml, setCustomHtml] = useState(initialDescription.customHtml);
+  const [customHtml] = useState(initialDescription.customHtml);
 
   const descriptionValue = useMemo(
     () =>
@@ -186,7 +186,7 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block sm:col-span-2">
           <span className={labelClass}>
-            Tieu de tuyen dung <span className="text-[#E31E24]">*</span>
+            Tiêu đề tuyển dụng <span className="text-[#E31E24]">*</span>
           </span>
           <input
             name="title"
@@ -201,13 +201,13 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
               }
             }}
             className={fieldClass}
-            placeholder="VD: Chuyen vien Tu van Ban hang"
+            placeholder="VD: Chuyên viên Tư vấn Bán hàng"
           />
         </label>
 
         <label className="block sm:col-span-2">
           <span className={labelClass}>
-            Duong dan (Slug) <span className="text-[#E31E24]">*</span>
+            Đường dẫn (Slug) <span className="text-[#E31E24]">*</span>
           </span>
           <div className="relative">
             <input
@@ -225,34 +225,34 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
             <Link2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           </div>
           <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Slug duoc dung cho URL cua bai tuyen dung. Nhap tieu de de he thong tu tao slug.
+            Slug được dùng cho URL của bài tuyển dụng. Nhập tiêu đề để hệ thống tự tạo slug.
           </span>
         </label>
 
         <label className="block">
-          <span className={labelClass}>Dia diem lam viec</span>
+          <span className={labelClass}>Địa điểm làm việc</span>
           <input
             name="location"
             type="text"
             defaultValue={job?.location ?? ''}
             className={fieldClass}
-            placeholder="VD: Dong Thap / Hybrid / Tai nha may"
+            placeholder="VD: Đồng Tháp / Hybrid / Tại nhà máy"
           />
         </label>
 
         <label className="block">
-          <span className={labelClass}>Muc luong / Thu nhap</span>
+          <span className={labelClass}>Mức lương / Thu nhập</span>
           <input
             name="salary_range"
             type="text"
             defaultValue={job?.salary_range ?? ''}
             className={fieldClass}
-            placeholder="VD: 8 - 12 trieu hoac thoa thuan"
+            placeholder="VD: 8 - 12 triệu hoặc thỏa thuận"
           />
         </label>
 
         <label className="block">
-          <span className={labelClass}>Thu tu hien thi</span>
+          <span className={labelClass}>Thứ tự hiển thị</span>
           <input
             name="sort_order"
             type="number"
@@ -260,83 +260,74 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
             className={fieldClass}
           />
           <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            So nho hon se duoc hien thi truoc trong danh sach tuyen dung.
+            Số nhỏ hơn sẽ được hiển thị trước trong danh sách tuyển dụng.
           </span>
         </label>
 
         <div className="sm:col-span-2 space-y-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-wide text-[#1B3A6B]">
-              Noi dung bai tuyen dung
+              Nội dung bài tuyển dụng
             </p>
             <p className="mt-1 text-[10px] font-medium leading-relaxed text-slate-500">
-              Dien theo tung phan de he thong tu render HTML cho trang tuyen dung. Moi dong trong danh sach se thanh mot bullet.
+              Điền theo từng phần để hệ thống tự render HTML cho trang tuyển dụng. Mỗi dòng trong danh sách sẽ thành một bullet.
             </p>
           </div>
 
           <label className="block">
-            <span className={labelClass}>Doan mo dau</span>
+            <span className={labelClass}>Đoạn mở đầu</span>
             <textarea
               rows={3}
               value={intro}
               onChange={(event) => setIntro(event.target.value)}
               className={fieldClass}
-              placeholder="Tom tat ngan gon ve vi tri, muc tieu cong viec va boi canh phong ban."
+              placeholder="Tóm tắt ngắn gọn về vị trí, mục tiêu công việc và bối cảnh phòng ban."
             />
           </label>
 
           <div className="grid gap-4 lg:grid-cols-3">
             <label className="block">
-              <span className={labelClass}>Mo ta cong viec</span>
+              <span className={labelClass}>Mô tả công việc</span>
               <textarea
                 rows={7}
                 value={responsibilities}
                 onChange={(event) => setResponsibilities(event.target.value)}
                 className={fieldClass}
-                placeholder={'Moi dong la mot y.\nTu van khach hang...\nPhoi hop kinh doanh...'}
+                placeholder={'Mỗi dòng là một ý.\nTư vấn khách hàng...\nPhối hợp kinh doanh...'}
               />
             </label>
 
             <label className="block">
-              <span className={labelClass}>Yeu cau ung vien</span>
+              <span className={labelClass}>Yêu cầu ứng viên</span>
               <textarea
                 rows={7}
                 value={requirements}
                 onChange={(event) => setRequirements(event.target.value)}
                 className={fieldClass}
-                placeholder={'Moi dong la mot y.\nCo kinh nghiem B2B...\nKy nang giao tiep tot...'}
+                placeholder={'Mỗi dòng là một ý.\nCó kinh nghiệm B2B...\nKỹ năng giao tiếp tốt...'}
               />
             </label>
 
             <label className="block">
-              <span className={labelClass}>Quyen loi</span>
+              <span className={labelClass}>Quyền lợi</span>
               <textarea
                 rows={7}
                 value={benefits}
                 onChange={(event) => setBenefits(event.target.value)}
                 className={fieldClass}
-                placeholder={'Moi dong la mot y.\nLuong thuong ro rang...\nDao tao noi bo...'}
+                placeholder={'Mỗi dòng là một ý.\nLương thưởng rõ ràng...\nĐào tạo nội bộ...'}
               />
             </label>
           </div>
 
-          <label className="block">
-            <span className={labelClass}>Noi dung HTML bo sung</span>
-            <textarea
-              rows={5}
-              value={customHtml}
-              onChange={(event) => setCustomHtml(event.target.value)}
-              className={`${fieldClass} font-mono`}
-              placeholder="<p>Thong tin bo sung neu can giu HTML tuy chinh.</p>"
-            />
-            <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-              Dung cho block dac biet, embedded content, hoac de giu noi dung HTML cu chua kip chuyen sang editor cau truc.
-            </span>
-          </label>
-
           {hasLegacyHtml ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-[10px] font-medium leading-relaxed text-amber-800">
-              Bai dang nay dang chua HTML cu. He thong giu nguyen phan do trong o `Noi dung HTML bo sung` de tranh mat du lieu khi chinh sua.
+            <div className="space-y-2">
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-[10px] font-medium leading-relaxed text-amber-800">
+                Bài đăng này đang chứa HTML cũ. Nội dung gốc được giữ nguyên và sẽ hiển thị bên dưới trang tuyển dụng. Để chỉnh sửa HTML thô, liên hệ quản trị hệ thống.
+              </div>
+              <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[10px] leading-relaxed text-slate-500 whitespace-pre-wrap select-all">
+                {customHtml}
+              </pre>
             </div>
           ) : null}
         </div>
@@ -346,8 +337,8 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
         <AdminToggle
           name="is_active"
           defaultChecked={job?.is_active ?? true}
-          label="Mo tuyen dung cong khai"
-          description="Bat de hien thi tin tuyen dung nay tren trang /tuyen-dung ngoai website."
+          label="Mở tuyển dụng công khai"
+          description="Bật để hiển thị tin tuyển dụng này trên trang /tuyen-dung ngoài website."
         />
       </div>
     </form>
