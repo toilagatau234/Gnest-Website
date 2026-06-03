@@ -3,6 +3,7 @@ import 'server-only';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts, Tables, Updates } from '@/lib/types/database';
 
+import { buildAuditMetadata } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 export type AdminSalesContact = Pick<
@@ -33,6 +34,31 @@ function normalizeNullableText(value: string | null) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function getContactInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || 'SC';
+}
+
+function buildGeneratedAvatar(name: string) {
+  const initials = getContactInitials(name);
+  const palette = [
+    ['#1B3A6B', '#2E5B9A'],
+    ['#0F766E', '#14B8A6'],
+    ['#9A3412', '#F97316'],
+    ['#7C2D12', '#E11D48'],
+  ];
+  const seed = name
+    .split('')
+    .reduce((total, char) => total + char.charCodeAt(0), 0);
+  const [from, to] = palette[seed % palette.length];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" role="img" aria-label="${initials}"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${from}"/><stop offset="100%" stop-color="${to}"/></linearGradient></defs><rect width="160" height="160" rx="36" fill="url(#bg)"/><circle cx="80" cy="80" r="52" fill="rgba(255,255,255,0.12)"/><text x="50%" y="54%" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-weight="700" fill="#ffffff">${initials}</text></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
 function normalizeZalo(value: string | null, phone: string) {
   const trimmed = value?.trim() ?? '';
 
@@ -51,15 +77,28 @@ function normalizeZalo(value: string | null, phone: string) {
 
 function normalizeSalesContactPayload(payload: SalesContactPayload): Inserts<'sales_contacts'> {
   const phone = normalizePhone(payload.phone);
+  const name = payload.name.trim();
 
   return {
-    name: payload.name.trim(),
+    name,
     role: normalizeNullableText(payload.role),
     phone,
     zalo: normalizeZalo(payload.zalo, phone),
-    avatar_url: normalizeNullableText(payload.avatar_url),
+    avatar_url: normalizeNullableText(payload.avatar_url) ?? buildGeneratedAvatar(name),
     sort_order: payload.sort_order,
     is_active: payload.is_active,
+  };
+}
+
+function toSalesContactAuditSnapshot(contact: AdminSalesContact) {
+  return {
+    name: contact.name,
+    role: contact.role,
+    phone: contact.phone,
+    zalo: contact.zalo,
+    avatar_url: contact.avatar_url,
+    sort_order: contact.sort_order,
+    is_active: contact.is_active,
   };
 }
 
@@ -105,7 +144,10 @@ export async function createAdminSalesContact(payload: SalesContactPayload) {
     action: 'create',
     entity: 'sales_contacts',
     entity_id: data.id,
-    metadata: { name: data.name, phone: data.phone },
+    metadata: buildAuditMetadata({
+      label: data.name,
+      after: toSalesContactAuditSnapshot(data),
+    }),
   });
 
   return { data, error: null };
@@ -114,6 +156,11 @@ export async function createAdminSalesContact(payload: SalesContactPayload) {
 export async function updateAdminSalesContact(contactId: string, payload: SalesContactPayload) {
   const adminUser = await requireAdminAuth(SALES_CONTACT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
+  const { data: before } = await supabase
+    .from('sales_contacts')
+    .select(ADMIN_SALES_CONTACT_SELECT)
+    .eq('id', contactId)
+    .maybeSingle<AdminSalesContact>();
   const updatePayload: Updates<'sales_contacts'> = normalizeSalesContactPayload(payload);
 
   const { data, error } = await supabase
@@ -132,7 +179,11 @@ export async function updateAdminSalesContact(contactId: string, payload: SalesC
     action: 'update',
     entity: 'sales_contacts',
     entity_id: data.id,
-    metadata: { name: data.name, phone: data.phone },
+    metadata: buildAuditMetadata({
+      label: data.name,
+      before: before ? toSalesContactAuditSnapshot(before) : null,
+      after: toSalesContactAuditSnapshot(data),
+    }),
   });
 
   return { data, error: null };
@@ -163,7 +214,13 @@ export async function deleteAdminSalesContact(contactId: string) {
     action: 'delete',
     entity: 'sales_contacts',
     entity_id: contact.id,
-    metadata: { name: contact.name, phone: contact.phone },
+    metadata: buildAuditMetadata({
+      label: contact.name,
+      before: {
+        name: contact.name,
+        phone: contact.phone,
+      },
+    }),
   });
 
   return { data: contact, error: null };
@@ -172,6 +229,11 @@ export async function deleteAdminSalesContact(contactId: string) {
 export async function setAdminSalesContactActive(contactId: string, isActive: boolean) {
   const adminUser = await requireAdminAuth(SALES_CONTACT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
+  const { data: before } = await supabase
+    .from('sales_contacts')
+    .select(ADMIN_SALES_CONTACT_SELECT)
+    .eq('id', contactId)
+    .maybeSingle<AdminSalesContact>();
 
   const { data, error } = await supabase
     .from('sales_contacts')
@@ -189,7 +251,14 @@ export async function setAdminSalesContactActive(contactId: string, isActive: bo
     action: isActive ? 'activate' : 'deactivate',
     entity: 'sales_contacts',
     entity_id: data.id,
-    metadata: { name: data.name, phone: data.phone },
+    metadata: buildAuditMetadata({
+      label: data.name,
+      before: before ? toSalesContactAuditSnapshot(before) : null,
+      after: {
+        ...(before ? toSalesContactAuditSnapshot(before) : {}),
+        is_active: data.is_active,
+      },
+    }),
   });
 
   return { data, error: null };

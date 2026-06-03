@@ -3,6 +3,7 @@ import 'server-only';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts, Json, Tables, Updates } from '@/lib/types/database';
 
+import { buildAuditMetadata } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 export type AdminProduct = Tables<'products'> & {
@@ -23,6 +24,24 @@ export interface ProductPayload {
 }
 
 const PRODUCT_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
+
+function toProductAuditSnapshot(product: {
+  name: string;
+  slug: string;
+  category_id?: string | null;
+  price?: number | null;
+  stock?: number;
+  is_active: boolean;
+}) {
+  return {
+    name: product.name,
+    slug: product.slug,
+    category_id: product.category_id ?? null,
+    price: product.price ?? null,
+    stock: product.stock ?? 0,
+    is_active: product.is_active,
+  };
+}
 
 function normalizeProductPayload(payload: ProductPayload): Inserts<'products'> {
   return {
@@ -79,7 +98,10 @@ export async function createAdminProduct(payload: ProductPayload) {
     action: 'create',
     entity: 'products',
     entity_id: data.id,
-    metadata: { name: data.name, slug: data.slug },
+    metadata: buildAuditMetadata({
+      label: data.name,
+      after: toProductAuditSnapshot(data),
+    }),
   });
 
   return { data, error: null };
@@ -88,6 +110,11 @@ export async function createAdminProduct(payload: ProductPayload) {
 export async function updateAdminProduct(productId: string, payload: ProductPayload) {
   const adminUser = await requireAdminAuth(PRODUCT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
+  const { data: before } = await supabase
+    .from('products')
+    .select('name, slug, category_id, price, stock, is_active')
+    .eq('id', productId)
+    .maybeSingle();
   const updatePayload: Updates<'products'> = normalizeProductPayload(payload);
 
   const { data, error } = await supabase
@@ -106,7 +133,11 @@ export async function updateAdminProduct(productId: string, payload: ProductPayl
     action: 'update',
     entity: 'products',
     entity_id: data.id,
-    metadata: { name: data.name, slug: data.slug },
+    metadata: buildAuditMetadata({
+      label: data.name,
+      before: before ? toProductAuditSnapshot(before) : null,
+      after: toProductAuditSnapshot(data),
+    }),
   });
 
   return { data, error: null };
@@ -143,7 +174,13 @@ export async function deleteAdminProduct(productId: string) {
     action: 'delete',
     entity: 'products',
     entity_id: product.id,
-    metadata: { name: product.name, slug: product.slug },
+    metadata: buildAuditMetadata({
+      label: product.name,
+      before: {
+        name: product.name,
+        slug: product.slug,
+      },
+    }),
   });
 
   return { data: product, error: null };
@@ -152,6 +189,11 @@ export async function deleteAdminProduct(productId: string) {
 export async function setAdminProductActive(productId: string, isActive: boolean) {
   const adminUser = await requireAdminAuth(PRODUCT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
+  const { data: before } = await supabase
+    .from('products')
+    .select('name, slug, category_id, price, stock, is_active')
+    .eq('id', productId)
+    .maybeSingle();
 
   const { data, error } = await supabase
     .from('products')
@@ -169,7 +211,11 @@ export async function setAdminProductActive(productId: string, isActive: boolean
     action: isActive ? 'activate' : 'deactivate',
     entity: 'products',
     entity_id: data.id,
-    metadata: { name: data.name, slug: data.slug },
+    metadata: buildAuditMetadata({
+      label: data.name,
+      before: before ? toProductAuditSnapshot(before) : null,
+      after: toProductAuditSnapshot(data),
+    }),
   });
 
   return { data, error: null };

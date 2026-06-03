@@ -6,6 +6,7 @@ import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { CategoriesTable } from '@/components/admin/CategoriesTable';
 import { CategoryFormDialog } from '@/components/admin/CategoryFormDialog';
+import { getCategoryPriorityWarnings } from '@/lib/services/category-visibility';
 import { getAdminCategories } from '@/lib/services/admin/categories';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,7 @@ export default async function CategoriesPage() {
   const hiddenCount = safeCategories.length - activeCount;
   const parentCount = safeCategories.filter((item) => !item.parent_id).length;
   const childCount = safeCategories.length - parentCount;
+  const priorityWarnings = getCategoryPriorityWarnings(safeCategories);
 
   return (
     <AdminSection>
@@ -53,6 +55,22 @@ export default async function CategoriesPage() {
           hint="Danh mục cha / danh mục con"
         />
       </div>
+
+      {priorityWarnings.length > 0 ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-extrabold">Cáº£nh bÃ¡o trÃ¹ng display priority</p>
+          <p className="mt-1 text-xs leading-relaxed text-amber-800">
+            Há»‡ thá»‘ng váº«n sáº¯p xáº¿p an toÃ n theo priority trÆ°á»›c, sau Ä‘Ã³ fallback theo tÃªn/slug. NÃªn Ä‘iá»u chá»‰nh cÃ¡c nhÃ³m sau Ä‘á»ƒ trÃ¡nh khÃ³ hiá»ƒu trÃªn menu.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {priorityWarnings.slice(0, 6).map((warning) => (
+              <span key={`${warning.parentId ?? 'root'}-${warning.sortOrder}`} className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[11px] font-bold text-amber-900">
+                Priority #{warning.sortOrder}: {warning.categories.map((category) => category.name).join(', ')}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {error ? (
         <div className="flex items-start gap-3 rounded-2xl border border-[#F2C5C7] bg-[#FFF5F5] p-4">

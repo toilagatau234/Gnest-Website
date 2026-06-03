@@ -29,6 +29,18 @@ const fieldClass = 'admin-input text-xs';
 const selectClass = 'admin-select text-xs';
 const labelClass = 'mb-1.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#646464]';
 
+function slugify(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
 /** Maps a server error message to the tab that owns the offending field. */
 function tabForError(error: string): TabId | null {
   const text = error.toLowerCase();
@@ -46,32 +58,29 @@ function tabForError(error: string): TabId | null {
 
 export function ProductForm({ formId, formAction, state, categories, product }: ProductFormProps) {
   const [activeTab, setActiveTab] = useState<TabId>('basic');
-  const [seenError, setSeenError] = useState<string | undefined>(state.error);
+  const [name, setName] = useState(product?.name ?? '');
+  const [slug, setSlug] = useState(product?.slug ?? '');
+  const [slugTouched, setSlugTouched] = useState(Boolean(product));
   const activeCategories = categories.filter(
     (category) => category.is_active || category.id === product?.category_id,
   );
+  const visibleTab = state.error ? tabForError(state.error) ?? activeTab : activeTab;
 
-  // When a *new* server error arrives, jump to the tab holding the offending
-  // field. Adjusting state during render (React's recommended pattern) avoids
-  // the cascading re-render of doing this inside an effect.
-  if (state.error !== seenError) {
-    setSeenError(state.error);
-    if (state.error) {
-      const target = tabForError(state.error);
-      if (target) {
-        setActiveTab(target);
-      }
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (!slugTouched) {
+      setSlug(slugify(value));
     }
-  }
+  };
 
   return (
-    <form id={formId} action={formAction} className="space-y-5">
+    <form id={formId} action={formAction} className="flex min-h-[620px] flex-col gap-5">
       {product ? <input type="hidden" name="id" value={product.id} /> : null}
 
       {/* Sticky tab bar pinned beneath the modal header. */}
       <div className="sticky -top-5 z-10 -mx-5 -mt-5 mb-1 flex gap-1 overflow-x-auto border-b border-[#EEF2F6] bg-white/95 px-5 pt-2 backdrop-blur">
         {TABS.map((tab) => {
-          const active = activeTab === tab.id;
+          const active = visibleTab === tab.id;
           return (
             <button
               key={tab.id}
@@ -96,7 +105,7 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
       ) : null}
 
       {/* Basic info — kept mounted so all fields submit regardless of active tab */}
-      <div className={activeTab === 'basic' ? 'animate-fade-in space-y-4' : 'hidden'}>
+      <div className={visibleTab === 'basic' ? 'animate-fade-in flex-1 space-y-4' : 'hidden'}>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className={labelClass}>
@@ -106,7 +115,8 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
               name="name"
               type="text"
               required
-              defaultValue={product?.name ?? ''}
+              value={name}
+              onChange={(event) => handleNameChange(event.target.value)}
               className={fieldClass}
               placeholder="VD: Hũ thủy tinh 500ml"
             />
@@ -120,7 +130,11 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
               name="slug"
               type="text"
               required
-              defaultValue={product?.slug ?? ''}
+              value={slug}
+              onChange={(event) => {
+                setSlugTouched(true);
+                setSlug(event.target.value);
+              }}
               className={`${fieldClass} font-mono`}
               placeholder="hu-thuy-tinh-500ml"
             />
@@ -161,7 +175,7 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
       </div>
 
       {/* Price & stock */}
-      <div className={activeTab === 'pricing' ? 'animate-fade-in space-y-4' : 'hidden'}>
+      <div className={visibleTab === 'pricing' ? 'animate-fade-in flex-1 space-y-4' : 'hidden'}>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className={labelClass}>Giá lẻ tham khảo (VNĐ)</span>
@@ -192,7 +206,7 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
       </div>
 
       {/* Specs tab — kept mounted so the hidden specs JSON input always submits */}
-      <div className={activeTab === 'specs' ? 'animate-fade-in' : 'hidden'}>
+      <div className={visibleTab === 'specs' ? 'animate-fade-in flex-1' : 'hidden'}>
         <SpecsEditor initialSpecs={product?.specs} />
       </div>
     </form>

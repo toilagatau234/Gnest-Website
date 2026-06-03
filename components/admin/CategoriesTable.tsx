@@ -272,7 +272,7 @@ function CategoryTableView({ categories, allCategories, categoryById }: Category
             <th className="p-3.5">Slug</th>
             <th className="p-3.5">Loại</th>
             <th className="p-3.5">Danh mục cha</th>
-            <th className="p-3.5">Thứ tự</th>
+            <th className="p-3.5">Display Priority</th>
             <th className="p-3.5">Trạng thái</th>
             <th className="p-3.5 text-right">Thao tác</th>
           </tr>

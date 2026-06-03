@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertCircle, Link2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { AdminToggle } from '@/components/admin/AdminToggle';
 import type { AdminJobVacancy } from '@/lib/services/admin/jobs';
@@ -14,35 +14,171 @@ interface JobFormProps {
   job?: AdminJobVacancy;
 }
 
+interface ParsedJobDescription {
+  intro: string;
+  responsibilities: string[];
+  requirements: string[];
+  benefits: string[];
+  customHtml: string;
+}
+
 const fieldClass = 'admin-input text-xs';
 const labelClass = 'mb-1.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#646464]';
 
 function slugify(text: string): string {
   return text
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[đĐ]/g, 'd')
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w\-]+/g, '') // Remove all non-word chars (except -)
-    .replace(/\-\-+/g, '-') // Replace multiple - with single -
-    .replace(/^-+/, '') // Trim - from start
-    .replace(/-+$/, ''); // Trim - from end
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]+/g, '')
+    .replace(/--+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+}
+
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function listToLines(items: string[]) {
+  return items.join('\n');
+}
+
+function linesToList(value: string) {
+  return value
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseStructuredDescription(description: string | null | undefined): ParsedJobDescription {
+  if (!description) {
+    return {
+      intro: '',
+      responsibilities: [],
+      requirements: [],
+      benefits: [],
+      customHtml: '',
+    };
+  }
+
+  if (typeof window === 'undefined') {
+    return {
+      intro: '',
+      responsibilities: [],
+      requirements: [],
+      benefits: [],
+      customHtml: description,
+    };
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(description, 'text/html');
+  const sections = Array.from(doc.querySelectorAll('section[data-job-block]'));
+
+  if (sections.length === 0) {
+    return {
+      intro: '',
+      responsibilities: [],
+      requirements: [],
+      benefits: [],
+      customHtml: description,
+    };
+  }
+
+  const readList = (block: string) =>
+    Array.from(doc.querySelectorAll(`section[data-job-block="${block}"] li`))
+      .map((item) => item.textContent?.trim() ?? '')
+      .filter(Boolean);
+
+  const introNode = doc.querySelector('section[data-job-block="intro"]');
+  const customNodes = Array.from(doc.body.children).filter(
+    (node) => !node.hasAttribute('data-job-block'),
+  );
+
+  return {
+    intro: introNode?.textContent?.trim() ?? '',
+    responsibilities: readList('responsibilities'),
+    requirements: readList('requirements'),
+    benefits: readList('benefits'),
+    customHtml: customNodes.map((node) => node.outerHTML).join('\n').trim(),
+  };
+}
+
+function buildDescriptionHtml(parsed: ParsedJobDescription) {
+  const chunks: string[] = [];
+
+  if (parsed.intro.trim()) {
+    chunks.push(
+      `<section data-job-block="intro"><p>${escapeHtml(parsed.intro.trim())}</p></section>`,
+    );
+  }
+
+  const listSections = [
+    { title: 'Mo ta cong viec', key: 'responsibilities', items: parsed.responsibilities },
+    { title: 'Yeu cau ung vien', key: 'requirements', items: parsed.requirements },
+    { title: 'Quyen loi', key: 'benefits', items: parsed.benefits },
+  ];
+
+  listSections.forEach((section) => {
+    if (section.items.length === 0) {
+      return;
+    }
+
+    const listHtml = section.items.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+    chunks.push(
+      `<section data-job-block="${section.key}"><h3>${section.title}</h3><ul>${listHtml}</ul></section>`,
+    );
+  });
+
+  if (parsed.customHtml.trim()) {
+    chunks.push(parsed.customHtml.trim());
+  }
+
+  return chunks.join('');
 }
 
 export function JobForm({ formId, formAction, state, job }: JobFormProps) {
+  const initialDescription = parseStructuredDescription(job?.description);
   const [title, setTitle] = useState(job?.title ?? '');
   const [slug, setSlug] = useState(job?.slug ?? '');
   const [isSlugManual, setIsSlugManual] = useState(Boolean(job?.slug));
+  const [intro, setIntro] = useState(initialDescription.intro);
+  const [responsibilities, setResponsibilities] = useState(listToLines(initialDescription.responsibilities));
+  const [requirements, setRequirements] = useState(listToLines(initialDescription.requirements));
+  const [benefits, setBenefits] = useState(listToLines(initialDescription.benefits));
+  const [customHtml, setCustomHtml] = useState(initialDescription.customHtml);
+
+  const descriptionValue = useMemo(
+    () =>
+      buildDescriptionHtml({
+        intro,
+        responsibilities: linesToList(responsibilities),
+        requirements: linesToList(requirements),
+        benefits: linesToList(benefits),
+        customHtml,
+      }),
+    [benefits, customHtml, intro, requirements, responsibilities],
+  );
+
+  const hasLegacyHtml = Boolean(initialDescription.customHtml && !initialDescription.intro);
 
   return (
     <form id={formId} action={formAction} className="space-y-5">
       {job ? <input type="hidden" name="id" value={job.id} /> : null}
+      <input type="hidden" name="description" value={descriptionValue} readOnly />
 
       {state.error ? (
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-[#FFF5F5] px-4 py-3">
-          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#E31E24]" />
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#E31E24]" />
           <p className="text-xs font-medium text-[#B42318]">{state.error}</p>
         </div>
       ) : null}
@@ -50,28 +186,28 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block sm:col-span-2">
           <span className={labelClass}>
-            Tiêu đề tuyển dụng <span className="text-[#E31E24]">*</span>
+            Tieu de tuyen dung <span className="text-[#E31E24]">*</span>
           </span>
           <input
             name="title"
             type="text"
             required
             value={title}
-            onChange={(e) => {
-              const val = e.target.value;
-              setTitle(val);
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              setTitle(nextValue);
               if (!isSlugManual && !job) {
-                setSlug(slugify(val));
+                setSlug(slugify(nextValue));
               }
             }}
             className={fieldClass}
-            placeholder="VD: Chuyên Viên Tư Vấn Bán Hàng (Sales Executive)"
+            placeholder="VD: Chuyen vien Tu van Ban hang"
           />
         </label>
 
         <label className="block sm:col-span-2">
           <span className={labelClass}>
-            Đường dẫn (Slug) <span className="text-[#E31E24]">*</span>
+            Duong dan (Slug) <span className="text-[#E31E24]">*</span>
           </span>
           <div className="relative">
             <input
@@ -79,8 +215,8 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
               type="text"
               required
               value={slug}
-              onChange={(e) => {
-                setSlug(e.target.value);
+              onChange={(event) => {
+                setSlug(event.target.value);
                 setIsSlugManual(true);
               }}
               className={`${fieldClass} pr-10`}
@@ -88,58 +224,121 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
             />
             <Link2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           </div>
-          <span className="mt-1.5 block text-[10px] font-medium text-slate-400 leading-relaxed">
-            Đường dẫn duy nhất cho tin tuyển dụng (ví dụ: `https://gnest.vn/tuyen-dung/sales-executive`). Nhập tiêu đề để tự động tạo slug.
+          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
+            Slug duoc dung cho URL cua bai tuyen dung. Nhap tieu de de he thong tu tao slug.
           </span>
         </label>
 
         <label className="block">
-          <span className={labelClass}>Địa điểm làm việc</span>
+          <span className={labelClass}>Dia diem lam viec</span>
           <input
             name="location"
             type="text"
             defaultValue={job?.location ?? ''}
             className={fieldClass}
-            placeholder="VD: 716 Nguyễn Huệ, P. Mỹ Trà, Đồng Tháp"
+            placeholder="VD: Dong Thap / Hybrid / Tai nha may"
           />
         </label>
 
         <label className="block">
-          <span className={labelClass}>Mức lương / Thu nhập</span>
+          <span className={labelClass}>Muc luong / Thu nhap</span>
           <input
             name="salary_range"
             type="text"
             defaultValue={job?.salary_range ?? ''}
             className={fieldClass}
-            placeholder="VD: 8.5 - 12 Triệu hoặc Thỏa thuận"
+            placeholder="VD: 8 - 12 trieu hoac thoa thuan"
           />
         </label>
 
         <label className="block">
-          <span className={labelClass}>Thứ tự hiển thị</span>
+          <span className={labelClass}>Thu tu hien thi</span>
           <input
             name="sort_order"
             type="number"
             defaultValue={job?.sort_order ?? 0}
             className={fieldClass}
           />
-          <span className="mt-1.5 block text-[10px] font-medium text-slate-400 leading-relaxed">
-            Thứ tự sắp xếp của tin tuyển dụng (số nhỏ hơn hiển thị trước).
+          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
+            So nho hon se duoc hien thi truoc trong danh sach tuyen dung.
           </span>
         </label>
 
-        <div className="block sm:col-span-2">
-          <span className={labelClass}>Chi tiết tin tuyển dụng (Mô tả & Yêu cầu)</span>
-          <textarea
-            name="description"
-            rows={8}
-            defaultValue={job?.description ?? ''}
-            className={`${fieldClass} font-mono`}
-            placeholder="<h3>Mô tả công việc:</h3><ul><li>Vận hành xưởng...</li></ul>"
-          />
-          <span className="mt-1.5 block text-[10px] font-medium text-slate-400 leading-relaxed">
-            {"Nhập mô tả chi tiết, yêu cầu công việc và chế độ đãi ngộ. Có thể dùng các thẻ HTML cơ bản như <h3>, <p>, <ul>, <li> để trình bày đẹp mắt."}
-          </span>
+        <div className="sm:col-span-2 space-y-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-wide text-[#1B3A6B]">
+              Noi dung bai tuyen dung
+            </p>
+            <p className="mt-1 text-[10px] font-medium leading-relaxed text-slate-500">
+              Dien theo tung phan de he thong tu render HTML cho trang tuyen dung. Moi dong trong danh sach se thanh mot bullet.
+            </p>
+          </div>
+
+          <label className="block">
+            <span className={labelClass}>Doan mo dau</span>
+            <textarea
+              rows={3}
+              value={intro}
+              onChange={(event) => setIntro(event.target.value)}
+              className={fieldClass}
+              placeholder="Tom tat ngan gon ve vi tri, muc tieu cong viec va boi canh phong ban."
+            />
+          </label>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <label className="block">
+              <span className={labelClass}>Mo ta cong viec</span>
+              <textarea
+                rows={7}
+                value={responsibilities}
+                onChange={(event) => setResponsibilities(event.target.value)}
+                className={fieldClass}
+                placeholder={'Moi dong la mot y.\nTu van khach hang...\nPhoi hop kinh doanh...'}
+              />
+            </label>
+
+            <label className="block">
+              <span className={labelClass}>Yeu cau ung vien</span>
+              <textarea
+                rows={7}
+                value={requirements}
+                onChange={(event) => setRequirements(event.target.value)}
+                className={fieldClass}
+                placeholder={'Moi dong la mot y.\nCo kinh nghiem B2B...\nKy nang giao tiep tot...'}
+              />
+            </label>
+
+            <label className="block">
+              <span className={labelClass}>Quyen loi</span>
+              <textarea
+                rows={7}
+                value={benefits}
+                onChange={(event) => setBenefits(event.target.value)}
+                className={fieldClass}
+                placeholder={'Moi dong la mot y.\nLuong thuong ro rang...\nDao tao noi bo...'}
+              />
+            </label>
+          </div>
+
+          <label className="block">
+            <span className={labelClass}>Noi dung HTML bo sung</span>
+            <textarea
+              rows={5}
+              value={customHtml}
+              onChange={(event) => setCustomHtml(event.target.value)}
+              className={`${fieldClass} font-mono`}
+              placeholder="<p>Thong tin bo sung neu can giu HTML tuy chinh.</p>"
+            />
+            <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
+              Dung cho block dac biet, embedded content, hoac de giu noi dung HTML cu chua kip chuyen sang editor cau truc.
+            </span>
+          </label>
+
+          {hasLegacyHtml ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-[10px] font-medium leading-relaxed text-amber-800">
+              Bai dang nay dang chua HTML cu. He thong giu nguyen phan do trong o `Noi dung HTML bo sung` de tranh mat du lieu khi chinh sua.
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -147,8 +346,8 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
         <AdminToggle
           name="is_active"
           defaultChecked={job?.is_active ?? true}
-          label="Mở tuyển dụng công khai"
-          description="Bật để hiển thị tin tuyển dụng này trên trang /tuyen-dung ngoài website."
+          label="Mo tuyen dung cong khai"
+          description="Bat de hien thi tin tuyen dung nay tren trang /tuyen-dung ngoai website."
         />
       </div>
     </form>

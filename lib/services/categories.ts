@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
 import type { Tables } from '@/lib/types/database';
 
+import { filterVisibleCategories } from '@/lib/services/category-visibility';
+
 export type Category = Tables<'categories'>;
 
 function isSupabaseConfigured() {
@@ -31,22 +33,10 @@ export async function getCategories() {
     throw new Error(`Failed to load categories: ${error.message}`);
   }
 
-  return data;
+  return filterVisibleCategories(data ?? []);
 }
 
 export async function getCategoryBySlug(slug: string) {
-  const supabase = getSupabase();
-
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load category "${slug}": ${error.message}`);
-  }
-
-  return data;
+  const categories = await getCategories();
+  return categories.find((category) => category.slug === slug) ?? null;
 }

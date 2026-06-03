@@ -13,7 +13,8 @@ interface SignInWithPasswordInput {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signInWithPassword: (credentials: SignInWithPasswordInput) => Promise<void>;
+  signInWithPassword: (credentials: SignInWithPasswordInput) => Promise<User>;
+  updatePassword: (nextPassword: string) => Promise<User>;
   logout: () => Promise<void>;
 }
 
@@ -37,17 +38,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const supabaseClient = supabase;
     let mounted = true;
 
     function handleUserChange(currentUser: User | null) {
-      if (mounted) {
-        setUser(currentUser ?? null);
-        setLoading(false);
+      if (!mounted) {
+        return;
       }
+
+      setUser(currentUser ?? null);
+      setLoading(false);
     }
 
-    supabaseClient.auth
+    supabase.auth
       .getUser()
       .then(({ data }) => {
         handleUserChange(data.user);
@@ -61,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       handleUserChange(session?.user ?? null);
     });
 
@@ -73,10 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithPassword = async ({ email, password }: SignInWithPasswordInput) => {
     if (!supabase) {
-      throw new Error('Thiếu cấu hình Supabase trên trình duyệt.');
+      throw new Error('Thieu cau hinh Supabase tren trinh duyet.');
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -84,11 +86,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       throw mapSupabaseAuthError(error);
     }
+
+    if (!data.user) {
+      throw new Error('Khong the doc thong tin tai khoan sau dang nhap.');
+    }
+
+    return data.user;
+  };
+
+  const updatePassword = async (nextPassword: string) => {
+    if (!supabase) {
+      throw new Error('Thieu cau hinh Supabase tren trinh duyet.');
+    }
+
+    const { data, error } = await supabase.auth.updateUser({
+      password: nextPassword,
+      data: {
+        force_password_change: false,
+      },
+    });
+
+    if (error) {
+      throw mapSupabaseAuthError(error);
+    }
+
+    if (!data.user) {
+      throw new Error('Khong the cap nhat mat khau tai khoan.');
+    }
+
+    return data.user;
   };
 
   const logout = async () => {
     if (!supabase) {
-      throw new Error('Thiếu cấu hình Supabase trên trình duyệt.');
+      throw new Error('Thieu cau hinh Supabase tren trinh duyet.');
     }
 
     const { error } = await supabase.auth.signOut();
@@ -98,15 +129,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithPassword, logout }}>
+    <AuthContext.Provider value={{ user, loading, signInWithPassword, updatePassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 function mapSupabaseAuthError(error: AuthError) {
-  if (error.message.toLowerCase().includes('invalid login credentials')) {
-    return new Error('Email hoặc mật khẩu không đúng.');
+  const message = error.message.toLowerCase();
+
+  if (message.includes('invalid login credentials')) {
+    return new Error('Email hoac mat khau khong dung.');
+  }
+
+  if (message.includes('password should be')) {
+    return new Error('Mat khau moi chua dat yeu cau toi thieu cua Supabase.');
   }
 
   return new Error(error.message);

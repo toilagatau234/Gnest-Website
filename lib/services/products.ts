@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
 import type { Tables } from '@/lib/types/database';
 
+import { getVisibleCategoryIds } from '@/lib/services/category-visibility';
+
 export type ProductImage = Tables<'product_images'>;
 export type ProductBulkDiscount = Tables<'product_bulk_discounts'>;
 export type Product = Tables<'products'>;
@@ -32,8 +34,22 @@ function getSupabase() {
   return createClient();
 }
 
+async function getVisibleCategorySet() {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id, slug, parent_id, is_active, sort_order, name');
+
+  if (error) {
+    throw new Error(`Failed to load categories for product visibility: ${error.message}`);
+  }
+
+  return getVisibleCategoryIds(data ?? []);
+}
+
 export async function getProducts() {
   const supabase = getSupabase();
+  const visibleCategoryIds = await getVisibleCategorySet();
 
   const { data, error } = await supabase
     .from('products')
@@ -46,11 +62,18 @@ export async function getProducts() {
     throw new Error(`Failed to load products: ${error.message}`);
   }
 
-  return data;
+  return (data ?? []).filter((product) => {
+    if (!product.category_id) {
+      return true;
+    }
+
+    return visibleCategoryIds.has(product.category_id);
+  });
 }
 
 export async function getProductsByCategorySlug(categorySlug: string) {
   const supabase = getSupabase();
+  const visibleCategoryIds = await getVisibleCategorySet();
 
   // 1. Query category by slug first
   const { data: categoryData, error: catError } = await supabase
@@ -68,6 +91,10 @@ export async function getProductsByCategorySlug(categorySlug: string) {
     return [];
   }
 
+  if (!visibleCategoryIds.has(categoryData.id)) {
+    return [];
+  }
+
   // 2. Query products by category_id
   const { data, error } = await supabase
     .from('products')
@@ -81,11 +108,12 @@ export async function getProductsByCategorySlug(categorySlug: string) {
     throw new Error(`Failed to load products for category "${categorySlug}": ${error.message}`);
   }
 
-  return data;
+  return data ?? [];
 }
 
 export async function getProductBySlug(slug: string) {
   const supabase = getSupabase();
+  const visibleCategoryIds = await getVisibleCategorySet();
 
   const { data, error } = await supabase
     .from('products')
@@ -97,6 +125,10 @@ export async function getProductBySlug(slug: string) {
 
   if (error) {
     throw new Error(`Failed to load product "${slug}": ${error.message}`);
+  }
+
+  if (data?.category_id && !visibleCategoryIds.has(data.category_id)) {
+    return null;
   }
 
   return data;

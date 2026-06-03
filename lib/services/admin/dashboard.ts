@@ -18,9 +18,15 @@ export interface DashboardData {
   counts: {
     products: number;
     categories: number;
+    visibleCategories: number;
+    hiddenProducts: number;
+    outOfStockProducts: number;
+    missingImages: number;
     activeContacts: number;
+    activeJobs: number;
     newInquiries: number;
     totalInquiries: number;
+    recentActivities: number;
   };
   attention: {
     missingImages: number;
@@ -44,7 +50,19 @@ export interface ProductInterestMetric {
 
 const EMPTY: DashboardData = {
   hasSupabase: false,
-  counts: { products: 0, categories: 0, activeContacts: 0, newInquiries: 0, totalInquiries: 0 },
+  counts: {
+    products: 0,
+    categories: 0,
+    visibleCategories: 0,
+    hiddenProducts: 0,
+    outOfStockProducts: 0,
+    missingImages: 0,
+    activeContacts: 0,
+    activeJobs: 0,
+    newInquiries: 0,
+    totalInquiries: 0,
+    recentActivities: 0,
+  },
   attention: { missingImages: 0, lowStock: 0, hiddenProducts: 0, hiddenCategories: 0 },
   productInterest: [],
   recentInquiries: [],
@@ -122,6 +140,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       productRows,
       categoryRows,
       contactRes,
+      jobsRes,
       inquiriesRes,
       activityRes,
       totalInquiriesRes,
@@ -134,6 +153,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         .returns<ProductHealthRow[]>(),
       supabase.from('categories').select('is_active').returns<CategoryHealthRow[]>(),
       supabase.from('sales_contacts').select('*', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('job_vacancies').select('*', { count: 'exact', head: true }).eq('is_active', true),
       getInquiries({ limit: 5 }),
       getAuditLogs({ limit: 6 }),
       getInquiryCount(),
@@ -154,9 +174,15 @@ export async function getDashboardData(): Promise<DashboardData> {
       counts: {
         products: products.length,
         categories: categories.length,
+        visibleCategories: categories.filter((category) => category.is_active).length,
+        hiddenProducts: products.filter((product) => !product.is_active).length,
+        outOfStockProducts: products.filter((product) => product.stock === 0).length,
+        missingImages: products.filter((product) => !product.product_images || product.product_images.length === 0).length,
         activeContacts: contactRes.count ?? 0,
+        activeJobs: jobsRes.count ?? 0,
         newInquiries: newInquiriesRes.count,
         totalInquiries: totalInquiriesRes.count,
+        recentActivities: (activityRes.data ?? []).length,
       },
       attention: {
         missingImages: products.filter((p) => !p.product_images || p.product_images.length === 0).length,

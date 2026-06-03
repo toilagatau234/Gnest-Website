@@ -1,17 +1,34 @@
 import 'server-only';
 
+import { randomBytes } from 'crypto';
+
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { AdminRole, Tables } from '@/lib/types/database';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 
-export type AdminUserListItem = Pick<
+type AdminUserRow = Pick<
   Tables<'admin_users'>,
   'id' | 'email' | 'role' | 'is_active' | 'created_at' | 'updated_at'
 >;
 
+export interface AdminUserListItem extends AdminUserRow {
+  display_name: string | null;
+  username: string | null;
+  contact_email: string | null;
+  force_password_change: boolean;
+}
+
 export interface CreateAdminUserInput {
-  email: string;
+  displayName: string;
+  username: string;
   role: AdminRole;
+  contactEmail?: string;
+}
+
+export interface CreatedAdminUserPayload {
+  user: AdminUserListItem;
+  loginEmail: string;
+  temporaryPassword: string;
 }
 
 export interface UpdateAdminUserRoleInput {
@@ -31,10 +48,73 @@ export interface RemoveAdminUserInput {
   currentAdminId: string;
 }
 
-export interface AdminUserActionResult<T = any> {
+export interface AdminUserActionResult<T = unknown> {
   ok: boolean;
   data?: T;
   error?: string;
+}
+
+const ADMIN_USER_COLUMNS = 'id, email, role, is_active, created_at, updated_at';
+const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,30}[a-z0-9])?$/;
+const INTERNAL_EMAIL_DOMAIN = 'internal.admin.gnest.local';
+
+function normalizeNullableText(value: string | null | undefined) {
+  const trimmed = value?.trim() ?? '';
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeUsername(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '.')
+    .replace(/[^a-z0-9._-]/g, '')
+    .replace(/[._-]{2,}/g, '.')
+    .replace(/^[._-]+|[._-]+$/g, '');
+}
+
+function buildInternalLoginEmail(username: string) {
+  return `${username}@${INTERNAL_EMAIL_DOMAIN}`;
+}
+
+function generateTemporaryPassword() {
+  const seed = randomBytes(9).toString('base64url');
+  return `Gnest!${seed}`;
+}
+
+function readAuthMetadata(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
+}
+
+async function enrichAdminUsers(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  users: AdminUserRow[],
+) {
+  const enriched = await Promise.all(
+    users.map(async (user) => {
+      const { data } = await supabase.auth.admin.getUserById(user.id);
+      const metadata = readAuthMetadata(data.user?.user_metadata);
+
+      return {
+        ...user,
+        display_name:
+          typeof metadata.display_name === 'string' ? metadata.display_name : null,
+        username: typeof metadata.username === 'string' ? metadata.username : null,
+        contact_email:
+          typeof metadata.contact_email === 'string' ? metadata.contact_email : null,
+        force_password_change: Boolean(metadata.force_password_change),
+      } satisfies AdminUserListItem;
+    }),
+  );
+
+  return enriched;
 }
 
 export async function getAdminUsers(): Promise<{ data: AdminUserListItem[]; error: string | null }> {
@@ -43,105 +123,144 @@ export async function getAdminUsers(): Promise<{ data: AdminUserListItem[]; erro
     const supabase = createServiceRoleClient();
     const { data, error } = await supabase
       .from('admin_users')
-      .select('id, email, role, is_active, created_at, updated_at')
+      .select(ADMIN_USER_COLUMNS)
       .order('created_at', { ascending: true });
 
     if (error) {
       return { data: [], error: error.message };
     }
 
-    return { data: (data ?? []) as AdminUserListItem[], error: null };
+    const users = await enrichAdminUsers(supabase, (data ?? []) as AdminUserRow[]);
+    return { data: users, error: null };
   } catch (err) {
     return {
       data: [],
-      error: err instanceof Error ? err.message : 'Không thể tải danh sách tài khoản quản trị.',
+      error: err instanceof Error ? err.message : 'Khong the tai danh sach tai khoan quan tri.',
     };
   }
 }
 
 export async function inviteAdminUser(
-  input: CreateAdminUserInput
-): Promise<AdminUserActionResult<AdminUserListItem>> {
+  input: CreateAdminUserInput,
+): Promise<AdminUserActionResult<CreatedAdminUserPayload>> {
   try {
     const actor = await requireAdminAuth(['super_admin']);
     const supabase = createServiceRoleClient();
-    
-    const email = input.email.trim().toLowerCase();
-    
-    // Check if the user already exists in admin_users database
+
+    const displayName = input.displayName.trim();
+    const username = normalizeUsername(input.username);
+    const contactEmail = normalizeNullableText(input.contactEmail)?.toLowerCase() ?? null;
+
+    if (!displayName) {
+      return { ok: false, error: 'Ten hien thi la bat buoc.' };
+    }
+
+    if (!USERNAME_PATTERN.test(username)) {
+      return {
+        ok: false,
+        error: 'Ten dang nhap chi duoc dung chu thuong, so va . _ - (3-32 ky tu).',
+      };
+    }
+
+    const loginEmail = buildInternalLoginEmail(username);
+
     const { data: existingUser, error: checkError } = await supabase
       .from('admin_users')
       .select('id')
-      .eq('email', email)
+      .eq('email', loginEmail)
       .maybeSingle();
-      
+
     if (checkError) {
       return { ok: false, error: checkError.message };
     }
-    
+
     if (existingUser) {
-      return { ok: false, error: 'Tài khoản quản trị với email này đã tồn tại trong hệ thống.' };
+      return { ok: false, error: 'Ten dang nhap nay da ton tai trong he thong.' };
     }
 
-    // Call inviteUserByEmail
-    const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/admin/login`,
+    const temporaryPassword = generateTemporaryPassword();
+    const { data: createdAuthUser, error: createAuthError } = await supabase.auth.admin.createUser({
+      email: loginEmail,
+      password: temporaryPassword,
+      email_confirm: true,
+      user_metadata: {
+        display_name: displayName,
+        username,
+        contact_email: contactEmail,
+        force_password_change: true,
+      },
     });
 
-    if (inviteError) {
-      return { ok: false, error: `Lỗi gửi thư mời: ${inviteError.message}` };
+    if (createAuthError) {
+      return { ok: false, error: `Khong the tao tai khoan auth: ${createAuthError.message}` };
     }
 
-    const authUser = inviteData.user;
+    const authUser = createdAuthUser.user;
     if (!authUser) {
-      return { ok: false, error: 'Không thể khởi tạo tài khoản trên hệ thống Auth.' };
+      return { ok: false, error: 'Khong the khoi tao tai khoan tren he thong Auth.' };
     }
 
-    // Insert into public.admin_users
-    const { data: newUser, error: insertError } = await supabase
+    const { data: insertedUser, error: insertError } = await supabase
       .from('admin_users')
       .insert({
         id: authUser.id,
-        email: email,
+        email: loginEmail,
         role: input.role,
         is_active: true,
       })
-      .select('id, email, role, is_active, created_at, updated_at')
+      .select(ADMIN_USER_COLUMNS)
       .single();
 
     if (insertError) {
-      // Clean up orphan auth user in rollback flow
       await supabase.auth.admin.deleteUser(authUser.id);
-      return { ok: false, error: `Lỗi lưu trữ dữ liệu phân quyền: ${insertError.message}` };
+      return { ok: false, error: `Khong the luu quyen truy cap: ${insertError.message}` };
     }
 
-    // Write audit log
+    const enrichedUser = (
+      await enrichAdminUsers(supabase, [insertedUser as AdminUserRow])
+    )[0];
+
     await supabase.from('audit_logs').insert({
       actor_id: actor.id,
       action: 'create',
       entity: 'admin_users',
-      entity_id: newUser.id,
-      metadata: { email: newUser.email, role: newUser.role },
+      entity_id: enrichedUser.id,
+      metadata: {
+        login_email: enrichedUser.email,
+        username: enrichedUser.username,
+        display_name: enrichedUser.display_name,
+        role: enrichedUser.role,
+        force_password_change: true,
+      },
     });
 
-    return { ok: true, data: newUser as AdminUserListItem };
+    return {
+      ok: true,
+      data: {
+        user: enrichedUser,
+        loginEmail,
+        temporaryPassword,
+      },
+    };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Không thể mời tài khoản quản trị.' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Khong the tao tai khoan quan tri noi bo.',
+    };
   }
 }
 
 export async function updateAdminUserRole(
-  input: UpdateAdminUserRoleInput
+  input: UpdateAdminUserRoleInput,
 ): Promise<AdminUserActionResult<AdminUserListItem>> {
   try {
     const actor = await requireAdminAuth(['super_admin']);
     const supabase = createServiceRoleClient();
 
     if (input.userId === input.currentAdminId) {
-      return { ok: false, error: 'Bạn không thể tự thay đổi vai trò của chính mình.' };
+      return { ok: false, error: 'Ban khong the tu thay doi vai tro cua chinh minh.' };
     }
 
-    // Get old user details for checks and audit log
     const { data: targetUser, error: targetError } = await supabase
       .from('admin_users')
       .select('id, email, role, is_active')
@@ -149,12 +268,11 @@ export async function updateAdminUserRole(
       .maybeSingle();
 
     if (targetError || !targetUser) {
-      return { ok: false, error: 'Không tìm thấy tài khoản cần cập nhật vai trò.' };
+      return { ok: false, error: 'Khong tim thay tai khoan can cap nhat vai tro.' };
     }
 
     const oldRole = targetUser.role;
 
-    // Last active super admin safeguard
     if (oldRole === 'super_admin' && input.role !== 'super_admin') {
       const { count, error: countError } = await supabase
         .from('admin_users')
@@ -167,51 +285,61 @@ export async function updateAdminUserRole(
       }
 
       if ((count ?? 0) <= 1) {
-        return { ok: false, error: 'Không thể hạ cấp tài khoản vì đây là tài khoản Super Admin hoạt động duy nhất.' };
+        return {
+          ok: false,
+          error: 'Khong the ha cap vi day la tai khoan Super Admin hoat dong duy nhat.',
+        };
       }
     }
 
-    // Update in database
     const { data: updated, error: updateError } = await supabase
       .from('admin_users')
       .update({ role: input.role })
       .eq('id', input.userId)
-      .select('id, email, role, is_active, created_at, updated_at')
+      .select(ADMIN_USER_COLUMNS)
       .single();
 
     if (updateError) {
       return { ok: false, error: updateError.message };
     }
 
-    // Write audit log
+    const enrichedUser = (await enrichAdminUsers(supabase, [updated as AdminUserRow]))[0];
+
     await supabase.from('audit_logs').insert({
       actor_id: actor.id,
       action: 'update',
       entity: 'admin_users',
       entity_id: updated.id,
-      metadata: { email: updated.email, old_role: oldRole, new_role: updated.role },
+      metadata: {
+        login_email: enrichedUser.email,
+        username: enrichedUser.username,
+        old_role: oldRole,
+        new_role: enrichedUser.role,
+      },
     });
 
-    return { ok: true, data: updated as AdminUserListItem };
+    return { ok: true, data: enrichedUser };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Không thể cập nhật vai trò quản trị.' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Khong the cap nhat vai tro quan tri.',
+    };
   }
 }
 
 export async function setAdminUserActive(
   userId: string,
   isActive: boolean,
-  currentAdminId: string
+  currentAdminId: string,
 ): Promise<AdminUserActionResult<AdminUserListItem>> {
   try {
     const actor = await requireAdminAuth(['super_admin']);
     const supabase = createServiceRoleClient();
 
     if (userId === currentAdminId) {
-      return { ok: false, error: 'Bạn không thể tự vô hiệu hóa tài khoản của chính mình.' };
+      return { ok: false, error: 'Ban khong the tu vo hieu hoa tai khoan cua chinh minh.' };
     }
 
-    // Get target user details for check
     const { data: targetUser, error: targetError } = await supabase
       .from('admin_users')
       .select('id, email, role, is_active')
@@ -219,10 +347,9 @@ export async function setAdminUserActive(
       .maybeSingle();
 
     if (targetError || !targetUser) {
-      return { ok: false, error: 'Không tìm thấy tài khoản cần cập nhật trạng thái.' };
+      return { ok: false, error: 'Khong tim thay tai khoan can cap nhat trang thai.' };
     }
 
-    // Last active super admin safeguard
     if (targetUser.role === 'super_admin' && !isActive) {
       const { count, error: countError } = await supabase
         .from('admin_users')
@@ -235,50 +362,59 @@ export async function setAdminUserActive(
       }
 
       if ((count ?? 0) <= 1) {
-        return { ok: false, error: 'Không thể vô hiệu hóa tài khoản vì đây là tài khoản Super Admin hoạt động duy nhất.' };
+        return {
+          ok: false,
+          error: 'Khong the vo hieu hoa vi day la tai khoan Super Admin hoat dong duy nhat.',
+        };
       }
     }
 
-    // Update in database
     const { data: updated, error: updateError } = await supabase
       .from('admin_users')
       .update({ is_active: isActive })
       .eq('id', userId)
-      .select('id, email, role, is_active, created_at, updated_at')
+      .select(ADMIN_USER_COLUMNS)
       .single();
 
     if (updateError) {
       return { ok: false, error: updateError.message };
     }
 
-    // Write audit log
+    const enrichedUser = (await enrichAdminUsers(supabase, [updated as AdminUserRow]))[0];
+
     await supabase.from('audit_logs').insert({
       actor_id: actor.id,
       action: isActive ? 'activate' : 'deactivate',
       entity: 'admin_users',
       entity_id: updated.id,
-      metadata: { email: updated.email, is_active: updated.is_active },
+      metadata: {
+        login_email: enrichedUser.email,
+        username: enrichedUser.username,
+        is_active: enrichedUser.is_active,
+      },
     });
 
-    return { ok: true, data: updated as AdminUserListItem };
+    return { ok: true, data: enrichedUser };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Không thể cập nhật trạng thái tài khoản.' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Khong the cap nhat trang thai tai khoan.',
+    };
   }
 }
 
 export async function removeAdminUserAccess(
   userId: string,
-  currentAdminId: string
+  currentAdminId: string,
 ): Promise<AdminUserActionResult<AdminUserListItem>> {
   try {
     const actor = await requireAdminAuth(['super_admin']);
     const supabase = createServiceRoleClient();
 
     if (userId === currentAdminId) {
-      return { ok: false, error: 'Bạn không thể tự xóa tài khoản của chính mình.' };
+      return { ok: false, error: 'Ban khong the tu xoa tai khoan cua chinh minh.' };
     }
 
-    // Get details for check
     const { data: targetUser, error: targetError } = await supabase
       .from('admin_users')
       .select('id, email, role, is_active')
@@ -286,10 +422,9 @@ export async function removeAdminUserAccess(
       .maybeSingle();
 
     if (targetError || !targetUser) {
-      return { ok: false, error: 'Không tìm thấy tài khoản cần xóa truy cập.' };
+      return { ok: false, error: 'Khong tim thay tai khoan can xoa truy cap.' };
     }
 
-    // Last active super admin safeguard
     if (targetUser.role === 'super_admin') {
       const { count, error: countError } = await supabase
         .from('admin_users')
@@ -302,30 +437,37 @@ export async function removeAdminUserAccess(
       }
 
       if ((count ?? 0) <= 1) {
-        return { ok: false, error: 'Không thể xóa tài khoản vì đây là tài khoản Super Admin hoạt động duy nhất.' };
+        return {
+          ok: false,
+          error: 'Khong the xoa vi day la tai khoan Super Admin hoat dong duy nhat.',
+        };
       }
     }
 
-    // Delete user from Supabase Auth
-    // Because of foreign key with 'ON DELETE CASCADE' in DB schema,
-    // this automatically deletes the admin_users record in the database!
+    const enrichedUser = (await enrichAdminUsers(supabase, [targetUser as AdminUserRow]))[0];
     const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId);
 
     if (deleteAuthError) {
-      return { ok: false, error: `Lỗi xóa tài khoản auth: ${deleteAuthError.message}` };
+      return { ok: false, error: `Khong the xoa tai khoan auth: ${deleteAuthError.message}` };
     }
 
-    // Write audit log
     await supabase.from('audit_logs').insert({
       actor_id: actor.id,
       action: 'delete',
       entity: 'admin_users',
       entity_id: userId,
-      metadata: { email: targetUser.email, role: targetUser.role },
+      metadata: {
+        login_email: enrichedUser.email,
+        username: enrichedUser.username,
+        role: enrichedUser.role,
+      },
     });
 
-    return { ok: true, data: targetUser as AdminUserListItem };
+    return { ok: true, data: enrichedUser };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Không thể xóa quyền truy cập quản trị.' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Khong the xoa quyen truy cap quan tri.',
+    };
   }
 }

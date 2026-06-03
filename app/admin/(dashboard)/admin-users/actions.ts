@@ -1,16 +1,22 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+
 import {
   inviteAdminUser,
   updateAdminUserRole,
   setAdminUserActive,
   removeAdminUserAccess,
+  type CreatedAdminUserPayload,
 } from '@/lib/services/admin/admin-users';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 import type { AdminRole } from '@/lib/types/database';
 
-export type AdminFormState = { ok: boolean; error?: string };
+export type AdminFormState = {
+  ok: boolean;
+  error?: string;
+  createdUser?: CreatedAdminUserPayload;
+};
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -24,55 +30,71 @@ function revalidateAdminUsers() {
 
 export async function inviteAdminUserAction(
   _prevState: AdminFormState,
-  formData: FormData
+  formData: FormData,
 ): Promise<AdminFormState> {
   try {
-    const email = readString(formData, 'email');
+    const displayName = readString(formData, 'display_name');
+    const username = readString(formData, 'username');
+    const contactEmail = readString(formData, 'contact_email');
     const role = readString(formData, 'role') as AdminRole;
 
-    if (!email) {
-      return { ok: false, error: 'Email là bắt buộc.' };
+    if (!displayName) {
+      return { ok: false, error: 'Ten hien thi la bat buoc.' };
     }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return { ok: false, error: 'Email không đúng định dạng.' };
+
+    if (!username) {
+      return { ok: false, error: 'Ten dang nhap la bat buoc.' };
+    }
+
+    if (contactEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(contactEmail)) {
+        return { ok: false, error: 'Email lien he khong dung dinh dang.' };
+      }
     }
 
     if (!role) {
-      return { ok: false, error: 'Vai trò là bắt buộc.' };
+      return { ok: false, error: 'Vai tro la bat buoc.' };
     }
 
-    const { ok, error } = await inviteAdminUser({ email, role });
-    if (!ok || error) {
-      return { ok: false, error: error || 'Không thể mời người dùng quản trị.' };
+    const { ok, data, error } = await inviteAdminUser({
+      displayName,
+      username,
+      contactEmail,
+      role,
+    });
+
+    if (!ok || error || !data) {
+      return { ok: false, error: error || 'Khong the tao tai khoan quan tri noi bo.' };
     }
 
     revalidateAdminUsers();
-    return { ok: true };
+    return { ok: true, createdUser: data };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Không thể mời người dùng quản trị.' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Khong the tao tai khoan quan tri noi bo.',
+    };
   }
 }
 
 export async function updateAdminUserRoleAction(
   _prevState: AdminFormState,
-  formData: FormData
+  formData: FormData,
 ): Promise<AdminFormState> {
   try {
     const userId = readString(formData, 'userId');
     const role = readString(formData, 'role') as AdminRole;
 
     if (!userId) {
-      return { ok: false, error: 'Thiếu ID người dùng.' };
+      return { ok: false, error: 'Thieu ID nguoi dung.' };
     }
 
     if (!role) {
-      return { ok: false, error: 'Vai trò là bắt buộc.' };
+      return { ok: false, error: 'Vai tro la bat buoc.' };
     }
 
     const actor = await requireAdminAuth(['super_admin']);
-
     const { ok, error } = await updateAdminUserRole({
       userId,
       role,
@@ -80,13 +102,13 @@ export async function updateAdminUserRoleAction(
     });
 
     if (!ok || error) {
-      return { ok: false, error: error || 'Không thể cập nhật vai trò.' };
+      return { ok: false, error: error || 'Khong the cap nhat vai tro.' };
     }
 
     revalidateAdminUsers();
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Không thể cập nhật vai trò.' };
+    return { ok: false, error: err instanceof Error ? err.message : 'Khong the cap nhat vai tro.' };
   }
 }
 
@@ -95,15 +117,14 @@ export async function toggleAdminUserActiveAction(formData: FormData): Promise<v
   const isActive = readString(formData, 'next_is_active') === 'true';
 
   if (!userId) {
-    throw new Error('Thiếu ID người dùng.');
+    throw new Error('Thieu ID nguoi dung.');
   }
 
   const actor = await requireAdminAuth(['super_admin']);
-
   const { ok, error } = await setAdminUserActive(userId, isActive, actor.id);
 
   if (!ok || error) {
-    throw new Error(error || 'Không thể đổi trạng thái tài khoản.');
+    throw new Error(error || 'Khong the doi trang thai tai khoan.');
   }
 
   revalidateAdminUsers();
@@ -111,21 +132,23 @@ export async function toggleAdminUserActiveAction(formData: FormData): Promise<v
 
 export async function removeAdminUserAccessAction(userId: string): Promise<AdminFormState> {
   if (!userId) {
-    return { ok: false, error: 'Thiếu ID người dùng.' };
+    return { ok: false, error: 'Thieu ID nguoi dung.' };
   }
 
   try {
     const actor = await requireAdminAuth(['super_admin']);
-
     const { ok, error } = await removeAdminUserAccess(userId, actor.id);
 
     if (!ok || error) {
-      return { ok: false, error: error || 'Không thể xóa quyền truy cập.' };
+      return { ok: false, error: error || 'Khong the xoa quyen truy cap.' };
     }
 
     revalidateAdminUsers();
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Không thể xóa quyền truy cập.' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Khong the xoa quyen truy cap.',
+    };
   }
 }

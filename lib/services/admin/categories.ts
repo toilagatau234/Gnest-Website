@@ -3,7 +3,9 @@ import 'server-only';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { CategoryType, Inserts, Tables, Updates } from '@/lib/types/database';
 
+import { buildAuditMetadata } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { sortCategoriesDeterministically } from '@/lib/services/category-visibility';
 
 export type AdminCategory = Pick<
   Tables<'categories'>,
@@ -25,6 +27,11 @@ const ADMIN_CATEGORY_SELECT =
   'id, name, slug, type, parent_id, sort_order, has_filters, is_active';
 const SHOULD_LOG_ADMIN_TIMINGS =
   process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
+
+type CategoryAuditRow = Pick<
+  Tables<'categories'>,
+  'id' | 'name' | 'slug' | 'type' | 'parent_id' | 'sort_order' | 'has_filters' | 'is_active'
+>;
 
 function now() {
   return performance.now();
@@ -50,6 +57,70 @@ function normalizeCategoryPayload(payload: CategoryPayload): Inserts<'categories
   };
 }
 
+function toCategoryAuditSnapshot(category: CategoryAuditRow) {
+  return {
+    name: category.name,
+    slug: category.slug,
+    type: category.type,
+    parent_id: category.parent_id,
+    sort_order: category.sort_order,
+    has_filters: category.has_filters,
+    is_active: category.is_active,
+  };
+}
+
+async function cascadeCategoryVisibility(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  categoryId: string,
+  isActive: boolean,
+) {
+  const { data: categories, error } = await supabase
+    .from('categories')
+    .select(ADMIN_CATEGORY_SELECT)
+    .returns<AdminCategory[]>();
+
+  if (error || !categories) {
+    return { updatedIds: [] as string[], error: error?.message ?? null };
+  }
+
+  const childrenByParentId = new Map<string, string[]>();
+
+  for (const category of categories) {
+    if (!category.parent_id) {
+      continue;
+    }
+
+    const current = childrenByParentId.get(category.parent_id) ?? [];
+    current.push(category.id);
+    childrenByParentId.set(category.parent_id, current);
+  }
+
+  const pending = [...(childrenByParentId.get(categoryId) ?? [])];
+  const descendantIds: string[] = [];
+
+  while (pending.length > 0) {
+    const currentId = pending.shift();
+
+    if (!currentId || descendantIds.includes(currentId)) {
+      continue;
+    }
+
+    descendantIds.push(currentId);
+    pending.push(...(childrenByParentId.get(currentId) ?? []));
+  }
+
+  if (descendantIds.length === 0) {
+    return { updatedIds: [] as string[], error: null };
+  }
+
+  const { error: updateError } = await supabase
+    .from('categories')
+    .update({ is_active: isActive })
+    .in('id', descendantIds);
+
+  return { updatedIds: updateError ? [] : descendantIds, error: updateError?.message ?? null };
+}
+
 export async function getAdminCategories() {
   const totalStart = now();
 
@@ -72,7 +143,7 @@ export async function getAdminCategories() {
       return { data: null, error: error.message };
     }
 
-    return { data: data || [], error: null };
+    return { data: sortCategoriesDeterministically(data || []), error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Không thể tải danh mục';
     return { data: null, error: message };
@@ -84,7 +155,19 @@ export async function getAdminCategories() {
 export async function createAdminCategory(payload: CategoryPayload) {
   const adminUser = await requireAdminAuth(CATEGORY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
-  const insertPayload = normalizeCategoryPayload(payload);
+  let insertPayload = normalizeCategoryPayload(payload);
+
+  if (insertPayload.parent_id) {
+    const { data: parentCategory } = await supabase
+      .from('categories')
+      .select(ADMIN_CATEGORY_SELECT)
+      .eq('id', insertPayload.parent_id)
+      .maybeSingle<AdminCategory>();
+
+    if (parentCategory && !parentCategory.is_active) {
+      insertPayload = { ...insertPayload, is_active: false };
+    }
+  }
 
   const { data, error } = await supabase
     .from('categories')
@@ -101,7 +184,10 @@ export async function createAdminCategory(payload: CategoryPayload) {
     action: 'create',
     entity: 'categories',
     entity_id: data.id,
-    metadata: { name: data.name, slug: data.slug },
+    metadata: buildAuditMetadata({
+      label: data.name,
+      after: toCategoryAuditSnapshot(data),
+    }),
   });
 
   return { data, error: null };
@@ -110,7 +196,25 @@ export async function createAdminCategory(payload: CategoryPayload) {
 export async function updateAdminCategory(categoryId: string, payload: CategoryPayload) {
   const adminUser = await requireAdminAuth(CATEGORY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
-  const updatePayload: Updates<'categories'> = normalizeCategoryPayload(payload);
+  const { data: before } = await supabase
+    .from('categories')
+    .select(ADMIN_CATEGORY_SELECT)
+    .eq('id', categoryId)
+    .maybeSingle<CategoryAuditRow>();
+
+  let updatePayload: Updates<'categories'> = normalizeCategoryPayload(payload);
+
+  if (updatePayload.parent_id) {
+    const { data: parentCategory } = await supabase
+      .from('categories')
+      .select(ADMIN_CATEGORY_SELECT)
+      .eq('id', updatePayload.parent_id)
+      .maybeSingle<AdminCategory>();
+
+    if (parentCategory && !parentCategory.is_active) {
+      updatePayload = { ...updatePayload, is_active: false };
+    }
+  }
 
   const { data, error } = await supabase
     .from('categories')
@@ -123,12 +227,26 @@ export async function updateAdminCategory(categoryId: string, payload: CategoryP
     return { data: null, error: error.message };
   }
 
+  let cascadedChildren = 0;
+  if (!data.is_active) {
+    const cascadeResult = await cascadeCategoryVisibility(supabase, data.id, false);
+    if (cascadeResult.error) {
+      return { data: null, error: cascadeResult.error };
+    }
+    cascadedChildren = cascadeResult.updatedIds.length;
+  }
+
   await supabase.from('audit_logs').insert({
     actor_id: adminUser.id,
     action: 'update',
     entity: 'categories',
     entity_id: data.id,
-    metadata: { name: data.name, slug: data.slug },
+    metadata: buildAuditMetadata({
+      label: data.name,
+      before: before ? toCategoryAuditSnapshot(before) : null,
+      after: toCategoryAuditSnapshot(data),
+      extra: cascadedChildren > 0 ? { cascaded_children: cascadedChildren } : null,
+    }),
   });
 
   return { data, error: null };
@@ -168,7 +286,13 @@ export async function deleteAdminCategory(categoryId: string) {
     action: 'delete',
     entity: 'categories',
     entity_id: category.id,
-    metadata: { name: category.name, slug: category.slug },
+    metadata: buildAuditMetadata({
+      label: category.name,
+      before: {
+        name: category.name,
+        slug: category.slug,
+      },
+    }),
   });
 
   return { data: category, error: null };
@@ -177,6 +301,11 @@ export async function deleteAdminCategory(categoryId: string) {
 export async function setAdminCategoryActive(categoryId: string, isActive: boolean) {
   const adminUser = await requireAdminAuth(CATEGORY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
+  const { data: before } = await supabase
+    .from('categories')
+    .select(ADMIN_CATEGORY_SELECT)
+    .eq('id', categoryId)
+    .maybeSingle<CategoryAuditRow>();
 
   const { data, error } = await supabase
     .from('categories')
@@ -189,12 +318,29 @@ export async function setAdminCategoryActive(categoryId: string, isActive: boole
     return { data: null, error: error.message };
   }
 
+  let cascadedChildren = 0;
+  if (!isActive) {
+    const cascadeResult = await cascadeCategoryVisibility(supabase, data.id, false);
+    if (cascadeResult.error) {
+      return { data: null, error: cascadeResult.error };
+    }
+    cascadedChildren = cascadeResult.updatedIds.length;
+  }
+
   await supabase.from('audit_logs').insert({
     actor_id: adminUser.id,
     action: isActive ? 'activate' : 'deactivate',
     entity: 'categories',
     entity_id: data.id,
-    metadata: { name: data.name, slug: data.slug },
+    metadata: buildAuditMetadata({
+      label: data.name,
+      before: before ? toCategoryAuditSnapshot(before) : null,
+      after: {
+        ...(before ? toCategoryAuditSnapshot(before) : {}),
+        is_active: data.is_active,
+      },
+      extra: cascadedChildren > 0 ? { cascaded_children: cascadedChildren } : null,
+    }),
   });
 
   return { data, error: null };

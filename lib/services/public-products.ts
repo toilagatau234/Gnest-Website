@@ -3,6 +3,8 @@ import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import type { Tables } from '@/lib/types/database';
 
+import { getVisibleCategoryIds } from '@/lib/services/category-visibility';
+
 export type PublicProductImage = Pick<
   Tables<'product_images'>,
   'id' | 'public_url' | 'alt' | 'sort_order' | 'is_primary'
@@ -94,8 +96,22 @@ function toPublicProductDetail(raw: RawPublicProduct): PublicProductDetail {
   };
 }
 
+async function getVisibleCategorySet() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id, slug, parent_id, is_active, sort_order, name');
+
+  if (error) {
+    throw new Error(`Failed to load public categories: ${error.message}`);
+  }
+
+  return getVisibleCategoryIds(data ?? []);
+}
+
 export async function getPublicProductBySlug(slug: string): Promise<PublicProductDetail | null> {
   const supabase = await createClient();
+  const visibleCategoryIds = await getVisibleCategorySet();
 
   const { data, error } = await supabase
     .from('products')
@@ -108,9 +124,14 @@ export async function getPublicProductBySlug(slug: string): Promise<PublicProduc
     throw new Error(`Failed to load product "${slug}": ${error.message}`);
   }
 
-  if (!data) return null;
+  const product = data as unknown as RawPublicProduct | null;
 
-  return toPublicProductDetail(data as unknown as RawPublicProduct);
+  if (!product) return null;
+  if (product.categories?.id && !visibleCategoryIds.has(product.categories.id)) {
+    return null;
+  }
+
+  return toPublicProductDetail(product);
 }
 
 export type PublicProductQuoteContext = Pick<Tables<'products'>, 'id' | 'name' | 'slug'>;
@@ -119,10 +140,11 @@ export async function getActivePublicProductQuoteContextById(
   productId: string
 ): Promise<PublicProductQuoteContext | null> {
   const supabase = await createClient();
+  const visibleCategoryIds = await getVisibleCategorySet();
 
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, slug')
+    .select('id, name, slug, category_id')
     .eq('id', productId)
     .eq('is_active', true)
     .maybeSingle();
@@ -131,13 +153,26 @@ export async function getActivePublicProductQuoteContextById(
     throw new Error(`Failed to verify quote product "${productId}": ${error.message}`);
   }
 
-  return data;
+  if (!data) {
+    return null;
+  }
+
+  if (data.category_id && !visibleCategoryIds.has(data.category_id)) {
+    return null;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    slug: data.slug,
+  };
 }
 
 export async function getPublicProductsByCategorySlug(
   categorySlug: string
 ): Promise<PublicProductDetail[]> {
   const supabase = await createClient();
+  const visibleCategoryIds = await getVisibleCategorySet();
 
   const { data: category, error: catError } = await supabase
     .from('categories')
@@ -151,6 +186,9 @@ export async function getPublicProductsByCategorySlug(
   }
 
   if (!category) return [];
+  if (!visibleCategoryIds.has(category.id)) {
+    return [];
+  }
 
   const { data, error } = await supabase
     .from('products')
@@ -163,5 +201,7 @@ export async function getPublicProductsByCategorySlug(
     throw new Error(`Failed to load products for category "${categorySlug}": ${error.message}`);
   }
 
-  return (data as unknown as RawPublicProduct[]).map(toPublicProductDetail);
+  return (data as unknown as RawPublicProduct[])
+    .filter((product) => !product.categories?.id || visibleCategoryIds.has(product.categories.id))
+    .map(toPublicProductDetail);
 }

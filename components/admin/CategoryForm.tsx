@@ -112,13 +112,16 @@ export function CategoryForm({ formId, formAction, state, categories, category }
         </label>
 
         <label className="block sm:col-span-2">
-          <span className={labelClass}>Thứ tự hiển thị</span>
+          <span className={labelClass}>Display Priority</span>
           <input
             name="sort_order"
             type="number"
             defaultValue={category?.sort_order ?? 0}
             className={fieldClass}
           />
+          <span className="mt-1.5 block text-[10px] font-medium text-slate-400">
+            Số nhỏ hơn sẽ ưu tiên hiển thị trước. Nếu trùng priority, hệ thống fallback theo tên và slug.
+          </span>
         </label>
       </div>
 

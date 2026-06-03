@@ -50,20 +50,70 @@ function downloadTemplate() {
   const wb = XLSX.utils.book_new();
   const sampleRows = [
     {
-      name: 'Chai Nước 500ml',
-      slug: 'chai-nuoc-500ml',
-      category_slug: 'nuoc-uong',
-      description: 'Chai nhựa PET trong suốt',
-      price: 150000,
-      stock: 100,
+      name: 'Hũ thủy tinh 500ml nút nhôm',
+      slug: 'hu-thuy-tinh-500ml-nut-nhom',
+      category_slug: 'chai-lo-thuy-tinh',
+      description: 'Mô tả ngắn hiển thị cho catalog sỉ.',
+      price: 18500,
+      stock: 240,
       is_active: 'true',
-      specs: '{"dungTich":"500ml","chat lieu":"Nhựa PET"}',
+      specs: '{"dungTich":"500ml","chatLieu":"Thuy tinh","quyCach":"48 chai/thung"}',
+    },
+    {
+      name: 'Nắp thiếc sơn 58mm',
+      slug: 'nap-thiec-son-58mm',
+      category_slug: 'phu-kien-nganh-yen-sao',
+      description: 'Phụ kiện đi kèm cho hũ thủy tinh.',
+      price: 2100,
+      stock: 1000,
+      is_active: 'true',
+      specs: '{"duongKinh":"58mm","mauSac":"Vang"}',
+    },
+    {
+      name: '',
+      slug: '',
+      category_slug: '',
+      description: '',
+      price: '',
+      stock: '',
+      is_active: 'true',
+      specs: '',
     },
   ];
+  const instructions = [
+    ['Hướng dẫn nhanh', 'Chi tiết'],
+    ['1', 'Không đổi tên các cột trong sheet Products Template.'],
+    ['2', 'Cột bắt buộc: name, slug, category_slug.'],
+    ['3', 'slug chỉ dùng chữ thường, số và dấu gạch ngang.'],
+    ['4', 'category_slug phải khớp với slug danh mục đang hiển thị trong CMS.'],
+    ['5', 'price là số không âm. Để trống nếu muốn hiển thị "Liên hệ".'],
+    ['6', 'stock là số nguyên >= 0.'],
+    ['7', 'is_active chấp nhận: true/false, 1/0, yes/no, active/hidden.'],
+    ['8', 'specs là JSON object hợp lệ, ví dụ {"dungTich":"500ml","chatLieu":"Thuy tinh"}.'],
+    ['9', 'Nên nhập tối đa 500 dòng cho mỗi lần import.'],
+  ];
+  const validValues = [
+    ['Trường', 'Giá trị hợp lệ / ghi chú'],
+    ['category_slug', 'Lấy từ trang Danh mục trong admin'],
+    ['is_active', 'true, false, 1, 0, yes, no, active, hidden'],
+    ['price', 'Số không âm, ví dụ 18500'],
+    ['stock', 'Số nguyên không âm, ví dụ 240'],
+    ['specs', '{"dungTich":"500ml","chatLieu":"Thuy tinh"}'],
+  ];
   const ws = XLSX.utils.json_to_sheet(sampleRows, { header: [...ALL_COLUMNS] });
-  // Column widths
-  ws['!cols'] = [20, 24, 20, 30, 12, 10, 12, 40].map((w) => ({ wch: w }));
-  XLSX.utils.book_append_sheet(wb, ws, 'Sản phẩm');
+  ws['!cols'] = [28, 32, 24, 40, 14, 12, 14, 44].map((w) => ({ wch: w }));
+  ws['!autofilter'] = { ref: 'A1:H4' };
+  ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
+
+  const instructionsSheet = XLSX.utils.aoa_to_sheet(instructions);
+  instructionsSheet['!cols'] = [{ wch: 8 }, { wch: 110 }];
+
+  const validValuesSheet = XLSX.utils.aoa_to_sheet(validValues);
+  validValuesSheet['!cols'] = [{ wch: 18 }, { wch: 80 }];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Products Template');
+  XLSX.utils.book_append_sheet(wb, instructionsSheet, 'Instructions');
+  XLSX.utils.book_append_sheet(wb, validValuesSheet, 'Valid Values');
   XLSX.writeFile(wb, 'mau-nhap-san-pham.xlsx');
 }
 

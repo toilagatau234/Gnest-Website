@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import type { AdminUser } from '@/lib/types/admin';
 import type { AdminRole } from '@/lib/types/database';
+import { requiresAdminPasswordReset } from '@/lib/services/admin/user-password-reset';
 export { ADMIN_ROLE_LABELS } from '@/lib/types/admin';
 
 export const ADMIN_ROLES: readonly AdminRole[] = ['super_admin', 'admin', 'editor', 'viewer'];
@@ -111,6 +112,10 @@ export async function getAdminEntryPath() {
 
   if (sessionState.status === 'unauthorized') {
     return '/admin/access-denied';
+  }
+
+  if (requiresAdminPasswordReset(sessionState.user)) {
+    return '/admin/password-reset';
   }
 
   return '/admin/dashboard';

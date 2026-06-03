@@ -1,16 +1,10 @@
 import { redirect } from 'next/navigation';
 
-import { AdminShell } from '@/components/admin/AdminShell';
+import { AdminPasswordResetForm } from '@/components/admin/AdminPasswordResetForm';
 import { getAdminSessionState } from '@/lib/services/admin/auth';
 import { requiresAdminPasswordReset } from '@/lib/services/admin/user-password-reset';
 
-export const dynamic = 'force-dynamic';
-
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function AdminPasswordResetPage() {
   const sessionState = await getAdminSessionState();
 
   if (sessionState.status === 'unauthenticated') {
@@ -21,9 +15,9 @@ export default async function DashboardLayout({
     redirect('/admin/access-denied');
   }
 
-  if (requiresAdminPasswordReset(sessionState.user)) {
-    redirect('/admin/password-reset');
+  if (!requiresAdminPasswordReset(sessionState.user)) {
+    redirect('/admin/dashboard');
   }
 
-  return <AdminShell adminUser={sessionState.adminUser}>{children}</AdminShell>;
+  return <AdminPasswordResetForm />;
 }

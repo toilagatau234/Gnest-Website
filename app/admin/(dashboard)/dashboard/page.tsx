@@ -94,11 +94,13 @@ function PriorityItem({
   count,
   href,
   tone,
+  priorityLabel,
 }: {
   label: string;
   count: number;
   href: string;
   tone: 'red' | 'amber' | 'blue' | 'slate';
+  priorityLabel: 'Cao' | 'Trung bình' | 'Theo dõi';
 }) {
   const color = {
     red: 'bg-[#E31E24]',
@@ -106,18 +108,19 @@ function PriorityItem({
     blue: 'bg-[#4880FF]',
     slate: 'bg-slate-500',
   }[tone];
-  const percent = Math.min(count * 12, 100);
 
   return (
     <Link href={href} className="rounded-2xl border border-[#E5E7EF] bg-white p-4 transition hover:border-[#C9D2E6] hover:shadow-admin">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <p className="min-w-0 truncate text-sm font-extrabold text-[#202224]">{label}</p>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold text-white ${color}`}>
-          {count}
-        </span>
-      </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${percent}%` }} />
+        <div className="flex flex-col items-end gap-1">
+          <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold text-white ${color}`}>
+            {count}
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#646464]">
+            {priorityLabel}
+          </span>
+        </div>
       </div>
       <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#3749A6]">
         Mở trang quản lý <ExternalLink className="h-3 w-3" />
@@ -192,11 +195,15 @@ async function DashboardDataPanels() {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Tổng sản phẩm" value={counts.products} hint="Trong catalog" icon={<Package className="h-4 w-4" />} />
-        <KpiCard label="Danh mục" value={counts.categories} hint="Cây menu catalog" icon={<FolderTree className="h-4 w-4" />} tone="emerald" />
-        <KpiCard label="Liên hệ bán hàng" value={counts.activeContacts} hint="Đang hiển thị" icon={<PhoneCall className="h-4 w-4" />} />
-        <KpiCard label="Tổng yêu cầu báo giá" value={counts.totalInquiries} hint="Toàn bộ CRM" icon={<Quote className="h-4 w-4" />} tone="slate" />
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <KpiCard label="Sản phẩm đang hiển thị" value={counts.products - counts.hiddenProducts} hint={`${counts.products} trong catalog`} icon={<Package className="h-4 w-4" />} />
+        <KpiCard label="Sản phẩm đang ẩn" value={counts.hiddenProducts} hint="Cần kiểm tra trạng thái" icon={<Package className="h-4 w-4" />} tone="slate" />
+        <KpiCard label="Sản phẩm hết kho" value={counts.outOfStockProducts} hint="Không còn hàng sẵn sỉ" icon={<AlertTriangle className="h-4 w-4" />} tone="amber" />
+        <KpiCard label="Sản phẩm thiếu ảnh" value={counts.missingImages} hint="Nên bổ sung media" icon={<Package className="h-4 w-4" />} tone="red" />
+        <KpiCard label="Danh mục hiển thị" value={counts.visibleCategories} hint={`${counts.categories} trong cây menu`} icon={<FolderTree className="h-4 w-4" />} tone="emerald" />
+        <KpiCard label="Liên hệ chưa xử lý" value={counts.newInquiries} hint={`${counts.totalInquiries} yêu cầu CRM`} icon={<Quote className="h-4 w-4" />} tone="red" />
+        <KpiCard label="Liên hệ bán hàng" value={counts.activeContacts} hint="Đang hiển thị công khai" icon={<PhoneCall className="h-4 w-4" />} />
+        <KpiCard label="Tin tuyển dụng / log mới" value={`${counts.activeJobs} / ${counts.recentActivities}`} hint="Việc làm hiện hành và 6 log gần nhất" icon={<ScrollText className="h-4 w-4" />} tone="blue" />
       </div>
 
       <div className="admin-card border-l-4 border-l-[#E31E24] p-5">
@@ -205,11 +212,11 @@ async function DashboardDataPanels() {
           <h3 className="text-sm font-extrabold text-[#202224]">Việc cần ưu tiên xử lý ngay</h3>
         </div>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
-          <PriorityItem label="Yêu cầu báo giá mới" count={counts.newInquiries} href="/admin/inquiries" tone="red" />
-          <PriorityItem label="Sản phẩm tồn kho thấp" count={attention.lowStock} href="/admin/products" tone="amber" />
-          <PriorityItem label="Sản phẩm thiếu ảnh" count={attention.missingImages} href="/admin/products" tone="blue" />
-          <PriorityItem label="Sản phẩm đang ẩn" count={attention.hiddenProducts} href="/admin/products" tone="slate" />
-          <PriorityItem label="Danh mục đang ẩn" count={attention.hiddenCategories} href="/admin/categories" tone="slate" />
+          <PriorityItem label="Yêu cầu báo giá mới" count={counts.newInquiries} href="/admin/inquiries" tone="red" priorityLabel="Cao" />
+          <PriorityItem label="Sản phẩm tồn kho thấp" count={attention.lowStock} href="/admin/products" tone="amber" priorityLabel="Cao" />
+          <PriorityItem label="Sản phẩm thiếu ảnh" count={attention.missingImages} href="/admin/products" tone="blue" priorityLabel="Trung bình" />
+          <PriorityItem label="Sản phẩm đang ẩn" count={attention.hiddenProducts} href="/admin/products" tone="slate" priorityLabel="Theo dõi" />
+          <PriorityItem label="Danh mục đang ẩn" count={attention.hiddenCategories} href="/admin/categories" tone="slate" priorityLabel="Theo dõi" />
         </div>
       </div>
 
