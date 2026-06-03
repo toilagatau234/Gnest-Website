@@ -120,10 +120,6 @@ export function AdminLoginForm() {
                 )}
               </button>
             </form>
-
-            <p className="mt-5 text-center text-xs text-slate-500">
-              Nếu chưa có quyền quản trị, hãy tạo tài khoản trước rồi gán role trong `admin_users`.
-            </p>
           </div>
         </div>
       </div>
