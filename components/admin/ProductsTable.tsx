@@ -24,13 +24,6 @@ interface ProductsTableProps {
   stats: ProductStats;
 }
 
-function getThumbnail(item: ProductListItem): string | null {
-  const images = item.product_images ?? [];
-  const primary = images.find((img) => img.is_primary && img.public_url);
-  const fallback = images.find((img) => img.public_url);
-  return primary?.public_url ?? fallback?.public_url ?? null;
-}
-
 function getCategoryName(categoryMap: Map<string, string>, categoryId: string | null) {
   if (!categoryId) return 'Chưa phân loại';
   return categoryMap.get(categoryId) ?? 'Chưa phân loại';
@@ -83,7 +76,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
   }
 
   const visibleItems = missingImagesOnly
-    ? items.filter((item) => (item.product_images?.length ?? 0) === 0)
+    ? items.filter((item) => item.imageCount === 0)
     : items;
 
   const { page, pageSize, total, pageCount } = pagination;
@@ -249,12 +242,12 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
               </thead>
               <tbody className="divide-y divide-slate-100/80">
                 {visibleItems.map((item, index) => {
-                  const thumbnail = getThumbnail(item);
-                  const imageCount = item.product_images?.length ?? 0;
+                  const thumbnail = item.thumbnailUrl;
+                  const imageCount = item.imageCount;
                   const isOutOfStock = item.stock === 0;
                   const isLowStock = item.stock > 0 && item.stock <= 5;
                   const hasContactPrice = item.price === null;
-                  const hasActiveTiers = item.product_bulk_discounts?.some((d) => d.is_active) ?? false;
+                  const hasActiveTiers = item.hasActiveBulkDiscount;
                   const isEven = index % 2 === 0;
 
                   return (

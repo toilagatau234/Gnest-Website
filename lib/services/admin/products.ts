@@ -18,13 +18,24 @@ export type ProductFormData = Pick<
   'id' | 'name' | 'slug' | 'category_id' | 'price' | 'stock' | 'is_active' | 'description' | 'specs'
 >;
 
-// Lightweight row returned by the paginated list query
-export type ProductListItem = ProductFormData & {
+// Slim row for the paginated list — no description, specs, or nested arrays.
+// description/specs are fetched lazily in the edit dialog via getAdminProductDetail.
+// thumbnail, image count, and discount info are enriched via secondary queries.
+export type ProductListItem = {
+  id: string;
+  name: string;
+  slug: string;
+  category_id: string | null;
+  price: number | null;
+  stock: number;
+  is_active: boolean;
   updated_at: string;
   created_at: string;
   categories: Pick<Tables<'categories'>, 'id' | 'name' | 'slug'> | null;
-  product_images: Pick<Tables<'product_images'>, 'id' | 'public_url' | 'is_primary'>[];
-  product_bulk_discounts: Pick<Tables<'product_bulk_discounts'>, 'id' | 'is_active'>[];
+  thumbnailUrl: string | null;
+  imageCount: number;
+  hasActiveBulkDiscount: boolean;
+  activeBulkDiscountCount: number;
 };
 
 export type StockFilter = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -69,7 +80,23 @@ export interface ProductPayload {
   is_active: boolean;
 }
 
+// Base row shape returned by the slim list query (Phase 1)
+type ProductBaseRow = {
+  id: string;
+  name: string;
+  slug: string;
+  category_id: string | null;
+  price: number | null;
+  stock: number;
+  is_active: boolean;
+  updated_at: string;
+  created_at: string;
+  categories: Pick<Tables<'categories'>, 'id' | 'name' | 'slug'> | null;
+};
+
 const PRODUCT_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
+const SHOULD_LOG_TIMINGS =
+  process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
 
 function toProductAuditSnapshot(product: {
   name: string;
@@ -112,13 +139,15 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
-    const t0 = process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1' ? Date.now() : 0;
+
+    // --- Phase 1: slim base query — no description, specs, or nested arrays ---
+    const t0 = SHOULD_LOG_TIMINGS ? Date.now() : 0;
 
     let query = supabase
       .from('products')
       .select(
-        'id, name, slug, category_id, price, stock, is_active, description, specs, updated_at, created_at, categories(id, name, slug), product_images(id, public_url, is_primary), product_bulk_discounts(id, is_active)',
-        { count: 'exact' }
+        'id, name, slug, category_id, price, stock, is_active, updated_at, created_at, categories(id, name, slug)',
+        { count: 'exact' },
       )
       .order('created_at', { ascending: false })
       .range(from, to);
@@ -133,14 +162,90 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
     if (price === 'fixed') query = query.not('price', 'is', null);
     else if (price === 'contact') query = query.is('price', null);
 
-    const { data, count, error } = await query.returns<ProductListItem[]>();
+    const { data: baseRows, count, error } = await query.returns<ProductBaseRow[]>();
 
-    if (t0) console.log(`[admin-timing] getAdminProductsPage: ${Date.now() - t0}ms (page=${safePage}, size=${safePageSize})`);
+    if (t0) console.log(`[admin-timing] getAdminProductsPage base: ${Date.now() - t0}ms (page=${safePage}, size=${safePageSize})`);
 
     if (error) return { data: [], total: 0, page: safePage, pageSize: safePageSize, pageCount: 0, error: error.message };
+
     const total = count ?? 0;
+    const rows = baseRows ?? [];
+    const productIds = rows.map((r) => r.id as string);
+
+    if (productIds.length === 0) {
+      return {
+        data: [],
+        total,
+        page: safePage,
+        pageSize: safePageSize,
+        pageCount: Math.max(1, Math.ceil(total / safePageSize)),
+        error: null,
+      };
+    }
+
+    // --- Phase 2: thumbnails + image counts + discount counts (parallel, bounded by page) ---
+    const t1 = SHOULD_LOG_TIMINGS ? Date.now() : 0;
+
+    const [imagesRes, discountsRes] = await Promise.all([
+      supabase
+        .from('product_images')
+        .select('product_id, public_url, is_primary')
+        .in('product_id', productIds),
+      supabase
+        .from('product_bulk_discounts')
+        .select('product_id, is_active')
+        .in('product_id', productIds),
+    ]);
+
+    if (t1) console.log(`[admin-timing] getAdminProductsPage secondary: ${Date.now() - t1}ms`);
+
+    // Build thumbnail and image-count maps
+    const primaryUrlById = new Map<string, string>();
+    const firstUrlById = new Map<string, string>();
+    const imageCountById = new Map<string, number>();
+
+    for (const img of imagesRes.data ?? []) {
+      const pid = img.product_id;
+      if (!pid) continue;
+      imageCountById.set(pid, (imageCountById.get(pid) ?? 0) + 1);
+      if (img.public_url && !firstUrlById.has(pid)) {
+        firstUrlById.set(pid, img.public_url);
+      }
+      if (img.is_primary && img.public_url) {
+        primaryUrlById.set(pid, img.public_url);
+      }
+    }
+
+    // Build active bulk-discount count map
+    const activeBulkCountById = new Map<string, number>();
+    for (const d of discountsRes.data ?? []) {
+      if (!d.product_id || !d.is_active) continue;
+      activeBulkCountById.set(d.product_id, (activeBulkCountById.get(d.product_id) ?? 0) + 1);
+    }
+
+    // Assemble final slim list items
+    const data: ProductListItem[] = rows.map((row) => {
+      const activeBulkCount = activeBulkCountById.get(row.id) ?? 0;
+      return {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        category_id: row.category_id,
+        price: row.price,
+        stock: row.stock,
+        is_active: row.is_active,
+        updated_at: row.updated_at,
+        created_at: row.created_at,
+        categories: row.categories,
+        thumbnailUrl: primaryUrlById.get(row.id) ?? firstUrlById.get(row.id) ?? null,
+        imageCount: imageCountById.get(row.id) ?? 0,
+        hasActiveBulkDiscount: activeBulkCount > 0,
+        activeBulkDiscountCount: activeBulkCount,
+      };
+    });
+
     return {
-      data: data || [],
+      data,
       total,
       page: safePage,
       pageSize: safePageSize,
@@ -171,13 +276,14 @@ export async function getAdminProductDetail(productId: string): Promise<{ data: 
 }
 
 export async function getAdminProductStats(): Promise<ProductStats> {
+  await requireAdminAuth();
   const supabase = createServiceRoleClient();
-  const t0 = process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1' ? Date.now() : 0;
+  const t0 = SHOULD_LOG_TIMINGS ? Date.now() : 0;
   const [totalRes, activeRes, outOfStockRes, lowStockRes] = await Promise.all([
-    supabase.from('products').select('*', { count: 'exact', head: true }),
-    supabase.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true),
-    supabase.from('products').select('*', { count: 'exact', head: true }).eq('stock', 0),
-    supabase.from('products').select('*', { count: 'exact', head: true }).gt('stock', 0).lte('stock', 5),
+    supabase.from('products').select('id', { count: 'exact', head: true }),
+    supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('products').select('id', { count: 'exact', head: true }).eq('stock', 0),
+    supabase.from('products').select('id', { count: 'exact', head: true }).gt('stock', 0).lte('stock', 5),
   ]);
   if (t0) console.log(`[admin-timing] getAdminProductStats: ${Date.now() - t0}ms`);
   const total = totalRes.count ?? 0;

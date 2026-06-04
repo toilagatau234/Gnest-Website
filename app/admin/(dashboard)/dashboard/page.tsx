@@ -518,8 +518,6 @@ function RecentActivityCard({ data }: { data: DashboardData }) {
           data.recentActivity.slice(0, 4).map((log) => {
             const actionLabel = ACTION_LABELS[log.action] ?? { label: log.action, colorClass: 'text-slate-600' };
             const entityLabel = ENTITY_LABELS[log.entity] ?? log.entity;
-            const metadataObj = log.metadata as Record<string, unknown> | null;
-            const name = typeof metadataObj?.name === 'string' ? metadataObj.name : null;
 
             return (
               <div key={log.id} className="flex gap-2.5 border-b border-[#EEF2F6] pb-3 text-xs last:border-none last:pb-0">
@@ -532,7 +530,6 @@ function RecentActivityCard({ data }: { data: DashboardData }) {
                       {log.actorEmail ? log.actorEmail.split('@')[0] : 'Hệ thống'}
                     </span>{' '}
                     đã <span className={actionLabel.colorClass}>{actionLabel.label}</span> {entityLabel}
-                    {name ? <span className="font-bold text-[#202224]"> {name}</span> : null}
                   </p>
                   <p className="mt-1 font-mono text-[10px] font-semibold text-[#3749A6]">
                     <FormattedDate date={log.created_at} type="time" />

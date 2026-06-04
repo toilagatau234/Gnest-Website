@@ -3,7 +3,7 @@ import 'server-only';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 
 import { requireAdminAuth } from '@/lib/services/admin/auth';
-import { getAuditLogs, type AuditLogEntry } from '@/lib/services/admin/audit-logs';
+import { getAuditLogs, type AuditLogListItem } from '@/lib/services/admin/audit-logs';
 import {
   getInquiries,
   getInquiryCount,
@@ -39,7 +39,7 @@ export interface DashboardData {
   };
   productInterest: ProductInterestMetric[];
   recentInquiries: Inquiry[];
-  recentActivity: AuditLogEntry[];
+  recentActivity: AuditLogListItem[];
 }
 
 export interface ProductInterestMetric {
@@ -70,7 +70,7 @@ const EMPTY: DashboardData = {
   attention: { missingImages: 0, lowStock: 0, hiddenProducts: 0, hiddenCategories: 0 },
   productInterest: [],
   recentInquiries: [],
-  recentActivity: [],
+  recentActivity: [] as AuditLogListItem[],
 };
 
 type ProductInterestRow = {

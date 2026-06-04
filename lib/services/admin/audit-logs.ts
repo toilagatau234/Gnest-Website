@@ -8,7 +8,20 @@ import { requireAdminAuth } from '@/lib/services/admin/auth';
 const SHOULD_LOG_TIMINGS =
   process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
 
+// Full entry — includes metadata. Used by the detail modal and getAuditLogDetail().
 export type AuditLogEntry = Tables<'audit_logs'> & { actorEmail: string | null };
+
+// Slim entry — no metadata. Returned by the list query to avoid sending large
+// JSONB payloads for every row. The detail modal lazy-fetches a full entry.
+export type AuditLogListItem = {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  created_at: string;
+  actorEmail: string | null;
+};
 
 export interface GetAuditLogsOptions {
   limit?: number;
@@ -23,7 +36,7 @@ export interface GetAuditLogsOptions {
 }
 
 export interface GetAuditLogsResult {
-  data: AuditLogEntry[];
+  data: AuditLogListItem[];
   total: number;
   page: number;
   pageSize: number;
@@ -40,9 +53,11 @@ export async function getAuditLogs(options?: GetAuditLogsOptions): Promise<GetAu
     const supabase = createServiceRoleClient();
     const t0 = SHOULD_LOG_TIMINGS ? performance.now() : 0;
 
+    // metadata is intentionally excluded from the list query.
+    // The detail modal calls getAuditLogDetail(id) to fetch it on demand.
     let query = supabase
       .from('audit_logs')
-      .select('id, actor_id, action, entity, entity_id, created_at, metadata', { count: 'exact' });
+      .select('id, actor_id, action, entity, entity_id, created_at', { count: 'exact' });
 
     // Apply exact filters
     if (options?.action) {
@@ -118,8 +133,13 @@ export async function getAuditLogs(options?: GetAuditLogsOptions): Promise<GetAu
       }
     }
 
-    const enriched: AuditLogEntry[] = logs.map((log) => ({
-      ...log,
+    const enriched: AuditLogListItem[] = logs.map((log) => ({
+      id: log.id,
+      actor_id: log.actor_id,
+      action: log.action,
+      entity: log.entity,
+      entity_id: log.entity_id,
+      created_at: log.created_at,
       actorEmail: log.actor_id ? emailById.get(log.actor_id) ?? null : null,
     }));
 

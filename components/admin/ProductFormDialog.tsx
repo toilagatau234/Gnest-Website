@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Pencil, Plus } from 'lucide-react';
+import { AlertCircle, Loader2, Pencil, Plus } from 'lucide-react';
 
 import { AdminActionButton } from '@/components/admin/AdminActionButton';
 import { AdminModal } from '@/components/admin/AdminModal';
@@ -12,14 +12,15 @@ import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { ProductFormData } from '@/lib/services/admin/products';
 import {
   createProductAction,
+  fetchProductDetailAction,
   updateProductAction,
   type AdminFormState,
 } from '@/app/admin/(dashboard)/products/actions';
 
 interface ProductFormDialogProps {
   categories: AdminCategory[];
-  /** When provided the dialog edits this product; otherwise it creates a new one. */
-  product?: ProductFormData;
+  /** Provide id + name to enter edit mode; form data is fetched lazily on open. */
+  product?: { id: string; name?: string };
 }
 
 const INITIAL_STATE: AdminFormState = { ok: false };
@@ -28,10 +29,14 @@ export function ProductFormDialog({ categories, product }: ProductFormDialogProp
   const router = useRouter();
   const { toast } = useToast();
   const formId = useId();
-  const isEdit = Boolean(product);
+  const isEdit = Boolean(product?.id);
 
   const [open, setOpen] = useState(false);
-  const action = product ? updateProductAction : createProductAction;
+  const [formData, setFormData] = useState<ProductFormData | null>(null);
+  const [loadingForm, setLoadingForm] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const action = isEdit ? updateProductAction : createProductAction;
   const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
   const handledOk = useRef(false);
 
@@ -44,9 +49,37 @@ export function ProductFormDialog({ categories, product }: ProductFormDialogProp
     }
   }, [open, state.ok, isEdit, router, toast]);
 
-  const openDialog = () => {
+  const openDialog = async () => {
     handledOk.current = false;
-    setOpen(true);
+    setFetchError(null);
+
+    if (isEdit && product?.id) {
+      setLoadingForm(true);
+      setFormData(null);
+      setOpen(true);
+
+      const result = await fetchProductDetailAction(product.id);
+      if (result.error || !result.data) {
+        setFetchError(result.error ?? 'Không tìm thấy sản phẩm');
+      } else {
+        const d = result.data;
+        setFormData({
+          id: d.id,
+          name: d.name,
+          slug: d.slug,
+          category_id: d.category_id,
+          price: d.price,
+          stock: d.stock,
+          is_active: d.is_active,
+          description: d.description,
+          specs: d.specs,
+        });
+      }
+      setLoadingForm(false);
+    } else {
+      setFormData(null);
+      setOpen(true);
+    }
   };
 
   const closeDialog = () => {
@@ -74,34 +107,48 @@ export function ProductFormDialog({ categories, product }: ProductFormDialogProp
         size="xl"
         dismissible={!isPending}
         footer={
-          <>
-            <button
-              type="button"
-              onClick={closeDialog}
-              disabled={isPending}
-              className="admin-button-secondary px-5 text-xs"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              form={formId}
-              disabled={isPending}
-              className="admin-button-primary px-6 text-xs"
-            >
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {isPending ? 'Đang lưu…' : isEdit ? 'Cập nhật sản phẩm' : 'Đăng sản phẩm'}
-            </button>
-          </>
+          loadingForm || fetchError ? undefined : (
+            <>
+              <button
+                type="button"
+                onClick={closeDialog}
+                disabled={isPending}
+                className="admin-button-secondary px-5 text-xs"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                form={formId}
+                disabled={isPending}
+                className="admin-button-primary px-6 text-xs"
+              >
+                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {isPending ? 'Đang lưu…' : isEdit ? 'Cập nhật sản phẩm' : 'Đăng sản phẩm'}
+              </button>
+            </>
+          )
         }
       >
-        <ProductForm
-          formId={formId}
-          formAction={formAction}
-          state={state}
-          categories={categories}
-          product={product}
-        />
+        {loadingForm ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-6 w-6 animate-spin text-[#4880FF]" />
+            <span className="ml-2 text-sm text-slate-500">Đang tải thông tin sản phẩm…</span>
+          </div>
+        ) : fetchError ? (
+          <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-[#FFF5F5] px-4 py-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#E31E24]" />
+            <p className="text-xs font-medium text-[#B42318]">{fetchError}</p>
+          </div>
+        ) : (
+          <ProductForm
+            formId={formId}
+            formAction={formAction}
+            state={state}
+            categories={categories}
+            product={formData ?? undefined}
+          />
+        )}
       </AdminModal>
     </>
   );
