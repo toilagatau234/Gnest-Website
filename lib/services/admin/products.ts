@@ -5,6 +5,7 @@ import type { Inserts, Json, Tables, Updates } from '@/lib/types/database';
 
 import { buildAuditMetadata, type RequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { cleanupUnusedProductImageStoragePaths } from '@/lib/services/admin/product-images';
 
 export type AdminProduct = Tables<'products'> & {
   categories: Pick<Tables<'categories'>, 'id' | 'name' | 'slug'> | null;
@@ -400,6 +401,11 @@ export async function deleteAdminProduct(productId: string, requestContext?: Req
     return { data: null, error: 'Không tìm thấy sản phẩm cần xóa.' };
   }
 
+  const { data: imagesBeforeDelete } = await supabase
+    .from('product_images')
+    .select('storage_path')
+    .eq('product_id', productId);
+
   const { error } = await supabase.from('products').delete().eq('id', productId);
 
   if (error) {
@@ -412,6 +418,10 @@ export async function deleteAdminProduct(productId: string, requestContext?: Req
     return { data: null, error: error.message };
   }
 
+  const cleanup = await cleanupUnusedProductImageStoragePaths(
+    (imagesBeforeDelete ?? []).map((image) => image.storage_path),
+  );
+
   await supabase.from('audit_logs').insert({
     actor_id: adminUser.id,
     action: 'delete',
@@ -422,6 +432,10 @@ export async function deleteAdminProduct(productId: string, requestContext?: Req
       before: {
         name: product.name,
         slug: product.slug,
+      },
+      extra: {
+        media_relations_removed: imagesBeforeDelete?.length ?? 0,
+        media_cleanup: cleanup,
       },
       requestContext,
     }),

@@ -54,10 +54,7 @@ const ALL_COLUMNS = [
   'height',
   'diameter',
   'material',
-  // Product images → product_images table
-  'image_1_url',
-  'image_2_url',
-  'image_3_url',
+  // Legacy image URL fields are parsed only to warn and ignore.
   // Bulk discount tiers → product_bulk_discounts table
   'tier_1_min_quantity',
   'tier_1_price',
@@ -237,9 +234,6 @@ async function downloadTemplate() {
     { wch: 10 }, // height
     { wch: 10 }, // diameter
     { wch: 14 }, // material
-    { wch: 44 }, // image_1_url
-    { wch: 44 }, // image_2_url
-    { wch: 44 }, // image_3_url
     { wch: 20 }, // tier_1_min_quantity
     { wch: 14 }, // tier_1_price
     { wch: 20 }, // tier_2_min_quantity
@@ -249,7 +243,7 @@ async function downloadTemplate() {
     { wch: 20 }, // tier_4_min_quantity
     { wch: 14 }, // tier_4_price
   ];
-  ws['!autofilter'] = { ref: `A1:X${sampleRows.length + 1}` };
+  ws['!autofilter'] = { ref: `A1:U${sampleRows.length + 1}` };
   ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
 
   // Instructions sheet
@@ -419,9 +413,8 @@ function parseFile(file: File): Promise<ParsedFile> {
 // ---------------------------------------------------------------------------
 
 function countImages(row: ImportRow): number {
-  return [row.image_1_url, row.image_2_url, row.image_3_url].filter(
-    (u) => u !== null && u !== undefined && u !== '',
-  ).length;
+  void row;
+  return 0;
 }
 
 function countTiers(row: ImportRow): number {
@@ -531,7 +524,7 @@ function UploadStep({ onFile }: { onFile: (rows: ImportRow[], filename: string) 
             { col: 'is_active', note: 'true/false/1/0/yes/no/active/hidden' },
             { col: 'description', note: 'Tùy chọn — text thuần' },
             { col: 'unit / volume / height / diameter / material', note: 'Tùy chọn — lưu vào specs JSONB' },
-            { col: 'image_1_url / image_2_url / image_3_url', note: 'Tùy chọn — URL https://' },
+            { col: 'Product images', note: 'Not supported in Excel import. Add images later in product edit.' },
             { col: 'tier_N_min_quantity + tier_N_price', note: 'Tùy chọn — bậc giá sỉ (N=1..4)' },
           ].map(({ col, note, required }) => (
             <div key={col} className="flex items-baseline gap-1.5">
@@ -894,7 +887,7 @@ function SuccessStep({
 
 type Step = 'upload' | 'preview';
 
-export function ProductImportDialog() {
+export function ProductImportDialog({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -979,6 +972,40 @@ export function ProductImportDialog() {
       ? 'Tạo nhiều sản phẩm cùng lúc từ file Excel hoặc CSV.'
       : 'Kiểm tra dữ liệu và lỗi trước khi nhập vào hệ thống.';
 
+  const content = (
+    <>
+      <form ref={formRef} action={formAction} className="hidden">
+        <input type="hidden" name="rows" defaultValue="" />
+      </form>
+
+      {showSuccess && (
+        <SuccessStep result={importState} onClose={closeDialog} />
+      )}
+
+      {!showSuccess && step === 'upload' && (
+        <UploadStep onFile={handleFileParsed} />
+      )}
+
+      {!showSuccess && step === 'preview' && (
+        <PreviewStep
+          filename={filename}
+          rows={rows}
+          validationResult={validationResult}
+          isValidating={isValidating}
+          importError={submitted && importState.error && !importState.errors ? importState.error : undefined}
+          isPending={isPending}
+          onBack={() => { setStep('upload'); setValidationResult(null); }}
+          onConfirm={handleConfirm}
+          onRetry={handleRetry}
+        />
+      )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="min-h-[520px]">{content}</div>;
+  }
+
   return (
     <>
       <AdminActionButton variant="secondary" icon={<FileSpreadsheet className="h-4 w-4" />} onClick={openDialog}>
@@ -993,32 +1020,7 @@ export function ProductImportDialog() {
         size="2xl"
         dismissible={!isPending}
       >
-        {/* Hidden form — submits only when user confirms */}
-        <form ref={formRef} action={formAction} className="hidden">
-          <input type="hidden" name="rows" defaultValue="" />
-        </form>
-
-        {showSuccess && (
-          <SuccessStep result={importState} onClose={closeDialog} />
-        )}
-
-        {!showSuccess && step === 'upload' && (
-          <UploadStep onFile={handleFileParsed} />
-        )}
-
-        {!showSuccess && step === 'preview' && (
-          <PreviewStep
-            filename={filename}
-            rows={rows}
-            validationResult={validationResult}
-            isValidating={isValidating}
-            importError={submitted && importState.error && !importState.errors ? importState.error : undefined}
-            isPending={isPending}
-            onBack={() => { setStep('upload'); setValidationResult(null); }}
-            onConfirm={handleConfirm}
-            onRetry={handleRetry}
-          />
-        )}
+        {content}
       </AdminModal>
     </>
   );

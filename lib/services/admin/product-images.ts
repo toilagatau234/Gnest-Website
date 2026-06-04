@@ -17,6 +17,51 @@ export interface ProductImagePayload {
   is_active: boolean;
 }
 
+function isInternalProductImagePath(storagePath: string) {
+  return storagePath.startsWith('products/') && !storagePath.startsWith('http://') && !storagePath.startsWith('https://');
+}
+
+export async function cleanupUnusedProductImageStoragePaths(
+  storagePaths: string[],
+): Promise<{ deleted: string[]; skipped: string[]; failed: { path: string; error: string }[] }> {
+  const supabase = createServiceRoleClient();
+  const uniquePaths = [...new Set(storagePaths.filter(Boolean))];
+  const deleted: string[] = [];
+  const skipped: string[] = [];
+  const failed: { path: string; error: string }[] = [];
+
+  for (const path of uniquePaths) {
+    if (!isInternalProductImagePath(path)) {
+      skipped.push(path);
+      continue;
+    }
+
+    const { count, error: countError } = await supabase
+      .from('product_images')
+      .select('id', { count: 'exact', head: true })
+      .eq('storage_path', path);
+
+    if (countError) {
+      failed.push({ path, error: countError.message });
+      continue;
+    }
+
+    if ((count ?? 0) > 0) {
+      skipped.push(path);
+      continue;
+    }
+
+    const { error } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([path]);
+    if (error) {
+      failed.push({ path, error: error.message });
+    } else {
+      deleted.push(path);
+    }
+  }
+
+  return { deleted, skipped, failed };
+}
+
 export async function createAdminProductImage(payload: ProductImagePayload) {
   try {
     const adminUser = await requireAdminAuth(PRODUCT_MUTATION_ROLES);
@@ -171,15 +216,7 @@ export async function deleteAdminProductImage(imageId: string) {
       return { data: null, error: deleteDbError.message };
     }
 
-    // Safely delete from Storage
-    const { error: storageError } = await supabase.storage
-      .from(PRODUCT_IMAGES_BUCKET)
-      .remove([image.storage_path]);
-
-    // Note: If storage delete fails, we still consider db row deleted, but warn in log
-    if (storageError) {
-      console.warn(`Failed to delete storage file at ${image.storage_path}:`, storageError.message);
-    }
+    const cleanup = await cleanupUnusedProductImageStoragePaths([image.storage_path]);
 
     // Write audit log
     await supabase.from('audit_logs').insert({
@@ -189,7 +226,8 @@ export async function deleteAdminProductImage(imageId: string) {
       entity_id: imageId,
       metadata: { 
         product_id: image.product_id, 
-        storage_path: image.storage_path 
+        storage_path: image.storage_path,
+        cleanup,
       },
     });
 

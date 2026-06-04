@@ -6,7 +6,6 @@ import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { buildAuditMetadata, type RequestContext } from '@/lib/services/admin/audit-metadata';
 
 const PRODUCT_IMPORT_ROLES = ['super_admin', 'admin', 'editor'] as const;
-const HTTPS_URL_RE = /^https:\/\/.+/i;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -151,11 +150,6 @@ function parseSpecs(value: unknown): SpecsResult {
   } catch {
     return { ok: false };
   }
-}
-
-function isValidHttpsUrl(value: unknown): boolean {
-  if (isEmptyish(value)) return true;
-  return HTTPS_URL_RE.test(String(value).trim());
 }
 
 function buildSpecs(row: ImportRow): Record<string, unknown> {
@@ -335,16 +329,15 @@ export function validateImportRows(
       });
     }
 
-    // image URLs
+    // image URLs are intentionally ignored in Excel import
     for (const field of ['image_1_url', 'image_2_url', 'image_3_url'] as const) {
       const val = row[field];
-      if (!isEmptyish(val) && !isValidHttpsUrl(val)) {
-        errors.push({
+      if (!isEmptyish(val)) {
+        warnings.push({
           row: r,
           field,
           value: String(val).slice(0, 60),
-          message: 'URL ảnh phải bắt đầu bằng https://',
-          suggestion: 'Ví dụ: https://cdn.example.com/anh-san-pham.jpg',
+          message: 'Excel import does not support product images. Image columns are ignored; add images from the product edit screen.',
         });
       }
     }
@@ -577,42 +570,9 @@ export async function bulkImportProducts(
 
   // ── Step 2: Insert product images ────────────────────────────────────────
 
-  const imageInserts: Inserts<'product_images'>[] = [];
-  for (const row of rows) {
-    const productId = slugToId.get(normalizeSlug(row.slug));
-    if (!productId) continue;
-    const urls = [row.image_1_url, row.image_2_url, row.image_3_url]
-      .map((u) => (isEmptyish(u) ? null : String(u).trim()))
-      .filter((u): u is string => u !== null && HTTPS_URL_RE.test(u));
-    for (let i = 0; i < urls.length; i++) {
-      imageInserts.push({
-        product_id: productId,
-        // External URL stored as storage_path for imported images (no Supabase Storage upload)
-        storage_path: urls[i],
-        public_url: urls[i],
-        alt: null,
-        sort_order: i,
-        is_primary: i === 0,
-        is_active: true,
-      });
-    }
-  }
+  const imageCount = 0;
 
-  let imageCount = 0;
-  if (imageInserts.length > 0) {
-    const { data: insertedImages, error: imgErr } = await supabase
-      .from('product_images')
-      .insert(imageInserts)
-      .select('id');
-    if (imgErr) {
-      // Rollback: delete inserted products (cascade deletes child rows)
-      await supabase.from('products').delete().in('id', insertedProducts.map((p) => p.id));
-      return { ok: false, error: `Lỗi tạo ảnh sản phẩm: ${imgErr.message}. Toàn bộ import đã bị huỷ.` };
-    }
-    imageCount = insertedImages?.length ?? 0;
-  }
-
-  // ── Step 3: Insert bulk discount tiers ──────────────────────────────────
+  // Step 3: Insert bulk discount tiers
 
   const tierInserts: Inserts<'product_bulk_discounts'>[] = [];
   for (const row of rows) {

@@ -4,7 +4,7 @@ import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { AdminSection } from '@/components/admin/AdminSection';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { ProductFormDialog } from '@/components/admin/ProductFormDialog';
-import { ProductImportDialog } from '@/components/admin/ProductImportDialog';
+import { ProductBulkCreateDialog } from '@/components/admin/ProductBulkCreateDialog';
 import { ProductsTable } from '@/components/admin/ProductsTable';
 import { getAdminCategories } from '@/lib/services/admin/categories';
 import {
@@ -64,7 +64,7 @@ export default async function ProductsPage({
         description={`${stats.total} sản phẩm · ${stats.active} đang hiển thị`}
         action={
           <div className="flex items-center gap-2">
-            <ProductImportDialog />
+            <ProductBulkCreateDialog categories={safeCategories} />
             <ProductFormDialog categories={safeCategories} />
           </div>
         }
