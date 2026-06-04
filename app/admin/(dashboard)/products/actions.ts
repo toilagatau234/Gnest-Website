@@ -179,3 +179,74 @@ export async function toggleProductActiveAction(formData: FormData) {
   revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
 }
+
+// ---------------------------------------------------------------------------
+// Bulk create (manual table)
+// ---------------------------------------------------------------------------
+
+export type BulkRowPayload = {
+  clientId: string;
+  name: string;
+  slug: string;
+  category_id: string | null;
+  price: number | null;
+  stock: number;
+  is_active: boolean;
+  description: string | null;
+};
+
+export type BulkRowResult = {
+  clientId: string;
+  ok: boolean;
+  productId?: string;
+  error?: string;
+};
+
+const MAX_BULK_ROWS = 50;
+
+export async function bulkCreateProductsAction(rows: BulkRowPayload[]): Promise<BulkRowResult[]> {
+  if (!Array.isArray(rows) || rows.length === 0 || rows.length > MAX_BULK_ROWS) {
+    return [{ clientId: '', ok: false, error: `Tối đa ${MAX_BULK_ROWS} sản phẩm mỗi lần.` }];
+  }
+
+  const requestContext = await getRequestContext();
+  const results: BulkRowResult[] = [];
+
+  for (const row of rows) {
+    try {
+      if (!row.name?.trim()) throw new Error('Tên sản phẩm là bắt buộc.');
+      if (!row.slug?.trim()) throw new Error('Slug sản phẩm là bắt buộc.');
+
+      const payload: ProductPayload = {
+        category_id: row.category_id || null,
+        name: row.name.trim(),
+        slug: row.slug.trim(),
+        description: row.description?.trim() || null,
+        price: row.price,
+        stock: Math.max(0, Math.floor(row.stock ?? 0)),
+        specs: {} as Json,
+        is_active: row.is_active,
+      };
+
+      const { data, error } = await createAdminProduct(payload, requestContext);
+
+      if (error || !data) {
+        results.push({ clientId: row.clientId, ok: false, error: error ?? 'Không thể tạo sản phẩm.' });
+      } else {
+        results.push({ clientId: row.clientId, ok: true, productId: data.id });
+      }
+    } catch (err) {
+      results.push({
+        clientId: row.clientId,
+        ok: false,
+        error: err instanceof Error ? err.message : 'Lỗi không xác định.',
+      });
+    }
+  }
+
+  revalidatePath('/admin/products');
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/danh-muc');
+
+  return results;
+}
