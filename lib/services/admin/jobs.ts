@@ -142,6 +142,34 @@ export async function getAdminJobsPage(
   }
 }
 
+export interface AdminJobStats {
+  total: number;
+  activeCount: number;
+  hiddenCount: number;
+  locationCount: number;
+}
+
+export async function getAdminJobStats(): Promise<{ data: AdminJobStats; error: string | null }> {
+  const EMPTY: AdminJobStats = { total: 0, activeCount: 0, hiddenCount: 0, locationCount: 0 };
+  try {
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
+    const [totalRes, activeRes, locationRes] = await Promise.all([
+      supabase.from('job_vacancies').select('id', { count: 'exact', head: true }),
+      supabase.from('job_vacancies').select('id', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('job_vacancies').select('id', { count: 'exact', head: true }).not('location', 'is', null),
+    ]);
+    const total = totalRes.count ?? 0;
+    const activeCount = activeRes.count ?? 0;
+    return {
+      data: { total, activeCount, hiddenCount: total - activeCount, locationCount: locationRes.count ?? 0 },
+      error: totalRes.error?.message ?? activeRes.error?.message ?? locationRes.error?.message ?? null,
+    };
+  } catch (err) {
+    return { data: EMPTY, error: err instanceof Error ? err.message : 'Lỗi không xác định' };
+  }
+}
+
 export async function createAdminJob(payload: JobVacancyPayload) {
   const adminUser = await requireAdminAuth(JOB_VACANCY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();

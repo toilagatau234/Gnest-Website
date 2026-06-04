@@ -68,6 +68,26 @@ export interface GetInquiriesOptions {
   offset?: number;
 }
 
+export interface GetInquiriesPageParams {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  status?: InquiryStatus;
+  assignedTo?: string;
+  priority?: InquiryPriority;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface InquiriesPage {
+  data: AdminInquiry[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  error: string | null;
+}
+
 const INQUIRY_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
 const INQUIRY_STATUSES: readonly InquiryStatus[] = ['new', 'contacted', 'quoted', 'closed', 'spam'];
 const INQUIRY_PRIORITIES: readonly InquiryPriority[] = ['low', 'normal', 'high'];
@@ -224,6 +244,57 @@ export async function getInquiries(options?: GetInquiriesOptions): Promise<{ dat
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Lỗi không xác định';
     return { data: null, error: message };
+  }
+}
+
+const INQUIRY_PAGE_SELECT =
+  'id, customer_name, phone, email, message, status, assigned_to, created_at, metadata, products(id, name, slug)';
+
+export async function getInquiriesPage(
+  params: GetInquiriesPageParams = {},
+): Promise<InquiriesPage> {
+  const EMPTY: InquiriesPage = { data: [], total: 0, page: 1, pageSize: 20, pageCount: 0, error: null };
+  try {
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
+
+    const page = Math.max(1, params.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, params.pageSize ?? 20));
+    const offset = (page - 1) * pageSize;
+
+    let query = supabase
+      .from('inquiries')
+      .select(INQUIRY_PAGE_SELECT, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
+
+    if (params.status) query = query.eq('status', params.status);
+    if (params.assignedTo) query = query.eq('assigned_to', params.assignedTo);
+    if (params.priority) query = query.filter('metadata->>priority', 'eq', params.priority);
+    if (params.dateFrom) query = query.gte('created_at', params.dateFrom);
+    if (params.dateTo) query = query.lte('created_at', params.dateTo);
+    if (params.q) {
+      const term = `%${params.q}%`;
+      query = query.or(
+        `customer_name.ilike.${term},phone.ilike.${term},email.ilike.${term},message.ilike.${term}`,
+      );
+    }
+
+    const { data, count, error } = await query;
+
+    if (error) return { ...EMPTY, error: error.message };
+
+    const total = count ?? 0;
+    return {
+      data: (data ?? []) as AdminInquiry[],
+      total,
+      page,
+      pageSize,
+      pageCount: Math.ceil(total / pageSize),
+      error: null,
+    };
+  } catch (err) {
+    return { ...EMPTY, error: err instanceof Error ? err.message : 'Lỗi không xác định' };
   }
 }
 

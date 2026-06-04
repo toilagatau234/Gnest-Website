@@ -6,22 +6,28 @@ import { AdminSection } from '@/components/admin/AdminSection';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { SalesContactFormDialog } from '@/components/admin/SalesContactFormDialog';
 import { SalesContactsTable } from '@/components/admin/SalesContactsTable';
-import { getAdminSalesContacts } from '@/lib/services/admin/sales-contacts';
+import { getAdminSalesContactsPage, getAdminSalesContactStats } from '@/lib/services/admin/sales-contacts';
 
 export const dynamic = 'force-dynamic';
 
-export default async function SalesContactsPage() {
-  // eslint-disable-next-line react-hooks/purity
-  const _t0 = Date.now();
-  const { data: contacts, error } = await getAdminSalesContacts();
-  if (process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1') {
-    // eslint-disable-next-line react-hooks/purity
-    console.log(`[admin-timing] sales-contacts page total: ${Date.now() - _t0}ms`);
-  }
-  const safeContacts = contacts || [];
-  const activeCount = safeContacts.filter((contact) => contact.is_active).length;
-  const hiddenCount = safeContacts.length - activeCount;
-  const zaloReadyCount = safeContacts.filter((contact) => Boolean(contact.zalo)).length;
+export default async function SalesContactsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp.page) || 1);
+  const pageSize = 20;
+
+  const [pageResult, statsResult] = await Promise.all([
+    getAdminSalesContactsPage({ page, pageSize }),
+    getAdminSalesContactStats(),
+  ]);
+
+  const { data: contacts, error: pageError, pageCount, total } = pageResult;
+  const { data: stats } = statsResult;
+  const safeContacts = contacts ?? [];
+  const error = pageError;
 
   return (
     <AdminSection>
@@ -34,26 +40,26 @@ export default async function SalesContactsPage() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard
           label="Tổng liên hệ"
-          value={safeContacts.length}
+          value={stats.total}
           icon={<PhoneCall className="h-4 w-4" />}
           hint="Toàn bộ nhân sự tư vấn"
         />
         <AdminStatCard
           label="Đang hiển thị"
-          value={activeCount}
+          value={stats.activeCount}
           icon={<Eye className="h-4 w-4" />}
           hint="Xuất hiện trên website"
         />
         <AdminStatCard
           label="Đang ẩn"
-          value={hiddenCount}
+          value={stats.hiddenCount}
           icon={<EyeOff className="h-4 w-4" />}
           hint="Tạm ngưng công khai"
           tone="accent"
         />
         <AdminStatCard
           label="Có Zalo"
-          value={zaloReadyCount}
+          value={stats.zaloReadyCount}
           icon={<UserRound className="h-4 w-4" />}
           hint="Sẵn sàng tư vấn nhanh"
         />
@@ -69,7 +75,7 @@ export default async function SalesContactsPage() {
         </div>
       ) : null}
 
-      {!error && safeContacts.length === 0 ? (
+      {!error && total === 0 ? (
         <AdminEmptyState
           icon={<Phone className="h-6 w-6" />}
           title="Chưa có liên hệ bán hàng nào"
@@ -77,7 +83,14 @@ export default async function SalesContactsPage() {
         />
       ) : null}
 
-      {safeContacts.length > 0 ? <SalesContactsTable contacts={safeContacts} /> : null}
+      {!error && total > 0 ? (
+        <SalesContactsTable
+          contacts={safeContacts}
+          page={page}
+          pageCount={pageCount}
+          total={total}
+        />
+      ) : null}
     </AdminSection>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useDeferredValue, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Briefcase, MapPin, DollarSign, Search, Check, Shield } from 'lucide-react';
 
 import { JobRowActions } from '@/components/admin/JobRowActions';
@@ -8,6 +9,14 @@ import type { AdminJobVacancy } from '@/lib/services/admin/jobs';
 
 interface JobsTableProps {
   jobs: AdminJobVacancy[];
+  page: number;
+  pageCount: number;
+  total: number;
+}
+
+function buildUrl(page: number) {
+  if (page <= 1) return '/admin/jobs';
+  return `/admin/jobs?page=${page}`;
 }
 
 function StatusBadge({ active }: { active: boolean }) {
@@ -18,7 +27,8 @@ function StatusBadge({ active }: { active: boolean }) {
   );
 }
 
-export function JobsTable({ jobs }: JobsTableProps) {
+export function JobsTable({ jobs, page, pageCount, total }: JobsTableProps) {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
 
@@ -126,8 +136,34 @@ export function JobsTable({ jobs }: JobsTableProps) {
           <Check className="h-3.5 w-3.5 text-emerald-600" />
           Dữ liệu tuyển dụng được đồng bộ từ Supabase.
         </p>
-        <span className="font-bold text-[#3749A6]">{jobs.length} tin tuyển dụng</span>
+        <span className="font-bold text-[#3749A6]">{total} tin tuyển dụng</span>
       </div>
+
+      {pageCount > 1 ? (
+        <div className="flex items-center justify-between border-t border-[#EEF2F6] pt-4">
+          <span className="text-sm text-slate-500">
+            Trang {page} / {pageCount}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => router.push(buildUrl(page - 1))}
+              className="admin-focus inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#E5E7EF] px-3 text-sm font-medium text-slate-700 transition-colors hover:border-[#4880FF] hover:text-[#3749A6] disabled:pointer-events-none disabled:opacity-40"
+            >
+              ← Trước
+            </button>
+            <button
+              type="button"
+              disabled={page >= pageCount}
+              onClick={() => router.push(buildUrl(page + 1))}
+              className="admin-focus inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#E5E7EF] px-3 text-sm font-medium text-slate-700 transition-colors hover:border-[#4880FF] hover:text-[#3749A6] disabled:pointer-events-none disabled:opacity-40"
+            >
+              Tiếp →
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

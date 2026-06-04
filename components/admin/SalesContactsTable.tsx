@@ -1,6 +1,7 @@
 'use client';
 
 import { useDeferredValue, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Check, MessageCircle, Phone, Search, Shield, UserRound } from 'lucide-react';
 
 import { SalesContactRowActions } from '@/components/admin/SalesContactRowActions';
@@ -8,6 +9,14 @@ import type { AdminSalesContact } from '@/lib/services/admin/sales-contacts';
 
 interface SalesContactsTableProps {
   contacts: AdminSalesContact[];
+  page: number;
+  pageCount: number;
+  total: number;
+}
+
+function buildUrl(page: number) {
+  if (page <= 1) return '/admin/sales-contacts';
+  return `/admin/sales-contacts?page=${page}`;
 }
 
 function StatusBadge({ active }: { active: boolean }) {
@@ -27,7 +36,8 @@ function getZaloLink(contact: AdminSalesContact) {
   return digits ? `https://zalo.me/${digits}` : '#';
 }
 
-export function SalesContactsTable({ contacts }: SalesContactsTableProps) {
+export function SalesContactsTable({ contacts, page, pageCount, total }: SalesContactsTableProps) {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
 
@@ -142,8 +152,34 @@ export function SalesContactsTable({ contacts }: SalesContactsTableProps) {
           <Check className="h-3.5 w-3.5 text-emerald-600" />
           Dữ liệu liên hệ bán hàng được đồng bộ từ Supabase.
         </p>
-        <span className="font-bold text-[#3749A6]">{contacts.length} liên hệ</span>
+        <span className="font-bold text-[#3749A6]">{total} liên hệ</span>
       </div>
+
+      {pageCount > 1 ? (
+        <div className="flex items-center justify-between border-t border-[#EEF2F6] pt-4">
+          <span className="text-sm text-slate-500">
+            Trang {page} / {pageCount}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => router.push(buildUrl(page - 1))}
+              className="admin-focus inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#E5E7EF] px-3 text-sm font-medium text-slate-700 transition-colors hover:border-[#4880FF] hover:text-[#3749A6] disabled:pointer-events-none disabled:opacity-40"
+            >
+              ← Trước
+            </button>
+            <button
+              type="button"
+              disabled={page >= pageCount}
+              onClick={() => router.push(buildUrl(page + 1))}
+              className="admin-focus inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#E5E7EF] px-3 text-sm font-medium text-slate-700 transition-colors hover:border-[#4880FF] hover:text-[#3749A6] disabled:pointer-events-none disabled:opacity-40"
+            >
+              Tiếp →
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

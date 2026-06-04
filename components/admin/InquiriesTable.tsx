@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
@@ -40,6 +40,24 @@ interface InquiriesTableProps {
   adminUsers: AdminUserListItem[];
   stats: InquiryStats;
   canMutateWorkflow?: boolean;
+  page: number;
+  pageCount: number;
+  total: number;
+  currentQ?: string;
+  currentStatus?: InquiryStatus;
+}
+
+function buildInquiriesUrl(params: {
+  page?: number;
+  q?: string;
+  status?: InquiryStatus | 'all';
+}) {
+  const sp = new URLSearchParams();
+  if (params.page && params.page > 1) sp.set('page', String(params.page));
+  if (params.q) sp.set('q', params.q);
+  if (params.status && params.status !== 'all') sp.set('status', params.status);
+  const qs = sp.toString();
+  return `/admin/inquiries${qs ? `?${qs}` : ''}`;
 }
 
 type TabId = 'all' | InquiryStatus;
@@ -206,48 +224,46 @@ function PriorityBadge({ priority }: { priority: InquiryPriority }) {
   );
 }
 
-export function InquiriesTable({ inquiries, adminUsers, stats, canMutateWorkflow = true }: InquiriesTableProps) {
+export function InquiriesTable({
+  inquiries,
+  adminUsers,
+  stats,
+  canMutateWorkflow = true,
+  page,
+  pageCount,
+  total,
+  currentQ,
+  currentStatus,
+}: InquiriesTableProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [tab, setTab] = useState<TabId>('all');
-  const [query, setQuery] = useState('');
+  const [tab, setTab] = useState<TabId>(currentStatus ?? 'all');
+  const [inputQ, setInputQ] = useState(currentQ ?? '');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selected = selectedId ? inquiries.find((inquiry) => inquiry.id === selectedId) ?? null : null;
 
-  const counts = useMemo(() => {
-    return {
-      all: stats.total,
-      ...stats.byStatus,
-    };
-  }, [stats]);
+  const counts = {
+    all: stats.total,
+    ...stats.byStatus,
+  };
 
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    return inquiries.filter((inquiry) => {
-      if (tab !== 'all' && inquiry.status !== tab) {
-        return false;
-      }
-      if (normalized) {
-        const assignee = inquiry.assigned_to ? adminUsers.find((u) => u.id === inquiry.assigned_to) : null;
-        const assigneeEmail = assignee ? assignee.email.toLowerCase() : '';
-        const productName = inquiry.products?.name?.toLowerCase() ?? '';
+  const handleTabChange = (id: TabId) => {
+    setTab(id);
+    router.push(buildInquiriesUrl({ status: id, q: inputQ || undefined }));
+  };
 
-        return (
-          inquiry.customer_name.toLowerCase().includes(normalized) ||
-          inquiry.phone.toLowerCase().includes(normalized) ||
-          (inquiry.email ?? '').toLowerCase().includes(normalized) ||
-          (inquiry.message ?? '').toLowerCase().includes(normalized) ||
-          productName.includes(normalized) ||
-          assigneeEmail.includes(normalized)
-        );
-      }
-      return true;
-    });
-  }, [inquiries, tab, query, adminUsers]);
+  const handleSearchChange = (value: string) => {
+    setInputQ(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      router.push(buildInquiriesUrl({ q: value || undefined, status: currentStatus }));
+    }, 400);
+  };
 
   const runAction = (formData: FormData, action: (formData: FormData) => Promise<{ ok: boolean; error?: string }>) => {
     setError(null);
@@ -329,7 +345,7 @@ export function InquiriesTable({ inquiries, adminUsers, stats, canMutateWorkflow
             <button
               key={item.id}
               type="button"
-              onClick={() => setTab(item.id)}
+              onClick={() => handleTabChange(item.id)}
               className={`admin-focus -mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
                 active ? 'border-[#4880FF] text-[#3749A6]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -348,8 +364,8 @@ export function InquiriesTable({ inquiries, adminUsers, stats, canMutateWorkflow
       </div>
 
       <AdminFilterBar>
-        <AdminSearchInput value={query} onChange={setQuery} placeholder="Tìm theo tên, SĐT, email hoặc nội dung..." />
-        <span className="text-sm text-slate-400">{filtered.length} yêu cầu</span>
+        <AdminSearchInput value={inputQ} onChange={handleSearchChange} placeholder="Tìm theo tên, SĐT, email hoặc nội dung..." />
+        <span className="text-sm text-slate-400">{total} yêu cầu</span>
       </AdminFilterBar>
 
       <AdminTableShell
@@ -367,14 +383,14 @@ export function InquiriesTable({ inquiries, adminUsers, stats, canMutateWorkflow
           </>
         }
       >
-        {filtered.length === 0 ? (
+        {inquiries.length === 0 ? (
           <tr>
             <td colSpan={8} className="px-5 py-10 text-center text-sm text-slate-500">
               Không có yêu cầu nào trong mục này.
             </td>
           </tr>
         ) : (
-          filtered.map((inquiry) => {
+          inquiries.map((inquiry) => {
             const meta = statusMeta(inquiry.status);
             const workflow = getWorkflowMetadata(inquiry);
             const priority = workflow.priority ?? 'normal';
@@ -434,6 +450,36 @@ export function InquiriesTable({ inquiries, adminUsers, stats, canMutateWorkflow
           })
         )}
       </AdminTableShell>
+
+      {pageCount > 1 ? (
+        <div className="flex items-center justify-between border-t border-[#EEF2F6] pt-4">
+          <span className="text-sm text-slate-500">
+            Trang {page} / {pageCount} · {total} yêu cầu
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() =>
+                router.push(buildInquiriesUrl({ page: page - 1, q: currentQ, status: currentStatus }))
+              }
+              className="admin-focus inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#E5E7EF] px-3 text-sm font-medium text-slate-700 transition-colors hover:border-[#4880FF] hover:text-[#3749A6] disabled:pointer-events-none disabled:opacity-40"
+            >
+              ← Trước
+            </button>
+            <button
+              type="button"
+              disabled={page >= pageCount}
+              onClick={() =>
+                router.push(buildInquiriesUrl({ page: page + 1, q: currentQ, status: currentStatus }))
+              }
+              className="admin-focus inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#E5E7EF] px-3 text-sm font-medium text-slate-700 transition-colors hover:border-[#4880FF] hover:text-[#3749A6] disabled:pointer-events-none disabled:opacity-40"
+            >
+              Tiếp →
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <AdminModal
         open={selected !== null}

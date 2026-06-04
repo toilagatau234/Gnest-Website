@@ -186,6 +186,34 @@ export async function getAdminSalesContactsPage(
   }
 }
 
+export interface AdminSalesContactStats {
+  total: number;
+  activeCount: number;
+  hiddenCount: number;
+  zaloReadyCount: number;
+}
+
+export async function getAdminSalesContactStats(): Promise<{ data: AdminSalesContactStats; error: string | null }> {
+  const EMPTY: AdminSalesContactStats = { total: 0, activeCount: 0, hiddenCount: 0, zaloReadyCount: 0 };
+  try {
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
+    const [totalRes, activeRes, zaloRes] = await Promise.all([
+      supabase.from('sales_contacts').select('id', { count: 'exact', head: true }),
+      supabase.from('sales_contacts').select('id', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('sales_contacts').select('id', { count: 'exact', head: true }).not('zalo', 'is', null),
+    ]);
+    const total = totalRes.count ?? 0;
+    const activeCount = activeRes.count ?? 0;
+    return {
+      data: { total, activeCount, hiddenCount: total - activeCount, zaloReadyCount: zaloRes.count ?? 0 },
+      error: totalRes.error?.message ?? activeRes.error?.message ?? zaloRes.error?.message ?? null,
+    };
+  } catch (err) {
+    return { data: EMPTY, error: err instanceof Error ? err.message : 'Lỗi không xác định' };
+  }
+}
+
 export async function createAdminSalesContact(payload: SalesContactPayload) {
   const adminUser = await requireAdminAuth(SALES_CONTACT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();

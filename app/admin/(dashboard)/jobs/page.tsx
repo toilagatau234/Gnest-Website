@@ -6,23 +6,28 @@ import { AdminSection } from '@/components/admin/AdminSection';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { JobFormDialog } from '@/components/admin/JobFormDialog';
 import { JobsTable } from '@/components/admin/JobsTable';
-import { getAdminJobs } from '@/lib/services/admin/jobs';
+import { getAdminJobsPage, getAdminJobStats } from '@/lib/services/admin/jobs';
 
 export const dynamic = 'force-dynamic';
 
-export default async function JobsPage() {
-  // eslint-disable-next-line react-hooks/purity
-  const _t0 = Date.now();
-  const { data: jobs, error } = await getAdminJobs();
-  if (process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1') {
-    // eslint-disable-next-line react-hooks/purity
-    console.log(`[admin-timing] jobs page total: ${Date.now() - _t0}ms`);
-  }
-  const safeJobs = jobs || [];
-  
-  const activeCount = safeJobs.filter((job) => job.is_active).length;
-  const hiddenCount = safeJobs.length - activeCount;
-  const locationCount = safeJobs.filter((job) => Boolean(job.location)).length;
+export default async function JobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp.page) || 1);
+  const pageSize = 20;
+
+  const [pageResult, statsResult] = await Promise.all([
+    getAdminJobsPage({ page, pageSize }),
+    getAdminJobStats(),
+  ]);
+
+  const { data: jobs, error: pageError, pageCount, total } = pageResult;
+  const { data: stats } = statsResult;
+  const safeJobs = jobs ?? [];
+  const error = pageError;
 
   return (
     <AdminSection>
@@ -35,26 +40,26 @@ export default async function JobsPage() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard
           label="Tổng tin đăng"
-          value={safeJobs.length}
+          value={stats.total}
           icon={<Briefcase className="h-4 w-4" />}
           hint="Tổng vị trí tuyển dụng"
         />
         <AdminStatCard
           label="Đang hiển thị"
-          value={activeCount}
+          value={stats.activeCount}
           icon={<Eye className="h-4 w-4" />}
           hint="Công khai trên website"
         />
         <AdminStatCard
           label="Đã ẩn"
-          value={hiddenCount}
+          value={stats.hiddenCount}
           icon={<EyeOff className="h-4 w-4" />}
           hint="Tạm dừng tuyển dụng"
           tone="accent"
         />
         <AdminStatCard
           label="Tin có địa điểm"
-          value={locationCount}
+          value={stats.locationCount}
           icon={<MapPin className="h-4 w-4" />}
           hint="Giúp ứng viên định vị"
         />
@@ -70,7 +75,7 @@ export default async function JobsPage() {
         </div>
       ) : null}
 
-      {!error && safeJobs.length === 0 ? (
+      {!error && total === 0 ? (
         <AdminEmptyState
           icon={<Briefcase className="h-6 w-6" />}
           title="Chưa có tin tuyển dụng nào"
@@ -78,7 +83,14 @@ export default async function JobsPage() {
         />
       ) : null}
 
-      {safeJobs.length > 0 ? <JobsTable jobs={safeJobs} /> : null}
+      {!error && total > 0 ? (
+        <JobsTable
+          jobs={safeJobs}
+          page={page}
+          pageCount={pageCount}
+          total={total}
+        />
+      ) : null}
     </AdminSection>
   );
 }
