@@ -12,7 +12,13 @@ import { getAdminCategories } from '@/lib/services/admin/categories';
 export const dynamic = 'force-dynamic';
 
 export default async function CategoriesPage() {
+  // eslint-disable-next-line react-hooks/purity
+  const _t0 = Date.now();
   const { data: categories, error } = await getAdminCategories();
+  if (process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1') {
+    // eslint-disable-next-line react-hooks/purity
+    console.log(`[admin-timing] categories page total: ${Date.now() - _t0}ms`);
+  }
   const safeCategories = categories || [];
   const activeCount = safeCategories.filter((item) => item.is_active).length;
   const hiddenCount = safeCategories.length - activeCount;

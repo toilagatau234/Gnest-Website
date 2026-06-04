@@ -11,7 +11,13 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // eslint-disable-next-line react-hooks/purity
+  const _t0 = Date.now();
   const sessionState = await getAdminSessionState();
+  if (process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1') {
+    // eslint-disable-next-line react-hooks/purity
+    console.log(`[admin-timing] layout session check: ${Date.now() - _t0}ms`);
+  }
 
   if (sessionState.status === 'unauthenticated') {
     redirect('/admin/login');

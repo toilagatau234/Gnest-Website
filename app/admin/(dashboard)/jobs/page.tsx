@@ -11,7 +11,13 @@ import { getAdminJobs } from '@/lib/services/admin/jobs';
 export const dynamic = 'force-dynamic';
 
 export default async function JobsPage() {
+  // eslint-disable-next-line react-hooks/purity
+  const _t0 = Date.now();
   const { data: jobs, error } = await getAdminJobs();
+  if (process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1') {
+    // eslint-disable-next-line react-hooks/purity
+    console.log(`[admin-timing] jobs page total: ${Date.now() - _t0}ms`);
+  }
   const safeJobs = jobs || [];
   
   const activeCount = safeJobs.filter((job) => job.is_active).length;

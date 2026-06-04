@@ -21,6 +21,8 @@ interface PageProps {
 }
 
 export default async function AuditLogsPage({ searchParams }: PageProps) {
+  // eslint-disable-next-line react-hooks/purity
+  const _t0 = Date.now();
   const resolvedSearchParams = await searchParams;
   const pageStr = resolvedSearchParams.page;
   const page = pageStr ? parseInt(pageStr, 10) : 1;
@@ -44,6 +46,11 @@ export default async function AuditLogsPage({ searchParams }: PageProps) {
     getAuditLogStats(),
     getAdminUsers(),
   ]);
+
+  if (process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1') {
+    // eslint-disable-next-line react-hooks/purity
+    console.log(`[admin-timing] audit-logs page total: ${Date.now() - _t0}ms`);
+  }
 
   const safeLogs = logsResult ?? [];
   const safeAdminUsers = adminUsers ?? [];

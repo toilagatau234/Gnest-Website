@@ -11,7 +11,13 @@ import { getAdminSalesContacts } from '@/lib/services/admin/sales-contacts';
 export const dynamic = 'force-dynamic';
 
 export default async function SalesContactsPage() {
+  // eslint-disable-next-line react-hooks/purity
+  const _t0 = Date.now();
   const { data: contacts, error } = await getAdminSalesContacts();
+  if (process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1') {
+    // eslint-disable-next-line react-hooks/purity
+    console.log(`[admin-timing] sales-contacts page total: ${Date.now() - _t0}ms`);
+  }
   const safeContacts = contacts || [];
   const activeCount = safeContacts.filter((contact) => contact.is_active).length;
   const hiddenCount = safeContacts.length - activeCount;
