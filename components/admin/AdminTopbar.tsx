@@ -23,27 +23,27 @@ interface AdminTopbarProps {
 }
 
 const BREADCRUMB_MAP: Record<string, string> = {
-  '/admin/dashboard': 'Tong quan / Bang dieu khien',
-  '/admin/inquiries': 'Tong quan / Yeu cau bao gia',
-  '/admin/categories': 'Catalog / Danh muc',
-  '/admin/products': 'Catalog / San pham',
-  '/admin/sales-contacts': 'Catalog / Dau moi lien he',
-  '/admin/jobs': 'He thong / Tuyen dung',
-  '/admin/site-content': 'He thong / Noi dung website',
-  '/admin/admin-users': 'He thong / Tai khoan quan tri',
-  '/admin/audit-logs': 'He thong / Nhat ky hoat dong',
+  '/admin/dashboard': 'Tổng quan / Bảng điều khiển',
+  '/admin/inquiries': 'Tổng quan / Yêu cầu báo giá',
+  '/admin/categories': 'Danh mục sản phẩm / Danh mục',
+  '/admin/products': 'Danh mục sản phẩm / Sản phẩm',
+  '/admin/sales-contacts': 'Danh mục sản phẩm / Đầu mối liên hệ',
+  '/admin/jobs': 'Hệ thống / Tuyển dụng',
+  '/admin/site-content': 'Hệ thống / Nội dung website',
+  '/admin/admin-users': 'Hệ thống / Tài khoản quản trị',
+  '/admin/audit-logs': 'Hệ thống / Nhật ký hoạt động',
 };
 
 const ADMIN_COMMANDS = [
-  { href: '/admin/dashboard', label: 'Tong quan dashboard', keywords: ['dashboard', 'tong quan', 'kpi'] },
-  { href: '/admin/inquiries', label: 'Yeu cau bao gia', keywords: ['inquiries', 'bao gia', 'contact'] },
-  { href: '/admin/categories', label: 'Danh muc san pham', keywords: ['categories', 'danh muc', 'catalog'] },
-  { href: '/admin/products', label: 'San pham', keywords: ['products', 'san pham', 'catalog'] },
-  { href: '/admin/sales-contacts', label: 'Dau moi lien he', keywords: ['sales', 'contacts', 'zalo'] },
-  { href: '/admin/jobs', label: 'Tuyen dung', keywords: ['jobs', 'tuyen dung', 'career'] },
-  { href: '/admin/site-content', label: 'Noi dung website', keywords: ['content', 'website', 'landing'] },
-  { href: '/admin/admin-users', label: 'Tai khoan quan tri', keywords: ['admin users', 'tai khoan', 'phan quyen'] },
-  { href: '/admin/audit-logs', label: 'Nhat ky hoat dong', keywords: ['audit', 'logs', 'lich su'] },
+  { href: '/admin/dashboard', label: 'Tổng quan bảng điều khiển', keywords: ['dashboard', 'tong quan', 'kpi'] },
+  { href: '/admin/inquiries', label: 'Yêu cầu báo giá', keywords: ['inquiries', 'bao gia', 'contact'] },
+  { href: '/admin/categories', label: 'Danh mục sản phẩm', keywords: ['categories', 'danh muc', 'catalog'] },
+  { href: '/admin/products', label: 'Sản phẩm', keywords: ['products', 'san pham', 'catalog'] },
+  { href: '/admin/sales-contacts', label: 'Đầu mối liên hệ', keywords: ['sales', 'contacts', 'zalo'] },
+  { href: '/admin/jobs', label: 'Tuyển dụng', keywords: ['jobs', 'tuyen dung', 'career'] },
+  { href: '/admin/site-content', label: 'Nội dung website', keywords: ['content', 'website', 'landing'] },
+  { href: '/admin/admin-users', label: 'Tài khoản quản trị', keywords: ['admin users', 'tai khoan', 'phan quyen'] },
+  { href: '/admin/audit-logs', label: 'Nhật ký hoạt động', keywords: ['audit', 'logs', 'lich su'] },
 ];
 
 function getBreadcrumbName(pathname: string) {
@@ -51,7 +51,7 @@ function getBreadcrumbName(pathname: string) {
     .filter((href) => pathname === href || pathname.startsWith(href + '/'))
     .sort((a, b) => b.length - a.length)[0];
 
-  return match ? BREADCRUMB_MAP[match] : 'Trang quan tri';
+  return match ? BREADCRUMB_MAP[match] : 'Trang quản trị';
 }
 
 export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbarProps) {
@@ -107,7 +107,7 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
           <button
             type="button"
             onClick={onMenuToggle}
-            aria-label={isMenuOpen ? 'Dong menu' : 'Mo menu'}
+            aria-label={isMenuOpen ? 'Đóng menu' : 'Mở menu'}
             className="admin-focus inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-[#F5F6FA] hover:text-[#202224] lg:hidden"
           >
             {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -136,7 +136,7 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
           >
             <span className="flex items-center gap-2">
               <Search className="h-4 w-4 text-slate-400" />
-              Tim nhanh route admin, bang du lieu, cong cu...
+              Tìm nhanh route admin, bảng dữ liệu, công cụ...
             </span>
             <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
               Ctrl K
@@ -149,7 +149,7 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
             type="button"
             onClick={() => setIsPaletteOpen(true)}
             className="admin-focus inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-[#F5F6FA] hover:text-[#202224] xl:hidden"
-            title="Tim nhanh"
+            title="Tìm nhanh"
           >
             <Search className="h-4 w-4" />
           </button>
@@ -180,7 +180,7 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
           <button
             type="button"
             onClick={handleLogout}
-            title="Dang xuat"
+            title="Đăng xuất"
             className="admin-focus inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-[#E31E24]/5 hover:text-[#E31E24]"
           >
             <LogOut className="h-4 w-4" />
@@ -202,14 +202,14 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
                   autoFocus
                   value={commandQuery}
                   onChange={(event) => setCommandQuery(event.target.value)}
-                  placeholder="Tim route admin, module, trang can mo..."
+                  placeholder="Tìm route admin, module, trang cần mở..."
                   className="h-12 w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
                 />
                 <button
                   type="button"
                   onClick={() => setIsPaletteOpen(false)}
                   className="text-slate-400 transition hover:text-slate-600"
-                  aria-label="Dong command palette"
+                  aria-label="Đóng command palette"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -252,9 +252,9 @@ export function AdminTopbar({ adminUser, onMenuToggle, isMenuOpen }: AdminTopbar
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
                   <Search className="mx-auto h-8 w-8 text-slate-300" />
-                  <p className="mt-3 text-sm font-semibold text-slate-600">Khong tim thay muc phu hop.</p>
+                  <p className="mt-3 text-sm font-semibold text-slate-600">Không tìm thấy mục phù hợp.</p>
                   <p className="mt-1 text-xs font-medium text-slate-400">
-                    Thu tim theo ten route, ten module hoac chuc nang.
+                    Thử tìm theo tên route, tên module hoặc chức năng.
                   </p>
                 </div>
               )}
