@@ -3,8 +3,8 @@ import { AlertCircle, Package } from 'lucide-react';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { AdminSection } from '@/components/admin/AdminSection';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { ProductBulkDialog } from '@/components/admin/ProductBulkDialog';
 import { ProductFormDialog } from '@/components/admin/ProductFormDialog';
-import { ProductBulkCreateDialog } from '@/components/admin/ProductBulkCreateDialog';
 import { ProductsTable } from '@/components/admin/ProductsTable';
 import { getAdminCategories } from '@/lib/services/admin/categories';
 import {
@@ -64,7 +64,7 @@ export default async function ProductsPage({
         description={`${stats.total} sản phẩm · ${stats.active} đang hiển thị`}
         action={
           <div className="flex items-center gap-2">
-            <ProductBulkCreateDialog categories={safeCategories} />
+            <ProductBulkDialog categories={safeCategories} />
             <ProductFormDialog categories={safeCategories} />
           </div>
         }

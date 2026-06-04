@@ -872,15 +872,21 @@ function SuccessStep({
 }
 
 // ---------------------------------------------------------------------------
-// Main dialog
+// Shared content — usable standalone (e.g. inside a tab) or inside a modal
 // ---------------------------------------------------------------------------
 
 type Step = 'upload' | 'preview';
 
-export function ProductImportDialog({ embedded = false }: { embedded?: boolean }) {
+interface ProductImportContentProps {
+  /** Called when the user clicks "Đóng" after a successful import. */
+  onClose?: () => void;
+  /** Notifies parent of pending state so it can control modal dismissibility. */
+  onPendingChange?: (pending: boolean) => void;
+}
+
+export function ProductImportContent({ onClose, onPendingChange }: ProductImportContentProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>('upload');
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [filename, setFilename] = useState('');
@@ -895,6 +901,10 @@ export function ProductImportDialog({ embedded = false }: { embedded?: boolean }
   const showSuccess = submitted && importState.ok && importState.imported != null;
 
   useEffect(() => {
+    onPendingChange?.(isPending || isValidating);
+  }, [isPending, isValidating, onPendingChange]);
+
+  useEffect(() => {
     if (submitted && importState.ok) {
       router.refresh();
     }
@@ -905,20 +915,6 @@ export function ProductImportDialog({ embedded = false }: { embedded?: boolean }
       toast(importState.error, 'error');
     }
   }, [submitted, importState.error, importState.errors, toast]);
-
-  function openDialog() {
-    setSubmitted(false);
-    setStep('upload');
-    setRows([]);
-    setFilename('');
-    setValidationResult(null);
-    setOpen(true);
-  }
-
-  function closeDialog() {
-    if (isPending || isValidating) return;
-    setOpen(false);
-  }
 
   function handleFileParsed(parsedRows: ImportRow[], name: string) {
     setRows(parsedRows);
@@ -948,28 +944,15 @@ export function ProductImportDialog({ embedded = false }: { embedded?: boolean }
     form.requestSubmit();
   }
 
-  const modalTitle = showSuccess
-    ? 'Nhập hoàn tất'
-    : step === 'upload'
-      ? 'Nhập sản phẩm từ Excel'
-      : isValidating
-        ? 'Đang kiểm tra dữ liệu…'
-        : 'Xem trước & xác nhận';
-
-  const modalDescription = showSuccess
-    ? undefined
-    : step === 'upload'
-      ? 'Tạo nhiều sản phẩm cùng lúc từ file Excel hoặc CSV.'
-      : 'Kiểm tra dữ liệu và lỗi trước khi nhập vào hệ thống.';
-
-  const content = (
+  return (
     <>
+      {/* Hidden form — submits only when user confirms */}
       <form ref={formRef} action={formAction} className="hidden">
         <input type="hidden" name="rows" defaultValue="" />
       </form>
 
       {showSuccess && (
-        <SuccessStep result={importState} onClose={closeDialog} />
+        <SuccessStep result={importState} onClose={() => onClose?.()} />
       )}
 
       {!showSuccess && step === 'upload' && (
@@ -991,9 +974,23 @@ export function ProductImportDialog({ embedded = false }: { embedded?: boolean }
       )}
     </>
   );
+}
 
-  if (embedded) {
-    return <div className="min-h-[520px]">{content}</div>;
+// ---------------------------------------------------------------------------
+// Main dialog (standalone button + modal wrapper)
+// ---------------------------------------------------------------------------
+
+export function ProductImportDialog() {
+  const [open, setOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+
+  function openDialog() {
+    setOpen(true);
+  }
+
+  function closeDialog() {
+    if (isPending) return;
+    setOpen(false);
   }
 
   return (
@@ -1005,12 +1002,15 @@ export function ProductImportDialog({ embedded = false }: { embedded?: boolean }
       <AdminModal
         open={open}
         onClose={closeDialog}
-        title={modalTitle}
-        description={modalDescription}
+        title="Nhập sản phẩm từ Excel"
+        description="Tạo nhiều sản phẩm cùng lúc từ file Excel hoặc CSV."
         size="2xl"
         dismissible={!isPending}
       >
-        {content}
+        <ProductImportContent
+          onClose={closeDialog}
+          onPendingChange={setIsPending}
+        />
       </AdminModal>
     </>
   );
