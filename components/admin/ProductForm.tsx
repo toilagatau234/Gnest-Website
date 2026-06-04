@@ -6,7 +6,7 @@ import { AlertCircle, ImageIcon } from 'lucide-react';
 import { SpecsEditor } from '@/components/admin/SpecsEditor';
 import { AdminToggle } from '@/components/admin/AdminToggle';
 import type { AdminCategory } from '@/lib/services/admin/categories';
-import type { AdminProduct } from '@/lib/services/admin/products';
+import type { ProductFormData } from '@/lib/services/admin/products';
 import type { AdminFormState } from '@/app/admin/(dashboard)/products/actions';
 
 interface ProductFormProps {
@@ -14,7 +14,7 @@ interface ProductFormProps {
   formAction: (payload: FormData) => void;
   state: AdminFormState;
   categories: AdminCategory[];
-  product?: AdminProduct;
+  product?: ProductFormData;
 }
 
 type TabId = 'basic' | 'pricing' | 'specs';

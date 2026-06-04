@@ -5,8 +5,10 @@ import { revalidatePath } from 'next/cache';
 import {
   createAdminProduct,
   deleteAdminProduct,
+  getAdminProductDetail,
   setAdminProductActive,
   updateAdminProduct,
+  type AdminProduct,
   type ProductPayload,
 } from '@/lib/services/admin/products';
 import type { Json } from '@/lib/types/database';
@@ -148,6 +150,10 @@ export async function deleteProductAction(productId: string): Promise<AdminFormS
   revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
   return { ok: true };
+}
+
+export async function fetchProductDetailAction(productId: string): Promise<{ data: AdminProduct | null; error: string | null }> {
+  return getAdminProductDetail(productId);
 }
 
 export async function toggleProductActiveAction(formData: FormData) {

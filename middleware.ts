@@ -43,14 +43,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - any image or asset file extension (.svg, .png, .jpg, .jpeg, .gif, .webp)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  // Only run auth session refresh on admin routes.
+  // Public pages do not need Supabase auth middleware overhead.
+  matcher: ['/admin', '/admin/:path*'],
 };

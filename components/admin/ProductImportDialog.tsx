@@ -14,8 +14,6 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
-
 import { AdminActionButton } from '@/components/admin/AdminActionButton';
 import { AdminModal } from '@/components/admin/AdminModal';
 import { useToast } from '@/components/admin/AdminToast';
@@ -73,7 +71,8 @@ const ALL_COLUMNS = [
 // Professional sample template download
 // ---------------------------------------------------------------------------
 
-function downloadTemplate() {
+async function downloadTemplate() {
+  const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
 
   const sampleRows = [
@@ -269,7 +268,8 @@ function downloadTemplate() {
 // Error CSV export
 // ---------------------------------------------------------------------------
 
-function downloadErrorsCsv(errors: NonNullable<ImportResult['errors']>) {
+async function downloadErrorsCsv(errors: NonNullable<ImportResult['errors']>) {
+  const XLSX = await import('xlsx');
   const rows = errors.map((e) => [e.row, e.field, e.value, e.message, e.suggestion ?? '']);
   const ws = XLSX.utils.aoa_to_sheet([['Dòng', 'Cột', 'Giá trị', 'Lỗi', 'Gợi ý'], ...rows]);
   ws['!cols'] = [8, 22, 28, 50, 50].map((w) => ({ wch: w }));
@@ -319,8 +319,9 @@ interface ParsedFile {
 function parseFile(file: File): Promise<ParsedFile> {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
+        const XLSX = await import('xlsx');
         const data = e.target?.result;
         if (!data) return resolve({ rows: [], parseError: 'Không đọc được file.' });
 

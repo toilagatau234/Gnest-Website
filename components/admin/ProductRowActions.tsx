@@ -9,12 +9,12 @@ import { ProductMediaAndDiscountDialog } from '@/components/admin/ProductMediaAn
 import { AdminConfirmDialog } from '@/components/admin/AdminConfirmDialog';
 import { useToast } from '@/components/admin/AdminToast';
 import type { AdminCategory } from '@/lib/services/admin/categories';
-import type { AdminProduct } from '@/lib/services/admin/products';
+import type { ProductListItem } from '@/lib/services/admin/products';
 import { deleteProductAction, toggleProductActiveAction } from '@/app/admin/(dashboard)/products/actions';
 
 interface ProductRowActionsProps {
   categories: AdminCategory[];
-  product: AdminProduct;
+  product: ProductListItem;
 }
 
 export function ProductRowActions({ categories, product }: ProductRowActionsProps) {
@@ -54,7 +54,11 @@ export function ProductRowActions({ categories, product }: ProductRowActionsProp
         {product.is_active ? 'Hiển thị' : 'Đang ẩn'}
       </button>
 
-      <ProductMediaAndDiscountDialog product={product} />
+      <ProductMediaAndDiscountDialog
+        productId={product.id}
+        productName={product.name}
+        productPrice={product.price}
+      />
 
       <ProductFormDialog categories={categories} product={product} />
 

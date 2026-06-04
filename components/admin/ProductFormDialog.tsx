@@ -9,7 +9,7 @@ import { AdminModal } from '@/components/admin/AdminModal';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { useToast } from '@/components/admin/AdminToast';
 import type { AdminCategory } from '@/lib/services/admin/categories';
-import type { AdminProduct } from '@/lib/services/admin/products';
+import type { ProductFormData } from '@/lib/services/admin/products';
 import {
   createProductAction,
   updateProductAction,
@@ -19,7 +19,7 @@ import {
 interface ProductFormDialogProps {
   categories: AdminCategory[];
   /** When provided the dialog edits this product; otherwise it creates a new one. */
-  product?: AdminProduct;
+  product?: ProductFormData;
 }
 
 const INITIAL_STATE: AdminFormState = { ok: false };
