@@ -19,6 +19,22 @@ function buildUrl(page: number) {
   return `/admin/jobs?page=${page}`;
 }
 
+function buildDescriptionPreview(description: string) {
+  return description
+    .replace(/<li[^>]*>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(p|div|section|h[1-6])>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function StatusBadge({ active }: { active: boolean }) {
   return (
     <span className={`admin-badge ${active ? 'admin-status-active' : 'admin-status-muted'}`}>
@@ -105,11 +121,9 @@ export function JobsTable({ jobs, page, pageCount, total }: JobsTableProps) {
                 </div>
 
                 {job.description ? (
-                  <div 
-                    className="prose prose-sm max-w-none text-slate-600 text-xs mt-4 leading-relaxed font-normal line-clamp-3 
-                      [&_h3]:text-xs [&_h3]:font-bold [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_li]:text-slate-500"
-                    dangerouslySetInnerHTML={{ __html: job.description }} 
-                  />
+                  <p className="mt-4 line-clamp-3 text-xs font-normal leading-relaxed text-slate-600">
+                    {buildDescriptionPreview(job.description)}
+                  </p>
                 ) : (
                   <p className="text-slate-400 italic text-xs mt-4">Chưa có thông tin mô tả chi tiết.</p>
                 )}

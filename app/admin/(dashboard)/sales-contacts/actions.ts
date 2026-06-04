@@ -9,6 +9,7 @@ import {
   updateAdminSalesContact,
   type SalesContactPayload,
 } from '@/lib/services/admin/sales-contacts';
+import { getRequestContext } from '@/lib/services/admin/audit-metadata';
 
 export type AdminFormState = { ok: boolean; error?: string };
 
@@ -57,7 +58,8 @@ export async function createSalesContactAction(
 ): Promise<AdminFormState> {
   try {
     const payload = readSalesContactPayload(formData);
-    const { error } = await createAdminSalesContact(payload);
+    const requestContext = await getRequestContext();
+    const { error } = await createAdminSalesContact(payload, requestContext);
 
     if (error) {
       return { ok: false, error };
@@ -82,7 +84,8 @@ export async function updateSalesContactAction(
     }
 
     const payload = readSalesContactPayload(formData);
-    const { error } = await updateAdminSalesContact(contactId, payload);
+    const requestContext = await getRequestContext();
+    const { error } = await updateAdminSalesContact(contactId, payload, requestContext);
 
     if (error) {
       return { ok: false, error };
@@ -101,7 +104,8 @@ export async function deleteSalesContactAction(contactId: string): Promise<Admin
   }
 
   try {
-    const { error } = await deleteAdminSalesContact(contactId);
+    const requestContext = await getRequestContext();
+    const { error } = await deleteAdminSalesContact(contactId, requestContext);
 
     if (error) {
       return { ok: false, error };
@@ -122,7 +126,8 @@ export async function toggleSalesContactActiveAction(formData: FormData) {
     throw new Error('Thiếu ID liên hệ bán hàng.');
   }
 
-  const { error } = await setAdminSalesContactActive(contactId, isActive);
+  const requestContext = await getRequestContext();
+  const { error } = await setAdminSalesContactActive(contactId, isActive, requestContext);
 
   if (error) {
     throw new Error(error);

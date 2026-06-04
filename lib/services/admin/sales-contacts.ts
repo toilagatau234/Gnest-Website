@@ -3,7 +3,7 @@ import 'server-only';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts, Tables, Updates } from '@/lib/types/database';
 
-import { buildAuditMetadata } from '@/lib/services/admin/audit-metadata';
+import { buildAuditMetadata, type RequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 export type AdminSalesContact = Pick<
@@ -214,7 +214,7 @@ export async function getAdminSalesContactStats(): Promise<{ data: AdminSalesCon
   }
 }
 
-export async function createAdminSalesContact(payload: SalesContactPayload) {
+export async function createAdminSalesContact(payload: SalesContactPayload, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(SALES_CONTACT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   const insertPayload = normalizeSalesContactPayload(payload);
@@ -237,13 +237,14 @@ export async function createAdminSalesContact(payload: SalesContactPayload) {
     metadata: buildAuditMetadata({
       label: data.name,
       after: toSalesContactAuditSnapshot(data),
+      requestContext,
     }),
   });
 
   return { data, error: null };
 }
 
-export async function updateAdminSalesContact(contactId: string, payload: SalesContactPayload) {
+export async function updateAdminSalesContact(contactId: string, payload: SalesContactPayload, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(SALES_CONTACT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   const { data: before } = await supabase
@@ -273,13 +274,14 @@ export async function updateAdminSalesContact(contactId: string, payload: SalesC
       label: data.name,
       before: before ? toSalesContactAuditSnapshot(before) : null,
       after: toSalesContactAuditSnapshot(data),
+      requestContext,
     }),
   });
 
   return { data, error: null };
 }
 
-export async function deleteAdminSalesContact(contactId: string) {
+export async function deleteAdminSalesContact(contactId: string, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(SALES_CONTACT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
 
@@ -310,13 +312,14 @@ export async function deleteAdminSalesContact(contactId: string) {
         name: contact.name,
         phone: contact.phone,
       },
+      requestContext,
     }),
   });
 
   return { data: contact, error: null };
 }
 
-export async function setAdminSalesContactActive(contactId: string, isActive: boolean) {
+export async function setAdminSalesContactActive(contactId: string, isActive: boolean, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(SALES_CONTACT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   const { data: before } = await supabase
@@ -348,6 +351,7 @@ export async function setAdminSalesContactActive(contactId: string, isActive: bo
         ...(before ? toSalesContactAuditSnapshot(before) : {}),
         is_active: data.is_active,
       },
+      requestContext,
     }),
   });
 

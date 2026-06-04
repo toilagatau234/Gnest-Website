@@ -3,7 +3,7 @@ import 'server-only';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { CategoryType, Inserts, Tables, Updates } from '@/lib/types/database';
 
-import { buildAuditMetadata } from '@/lib/services/admin/audit-metadata';
+import { buildAuditMetadata, type RequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { sortCategoriesDeterministically } from '@/lib/services/category-visibility';
 
@@ -152,7 +152,7 @@ export async function getAdminCategories() {
   }
 }
 
-export async function createAdminCategory(payload: CategoryPayload) {
+export async function createAdminCategory(payload: CategoryPayload, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(CATEGORY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   let insertPayload = normalizeCategoryPayload(payload);
@@ -187,13 +187,14 @@ export async function createAdminCategory(payload: CategoryPayload) {
     metadata: buildAuditMetadata({
       label: data.name,
       after: toCategoryAuditSnapshot(data),
+      requestContext,
     }),
   });
 
   return { data, error: null };
 }
 
-export async function updateAdminCategory(categoryId: string, payload: CategoryPayload) {
+export async function updateAdminCategory(categoryId: string, payload: CategoryPayload, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(CATEGORY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   const { data: before } = await supabase
@@ -246,13 +247,14 @@ export async function updateAdminCategory(categoryId: string, payload: CategoryP
       before: before ? toCategoryAuditSnapshot(before) : null,
       after: toCategoryAuditSnapshot(data),
       extra: cascadedChildren > 0 ? { cascaded_children: cascadedChildren } : null,
+      requestContext,
     }),
   });
 
   return { data, error: null };
 }
 
-export async function deleteAdminCategory(categoryId: string) {
+export async function deleteAdminCategory(categoryId: string, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(CATEGORY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
 
@@ -292,13 +294,14 @@ export async function deleteAdminCategory(categoryId: string) {
         name: category.name,
         slug: category.slug,
       },
+      requestContext,
     }),
   });
 
   return { data: category, error: null };
 }
 
-export async function setAdminCategoryActive(categoryId: string, isActive: boolean) {
+export async function setAdminCategoryActive(categoryId: string, isActive: boolean, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(CATEGORY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   const { data: before } = await supabase
@@ -340,6 +343,7 @@ export async function setAdminCategoryActive(categoryId: string, isActive: boole
         is_active: data.is_active,
       },
       extra: cascadedChildren > 0 ? { cascaded_children: cascadedChildren } : null,
+      requestContext,
     }),
   });
 

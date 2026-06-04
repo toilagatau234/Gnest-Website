@@ -3,7 +3,7 @@ import 'server-only';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts, Json, Tables, Updates } from '@/lib/types/database';
 
-import { buildAuditMetadata } from '@/lib/services/admin/audit-metadata';
+import { buildAuditMetadata, type RequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 export type AdminProduct = Tables<'products'> & {
@@ -319,7 +319,7 @@ export async function getAdminProducts() {
   }
 }
 
-export async function createAdminProduct(payload: ProductPayload) {
+export async function createAdminProduct(payload: ProductPayload, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(PRODUCT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   const insertPayload = normalizeProductPayload(payload);
@@ -342,13 +342,14 @@ export async function createAdminProduct(payload: ProductPayload) {
     metadata: buildAuditMetadata({
       label: data.name,
       after: toProductAuditSnapshot(data),
+      requestContext,
     }),
   });
 
   return { data, error: null };
 }
 
-export async function updateAdminProduct(productId: string, payload: ProductPayload) {
+export async function updateAdminProduct(productId: string, payload: ProductPayload, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(PRODUCT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   const { data: before } = await supabase
@@ -378,13 +379,14 @@ export async function updateAdminProduct(productId: string, payload: ProductPayl
       label: data.name,
       before: before ? toProductAuditSnapshot(before) : null,
       after: toProductAuditSnapshot(data),
+      requestContext,
     }),
   });
 
   return { data, error: null };
 }
 
-export async function deleteAdminProduct(productId: string) {
+export async function deleteAdminProduct(productId: string, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(PRODUCT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
 
@@ -421,13 +423,14 @@ export async function deleteAdminProduct(productId: string) {
         name: product.name,
         slug: product.slug,
       },
+      requestContext,
     }),
   });
 
   return { data: product, error: null };
 }
 
-export async function setAdminProductActive(productId: string, isActive: boolean) {
+export async function setAdminProductActive(productId: string, isActive: boolean, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(PRODUCT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   const { data: before } = await supabase
@@ -456,6 +459,7 @@ export async function setAdminProductActive(productId: string, isActive: boolean
       label: data.name,
       before: before ? toProductAuditSnapshot(before) : null,
       after: toProductAuditSnapshot(data),
+      requestContext,
     }),
   });
 

@@ -9,6 +9,7 @@ import {
   updateAdminCategory,
   type CategoryPayload,
 } from '@/lib/services/admin/categories';
+import { getRequestContext } from '@/lib/services/admin/audit-metadata';
 import type { CategoryType } from '@/lib/types/database';
 
 export type AdminFormState = { ok: boolean; error?: string };
@@ -55,7 +56,8 @@ export async function createCategoryAction(
 ): Promise<AdminFormState> {
   try {
     const payload = readCategoryPayload(formData);
-    const { error } = await createAdminCategory(payload);
+    const requestContext = await getRequestContext();
+    const { error } = await createAdminCategory(payload, requestContext);
 
     if (error) {
       return { ok: false, error };
@@ -82,7 +84,8 @@ export async function updateCategoryAction(
     }
 
     const payload = readCategoryPayload(formData);
-    const { error } = await updateAdminCategory(categoryId, payload);
+    const requestContext = await getRequestContext();
+    const { error } = await updateAdminCategory(categoryId, payload, requestContext);
 
     if (error) {
       return { ok: false, error };
@@ -103,7 +106,8 @@ export async function deleteCategoryAction(categoryId: string): Promise<AdminFor
   }
 
   try {
-    const { error } = await deleteAdminCategory(categoryId);
+    const requestContext = await getRequestContext();
+    const { error } = await deleteAdminCategory(categoryId, requestContext);
 
     if (error) {
       return { ok: false, error };
@@ -126,7 +130,8 @@ export async function toggleCategoryActiveAction(formData: FormData) {
     throw new Error('Thiếu ID danh mục.');
   }
 
-  const { error } = await setAdminCategoryActive(categoryId, isActive);
+  const requestContext = await getRequestContext();
+  const { error } = await setAdminCategoryActive(categoryId, isActive, requestContext);
 
   if (error) {
     throw new Error(error);

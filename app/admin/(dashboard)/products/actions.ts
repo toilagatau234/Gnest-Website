@@ -11,6 +11,7 @@ import {
   type AdminProduct,
   type ProductPayload,
 } from '@/lib/services/admin/products';
+import { getRequestContext } from '@/lib/services/admin/audit-metadata';
 import type { Json } from '@/lib/types/database';
 
 export type AdminFormState = { ok: boolean; error?: string };
@@ -89,7 +90,8 @@ export async function createProductAction(
 ): Promise<AdminFormState> {
   try {
     const payload = readProductPayload(formData);
-    const { error } = await createAdminProduct(payload);
+    const requestContext = await getRequestContext();
+    const { error } = await createAdminProduct(payload, requestContext);
 
     if (error) {
       return { ok: false, error };
@@ -116,7 +118,8 @@ export async function updateProductAction(
     }
 
     const payload = readProductPayload(formData);
-    const { error } = await updateAdminProduct(productId, payload);
+    const requestContext = await getRequestContext();
+    const { error } = await updateAdminProduct(productId, payload, requestContext);
 
     if (error) {
       return { ok: false, error };
@@ -137,7 +140,8 @@ export async function deleteProductAction(productId: string): Promise<AdminFormS
   }
 
   try {
-    const { error } = await deleteAdminProduct(productId);
+    const requestContext = await getRequestContext();
+    const { error } = await deleteAdminProduct(productId, requestContext);
 
     if (error) {
       return { ok: false, error };
@@ -164,7 +168,8 @@ export async function toggleProductActiveAction(formData: FormData) {
     throw new Error('Thiếu ID sản phẩm.');
   }
 
-  const { error } = await setAdminProductActive(productId, isActive);
+  const requestContext = await getRequestContext();
+  const { error } = await setAdminProductActive(productId, isActive, requestContext);
 
   if (error) {
     throw new Error(error);

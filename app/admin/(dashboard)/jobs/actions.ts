@@ -9,6 +9,7 @@ import {
   updateAdminJob,
   type JobVacancyPayload,
 } from '@/lib/services/admin/jobs';
+import { getRequestContext } from '@/lib/services/admin/audit-metadata';
 
 export type AdminFormState = { ok: boolean; error?: string };
 
@@ -54,7 +55,8 @@ export async function createJobAction(
 ): Promise<AdminFormState> {
   try {
     const payload = readJobVacancyPayload(formData);
-    const { error } = await createAdminJob(payload);
+    const requestContext = await getRequestContext();
+    const { error } = await createAdminJob(payload, requestContext);
 
     if (error) {
       if (error.includes('duplicate key value violates unique constraint')) {
@@ -82,7 +84,8 @@ export async function updateJobAction(
     }
 
     const payload = readJobVacancyPayload(formData);
-    const { error } = await updateAdminJob(jobId, payload);
+    const requestContext = await getRequestContext();
+    const { error } = await updateAdminJob(jobId, payload, requestContext);
 
     if (error) {
       if (error.includes('duplicate key value violates unique constraint')) {
@@ -104,7 +107,8 @@ export async function deleteJobAction(jobId: string): Promise<AdminFormState> {
   }
 
   try {
-    const { error } = await deleteAdminJob(jobId);
+    const requestContext = await getRequestContext();
+    const { error } = await deleteAdminJob(jobId, requestContext);
 
     if (error) {
       return { ok: false, error };
@@ -125,7 +129,8 @@ export async function toggleJobActiveAction(formData: FormData) {
     throw new Error('Thiếu ID tin tuyển dụng.');
   }
 
-  const { error } = await setAdminJobActive(jobId, isActive);
+  const requestContext = await getRequestContext();
+  const { error } = await setAdminJobActive(jobId, isActive, requestContext);
 
   if (error) {
     throw new Error(error);

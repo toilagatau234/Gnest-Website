@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts, Tables, Updates } from '@/lib/types/database';
+import { buildAuditMetadata, type RequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 export type AdminJobVacancy = Pick<
@@ -170,7 +171,7 @@ export async function getAdminJobStats(): Promise<{ data: AdminJobStats; error: 
   }
 }
 
-export async function createAdminJob(payload: JobVacancyPayload) {
+export async function createAdminJob(payload: JobVacancyPayload, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(JOB_VACANCY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   const insertPayload = normalizeJobVacancyPayload(payload);
@@ -197,15 +198,24 @@ export async function createAdminJob(payload: JobVacancyPayload) {
     action: 'create',
     entity: 'job_vacancies',
     entity_id: data.id,
-    metadata: { title: data.title, slug: data.slug },
+    metadata: buildAuditMetadata({
+      label: data.title,
+      after: { title: data.title, slug: data.slug, is_active: data.is_active },
+      requestContext,
+    }),
   });
 
   return { data, error: null };
 }
 
-export async function updateAdminJob(jobId: string, payload: JobVacancyPayload) {
+export async function updateAdminJob(jobId: string, payload: JobVacancyPayload, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(JOB_VACANCY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
+  const { data: before } = await supabase
+    .from('job_vacancies')
+    .select('title, slug, is_active')
+    .eq('id', jobId)
+    .maybeSingle();
   const updatePayload: Updates<'job_vacancies'> = normalizeJobVacancyPayload(payload);
 
   if (!updatePayload.title) {
@@ -231,13 +241,18 @@ export async function updateAdminJob(jobId: string, payload: JobVacancyPayload) 
     action: 'update',
     entity: 'job_vacancies',
     entity_id: data.id,
-    metadata: { title: data.title, slug: data.slug },
+    metadata: buildAuditMetadata({
+      label: data.title,
+      before,
+      after: { title: data.title, slug: data.slug, is_active: data.is_active },
+      requestContext,
+    }),
   });
 
   return { data, error: null };
 }
 
-export async function deleteAdminJob(jobId: string) {
+export async function deleteAdminJob(jobId: string, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(JOB_VACANCY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
 
@@ -262,15 +277,24 @@ export async function deleteAdminJob(jobId: string) {
     action: 'delete',
     entity: 'job_vacancies',
     entity_id: job.id,
-    metadata: { title: job.title, slug: job.slug },
+    metadata: buildAuditMetadata({
+      label: job.title,
+      before: { title: job.title, slug: job.slug },
+      requestContext,
+    }),
   });
 
   return { data: job, error: null };
 }
 
-export async function setAdminJobActive(jobId: string, isActive: boolean) {
+export async function setAdminJobActive(jobId: string, isActive: boolean, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(JOB_VACANCY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
+  const { data: before } = await supabase
+    .from('job_vacancies')
+    .select('title, slug, is_active')
+    .eq('id', jobId)
+    .maybeSingle();
 
   const { data, error } = await supabase
     .from('job_vacancies')
@@ -288,7 +312,12 @@ export async function setAdminJobActive(jobId: string, isActive: boolean) {
     action: isActive ? 'activate' : 'deactivate',
     entity: 'job_vacancies',
     entity_id: data.id,
-    metadata: { title: data.title, slug: data.slug },
+    metadata: buildAuditMetadata({
+      label: data.title,
+      before,
+      after: { title: data.title, slug: data.slug, is_active: data.is_active },
+      requestContext,
+    }),
   });
 
   return { data, error: null };
