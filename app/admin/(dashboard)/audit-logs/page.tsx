@@ -118,7 +118,7 @@ export default async function AuditLogsPage({ searchParams }: PageProps) {
           <p className="mt-2 text-2xl font-extrabold text-[#E31E24]">{stats?.today ?? 0}</p>
         </div>
         <div className="admin-card p-4">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#646464]">Quản trị viên hoạt động</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#646464]">Người thực hiện (30 ngày)</p>
           <p className="mt-2 text-2xl font-extrabold text-[#3749A6]">{stats?.uniqueActors ?? 0}</p>
         </div>
         <div className="admin-card p-4">

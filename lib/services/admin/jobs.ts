@@ -85,6 +85,63 @@ export async function getAdminJobs() {
   }
 }
 
+export interface GetAdminJobsPageParams {
+  page?: number;
+  pageSize?: number;
+}
+
+export interface GetAdminJobsPageResult {
+  data: AdminJobVacancy[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  error: string | null;
+}
+
+export async function getAdminJobsPage(
+  params: GetAdminJobsPageParams = {},
+): Promise<GetAdminJobsPageResult> {
+  const page = params.page ?? 1;
+  const pageSize = params.pageSize ?? 20;
+  const offset = (page - 1) * pageSize;
+
+  try {
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
+
+    const { data, error, count } = await supabase
+      .from('job_vacancies')
+      .select(ADMIN_JOB_VACANCY_SELECT, { count: 'exact' })
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
+
+    if (error) {
+      return { data: [], total: 0, page, pageSize, pageCount: 0, error: error.message };
+    }
+
+    const total = count ?? 0;
+    return {
+      data: (data ?? []) as AdminJobVacancy[],
+      total,
+      page,
+      pageSize,
+      pageCount: Math.ceil(total / pageSize),
+      error: null,
+    };
+  } catch (err) {
+    return {
+      data: [],
+      total: 0,
+      page,
+      pageSize,
+      pageCount: 0,
+      error: err instanceof Error ? err.message : 'Không thể tải danh sách tin tuyển dụng.',
+    };
+  }
+}
+
 export async function createAdminJob(payload: JobVacancyPayload) {
   const adminUser = await requireAdminAuth(JOB_VACANCY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();

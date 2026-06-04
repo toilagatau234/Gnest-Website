@@ -73,14 +73,11 @@ const EMPTY: DashboardData = {
   recentActivity: [],
 };
 
-// Minimal product fields for the interest chart and missing-images count.
-// stock is excluded — stock-related stats use targeted COUNT queries instead.
-type ProductHealthRow = {
+type ProductInterestRow = {
   id: string;
   name: string;
   slug: string;
   is_active: boolean;
-  product_images: { id: string }[] | null;
 };
 
 type ProductInquiryRow = {
@@ -89,7 +86,7 @@ type ProductInquiryRow = {
 };
 
 function buildProductInterestMetrics(
-  products: ProductHealthRow[],
+  products: ProductInterestRow[],
   inquiries: ProductInquiryRow[],
 ): ProductInterestMetric[] {
   const productLookup = new Map(products.map((product) => [product.id, product]));
@@ -141,31 +138,30 @@ export async function getDashboardData(): Promise<DashboardData> {
     const supabase = createServiceRoleClient();
     const t0 = SHOULD_LOG_TIMINGS ? performance.now() : 0;
 
-    // --- Parallel data fetching ---
-    // Category counts use HEAD-only COUNT queries (no rows transferred).
-    // Product stock stats use targeted COUNT queries instead of a full scan.
-    // A slim product scan (no stock column) is kept only for missing-images
-    // counting and the product-interest chart.
+    // --- Phase 1: Parallel queries — all COUNTs plus minimal row fetches ---
+    // Full product table scan is eliminated:
+    //   • missingImages: derived from product_images distinct product_id count
+    //   • productInterest: products are fetched targeted in Phase 2
     const [
-      // Product count queries
+      // Product COUNT queries
       { count: totalProducts },
       { count: hiddenProducts },
       { count: outOfStockProducts },
       { count: lowStockProducts },
       { count: attentionLowStock },
-      // Category count queries
+      // Category COUNT queries
       { count: totalCategories },
       { count: visibleCategories },
-      // Slim product scan — id/name/slug/is_active/images only
-      productRows,
-      // Existing lightweight queries (unchanged)
+      // product_images: distinct product_ids used to derive missingImages count
+      imageProductsRes,
+      // Lightweight queries
       contactRes,
       jobsRes,
       inquiriesRes,
       activityRes,
       totalInquiriesRes,
       newInquiriesRes,
-      productInterestInquiries,
+      productInterestInquiriesRes,
     ] = await Promise.all([
       supabase.from('products').select('id', { count: 'exact', head: true }),
       supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', false),
@@ -174,10 +170,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true).lte('stock', LOW_STOCK_THRESHOLD),
       supabase.from('categories').select('id', { count: 'exact', head: true }),
       supabase.from('categories').select('id', { count: 'exact', head: true }).eq('is_active', true),
-      supabase
-        .from('products')
-        .select('id, name, slug, is_active, product_images(id)')
-        .returns<ProductHealthRow[]>(),
+      supabase.from('product_images').select('product_id').not('product_id', 'is', null),
       supabase.from('sales_contacts').select('id', { count: 'exact', head: true }).eq('is_active', true),
       supabase.from('job_vacancies').select('id', { count: 'exact', head: true }).eq('is_active', true),
       getInquiries({ limit: 5 }),
@@ -192,12 +185,33 @@ export async function getDashboardData(): Promise<DashboardData> {
         .returns<ProductInquiryRow[]>(),
     ]);
 
+    // --- Phase 2: Targeted product fetch — only products referenced by inquiries ---
+    const interestInquiries = productInterestInquiriesRes.data ?? [];
+    const interestProductIds = [
+      ...new Set(
+        interestInquiries
+          .map((i) => i.product_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+
+    let interestProducts: ProductInterestRow[] = [];
+    if (interestProductIds.length > 0) {
+      const { data } = await supabase
+        .from('products')
+        .select('id, name, slug, is_active')
+        .in('id', interestProductIds)
+        .returns<ProductInterestRow[]>();
+      interestProducts = data ?? [];
+    }
+
     if (t0) console.info(`[admin:dashboard] getDashboardData ${(performance.now() - t0).toFixed(1)}ms`);
 
-    const products = productRows.data ?? [];
-    const missingImagesCount = products.filter(
-      (p) => !p.product_images || p.product_images.length === 0,
-    ).length;
+    // missingImages = total products − products that have at least one image
+    const coveredProductIds = new Set(
+      (imageProductsRes.data ?? []).map((r) => r.product_id).filter(Boolean),
+    );
+    const missingImagesCount = (totalProducts ?? 0) - coveredProductIds.size;
     const hiddenCategoriesCount = (totalCategories ?? 0) - (visibleCategories ?? 0);
 
     return {
@@ -222,7 +236,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         hiddenProducts: hiddenProducts ?? 0,
         hiddenCategories: hiddenCategoriesCount,
       },
-      productInterest: buildProductInterestMetrics(products, productInterestInquiries.data ?? []),
+      productInterest: buildProductInterestMetrics(interestProducts, interestInquiries),
       recentInquiries: inquiriesRes.data ?? [],
       recentActivity: activityRes.data ?? [],
     };

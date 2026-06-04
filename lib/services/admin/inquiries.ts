@@ -551,6 +551,20 @@ export async function getInquiryStats(): Promise<{ data: InquiryStats; error: st
 
     if (t0) console.info(`[admin:inquiries] getInquiryStats ${(performance.now() - t0).toFixed(1)}ms`);
 
+    const firstError =
+      totalRes.error ??
+      newRes.error ??
+      contactedRes.error ??
+      quotedRes.error ??
+      closedRes.error ??
+      spamRes.error ??
+      assignedRes.error ??
+      highPriorityRes.error;
+
+    if (firstError) {
+      return { data: EMPTY_INQUIRY_STATS, error: firstError.message };
+    }
+
     const total = totalRes.count ?? 0;
     const assigned = assignedRes.count ?? 0;
 

@@ -129,6 +129,63 @@ export async function getAdminSalesContacts() {
   }
 }
 
+export interface GetAdminSalesContactsPageParams {
+  page?: number;
+  pageSize?: number;
+}
+
+export interface GetAdminSalesContactsPageResult {
+  data: AdminSalesContact[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  error: string | null;
+}
+
+export async function getAdminSalesContactsPage(
+  params: GetAdminSalesContactsPageParams = {},
+): Promise<GetAdminSalesContactsPageResult> {
+  const page = params.page ?? 1;
+  const pageSize = params.pageSize ?? 20;
+  const offset = (page - 1) * pageSize;
+
+  try {
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
+
+    const { data, error, count } = await supabase
+      .from('sales_contacts')
+      .select(ADMIN_SALES_CONTACT_SELECT, { count: 'exact' })
+      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+
+    if (error) {
+      return { data: [], total: 0, page, pageSize, pageCount: 0, error: error.message };
+    }
+
+    const total = count ?? 0;
+    return {
+      data: (data ?? []) as AdminSalesContact[],
+      total,
+      page,
+      pageSize,
+      pageCount: Math.ceil(total / pageSize),
+      error: null,
+    };
+  } catch (err) {
+    return {
+      data: [],
+      total: 0,
+      page,
+      pageSize,
+      pageCount: 0,
+      error: err instanceof Error ? err.message : 'Không thể tải liên hệ bán hàng.',
+    };
+  }
+}
+
 export async function createAdminSalesContact(payload: SalesContactPayload) {
   const adminUser = await requireAdminAuth(SALES_CONTACT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();

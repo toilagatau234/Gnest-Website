@@ -42,7 +42,7 @@ export async function getAuditLogs(options?: GetAuditLogsOptions): Promise<GetAu
 
     let query = supabase
       .from('audit_logs')
-      .select('*', { count: 'exact' });
+      .select('id, actor_id, action, entity, entity_id, created_at, metadata', { count: 'exact' });
 
     // Apply exact filters
     if (options?.action) {
@@ -162,39 +162,87 @@ export async function getAuditLogStats(): Promise<{ data: AuditLogStats | null; 
     startOfToday.setHours(0, 0, 0, 0);
     const startOfTodayStr = startOfToday.toISOString();
 
-    // Four lightweight COUNT queries replace a 5,000-row in-memory scan.
-    // uniqueActors uses active admin_users count as a proxy for "admins who
-    // have taken actions" — avoids a non-trivial COUNT(DISTINCT actor_id).
+    // COUNT(DISTINCT actor_id) is unavailable via PostgREST without an RPC.
+    // Instead, fetch actor_ids from the last 30 days (bounded to 500 rows) and
+    // count distinct in JS. Correct for any system with ≤500 actions per month.
+    const thirtyDaysAgo = new Date(startOfToday);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString();
+
     const [
       { count: totalCount, error: totalError },
       { count: todayCount, error: todayError },
       { count: highRiskCount, error: highRiskError },
-      { count: activeAdminCount, error: activeAdminError },
+      { data: recentActorRows, error: actorError },
     ] = await Promise.all([
       supabase.from('audit_logs').select('id', { count: 'exact', head: true }),
       supabase.from('audit_logs').select('id', { count: 'exact', head: true }).gte('created_at', startOfTodayStr),
       supabase.from('audit_logs').select('id', { count: 'exact', head: true }).in('action', HIGH_RISK_ACTIONS),
-      supabase.from('admin_users').select('id', { count: 'exact', head: true }).eq('is_active', true),
+      supabase
+        .from('audit_logs')
+        .select('actor_id')
+        .gte('created_at', thirtyDaysAgoStr)
+        .not('actor_id', 'is', null)
+        .limit(500),
     ]);
 
     if (t0) console.info(`[admin:audit-logs] getAuditLogStats ${(performance.now() - t0).toFixed(1)}ms`);
 
-    if (totalError || todayError || highRiskError || activeAdminError) {
+    if (totalError || todayError || highRiskError || actorError) {
       const errorMsg =
-        totalError?.message ?? todayError?.message ?? highRiskError?.message ?? activeAdminError?.message ?? 'Lỗi đếm stats';
+        totalError?.message ?? todayError?.message ?? highRiskError?.message ?? actorError?.message ?? 'Lỗi đếm stats';
       return { data: null, error: errorMsg };
     }
+
+    const uniqueActors = new Set((recentActorRows ?? []).map((r) => r.actor_id)).size;
 
     return {
       data: {
         total: totalCount ?? 0,
         today: todayCount ?? 0,
-        uniqueActors: activeAdminCount ?? 0,
+        uniqueActors,
         highRisk: highRiskCount ?? 0,
       },
       error: null,
     };
   } catch (err) {
     return { data: null, error: err instanceof Error ? err.message : 'Không thể tải thống kê nhật ký' };
+  }
+}
+
+// Fetches a single log entry with full metadata — use this in the detail modal
+// so future callers can strip metadata from the list query without losing detail.
+export async function getAuditLogDetail(
+  logId: string,
+): Promise<{ data: AuditLogEntry | null; error: string | null }> {
+  try {
+    await requireAdminAuth();
+    const supabase = createServiceRoleClient();
+
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('id, actor_id, action, entity, entity_id, created_at, metadata')
+      .eq('id', logId)
+      .maybeSingle();
+
+    if (error) return { data: null, error: error.message };
+    if (!data) return { data: null, error: 'Không tìm thấy nhật ký.' };
+
+    let actorEmail: string | null = null;
+    if (data.actor_id) {
+      const { data: actor } = await supabase
+        .from('admin_users')
+        .select('email')
+        .eq('id', data.actor_id)
+        .maybeSingle();
+      actorEmail = actor?.email ?? null;
+    }
+
+    return { data: { ...data, actorEmail }, error: null };
+  } catch (err) {
+    return {
+      data: null,
+      error: err instanceof Error ? err.message : 'Không thể tải chi tiết nhật ký',
+    };
   }
 }
