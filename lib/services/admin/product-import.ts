@@ -442,15 +442,26 @@ export async function validateProductImportRows(rows: ImportRow[]): Promise<Vali
     await requireAdminAuth(PRODUCT_IMPORT_ROLES);
     const supabase = createServiceRoleClient();
 
-    const [categoriesResult, existingSlugsResult] = await Promise.all([
+    // Only check slugs that are valid format — invalid ones are caught by validateImportRows anyway
+    const uploadedSlugs = [
+      ...new Set(
+        rows
+          .map((r) => normalizeSlug(String(r.slug ?? '')))
+          .filter((s) => SLUG_RE.test(s)),
+      ),
+    ];
+
+    const [categoriesResult, slugsResult] = await Promise.all([
       supabase.from('categories').select('id, slug, parent_id').eq('is_active', true),
-      supabase.from('products').select('slug'),
+      uploadedSlugs.length > 0
+        ? supabase.from('products').select('slug').in('slug', uploadedSlugs)
+        : Promise.resolve({ data: [] as { slug: string }[], error: null }),
     ]);
 
     if (categoriesResult.error) {
       return { ...EMPTY, ok: false, error: 'Không thể tải danh mục để kiểm tra. Vui lòng thử lại.' };
     }
-    if (existingSlugsResult.error) {
+    if (slugsResult.error) {
       return { ...EMPTY, ok: false, error: 'Không thể kiểm tra slug hiện có. Vui lòng thử lại.' };
     }
 
@@ -458,7 +469,7 @@ export async function validateProductImportRows(rows: ImportRow[]): Promise<Vali
       (categoriesResult.data ?? []).map((c) => [c.slug, { id: c.id, slug: c.slug, parent_id: c.parent_id }]),
     );
     const existingProductSlugs = new Set<string>(
-      (existingSlugsResult.data ?? []).map((p) => p.slug),
+      (slugsResult.data ?? []).map((p) => p.slug),
     );
 
     const { errors, warnings } = validateImportRows(rows, categoryMap, existingProductSlugs);
@@ -497,15 +508,25 @@ export async function bulkImportProducts(
     return { ok: false, error: 'Không có dữ liệu để nhập.' };
   }
 
-  const [categoriesResult, existingSlugsResult] = await Promise.all([
+  const uploadedSlugs = [
+    ...new Set(
+      rows
+        .map((r) => normalizeSlug(String(r.slug ?? '')))
+        .filter((s) => SLUG_RE.test(s)),
+    ),
+  ];
+
+  const [categoriesResult, slugsResult] = await Promise.all([
     supabase.from('categories').select('id, slug, parent_id').eq('is_active', true),
-    supabase.from('products').select('slug'),
+    uploadedSlugs.length > 0
+      ? supabase.from('products').select('slug').in('slug', uploadedSlugs)
+      : Promise.resolve({ data: [] as { slug: string }[], error: null }),
   ]);
 
   if (categoriesResult.error) {
     return { ok: false, error: 'Không thể tải danh mục để kiểm tra. Vui lòng thử lại.' };
   }
-  if (existingSlugsResult.error) {
+  if (slugsResult.error) {
     return { ok: false, error: 'Không thể kiểm tra slug hiện có. Vui lòng thử lại.' };
   }
 
@@ -513,7 +534,7 @@ export async function bulkImportProducts(
     (categoriesResult.data ?? []).map((c) => [c.slug, { id: c.id, slug: c.slug, parent_id: c.parent_id }]),
   );
   const existingProductSlugs = new Set<string>(
-    (existingSlugsResult.data ?? []).map((p) => p.slug),
+    (slugsResult.data ?? []).map((p) => p.slug),
   );
 
   const { errors, warnings } = validateImportRows(rows, categoryMap, existingProductSlugs);

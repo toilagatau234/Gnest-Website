@@ -558,6 +558,7 @@ interface PreviewStepProps {
   isPending: boolean;
   onBack: () => void;
   onConfirm: () => void;
+  onRetry: () => void;
 }
 
 function PreviewStep({
@@ -569,6 +570,7 @@ function PreviewStep({
   isPending,
   onBack,
   onConfirm,
+  onRetry,
 }: PreviewStepProps) {
   const serverErrors = validationResult?.errors ?? [];
   const serverWarnings = validationResult?.warnings ?? [];
@@ -593,6 +595,15 @@ function PreviewStep({
 
   const hasErrors = serverErrors.length > 0;
   const fatalError = validationResult?.error ?? importError;
+
+  // Confirm is only safe when server validation completed with no errors and no fatal error
+  const canConfirm =
+    !isValidating &&
+    !isPending &&
+    validationResult !== null &&
+    validationResult.ok === true &&
+    !validationResult.error &&
+    validationResult.errors.length === 0;
 
   return (
     <div className="space-y-4">
@@ -648,9 +659,21 @@ function PreviewStep({
 
       {/* Fatal / global error */}
       {fatalError && (
-        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          {fatalError}
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
+          <span className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            {fatalError}
+          </span>
+          {validationResult?.error && !importError && (
+            <button
+              type="button"
+              onClick={onRetry}
+              disabled={isValidating}
+              className="shrink-0 rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+            >
+              Thử lại
+            </button>
+          )}
         </div>
       )}
 
@@ -775,7 +798,7 @@ function PreviewStep({
         </button>
         <AdminActionButton
           onClick={onConfirm}
-          disabled={isValidating || hasErrors || isPending}
+          disabled={!canConfirm}
           icon={
             isValidating || isPending
               ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -786,9 +809,13 @@ function PreviewStep({
             ? 'Đang kiểm tra…'
             : isPending
               ? 'Đang nhập…'
-              : hasErrors
-                ? `Không thể nhập (${serverErrors.length} lỗi)`
-                : `Xác nhận nhập ${rows.length} sản phẩm`}
+              : fatalError
+                ? 'Không thể nhập'
+                : hasErrors
+                  ? `Không thể nhập (${serverErrors.length} lỗi)`
+                  : validationResult === null
+                    ? 'Chờ kiểm tra…'
+                    : `Xác nhận nhập ${rows.length} sản phẩm`}
         </AdminActionButton>
       </div>
     </div>
@@ -921,6 +948,14 @@ export function ProductImportDialog() {
     });
   }
 
+  function handleRetry() {
+    setValidationResult(null);
+    startValidation(async () => {
+      const result = await validateProductsImportAction(rows);
+      setValidationResult(result);
+    });
+  }
+
   function handleConfirm() {
     const form = formRef.current;
     if (!form) return;
@@ -981,6 +1016,7 @@ export function ProductImportDialog() {
             isPending={isPending}
             onBack={() => { setStep('upload'); setValidationResult(null); }}
             onConfirm={handleConfirm}
+            onRetry={handleRetry}
           />
         )}
       </AdminModal>
