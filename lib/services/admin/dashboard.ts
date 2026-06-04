@@ -12,6 +12,8 @@ import {
 } from '@/lib/services/admin/inquiries';
 
 const LOW_STOCK_THRESHOLD = 5;
+const SHOULD_LOG_TIMINGS =
+  process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
 
 export interface DashboardData {
   hasSupabase: boolean;
@@ -71,16 +73,16 @@ const EMPTY: DashboardData = {
   recentActivity: [],
 };
 
+// Minimal product fields for the interest chart and missing-images count.
+// stock is excluded — stock-related stats use targeted COUNT queries instead.
 type ProductHealthRow = {
   id: string;
   name: string;
   slug: string;
   is_active: boolean;
-  stock: number;
   product_images: { id: string }[] | null;
 };
 
-type CategoryHealthRow = { is_active: boolean };
 type ProductInquiryRow = {
   product_id: string | null;
   status: string;
@@ -137,10 +139,26 @@ export async function getDashboardData(): Promise<DashboardData> {
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
+    const t0 = SHOULD_LOG_TIMINGS ? performance.now() : 0;
 
+    // --- Parallel data fetching ---
+    // Category counts use HEAD-only COUNT queries (no rows transferred).
+    // Product stock stats use targeted COUNT queries instead of a full scan.
+    // A slim product scan (no stock column) is kept only for missing-images
+    // counting and the product-interest chart.
     const [
+      // Product count queries
+      { count: totalProducts },
+      { count: hiddenProducts },
+      { count: outOfStockProducts },
+      { count: lowStockProducts },
+      { count: attentionLowStock },
+      // Category count queries
+      { count: totalCategories },
+      { count: visibleCategories },
+      // Slim product scan — id/name/slug/is_active/images only
       productRows,
-      categoryRows,
+      // Existing lightweight queries (unchanged)
       contactRes,
       jobsRes,
       inquiriesRes,
@@ -149,13 +167,19 @@ export async function getDashboardData(): Promise<DashboardData> {
       newInquiriesRes,
       productInterestInquiries,
     ] = await Promise.all([
+      supabase.from('products').select('id', { count: 'exact', head: true }),
+      supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', false),
+      supabase.from('products').select('id', { count: 'exact', head: true }).eq('stock', 0),
+      supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true).gt('stock', 0).lte('stock', LOW_STOCK_THRESHOLD),
+      supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true).lte('stock', LOW_STOCK_THRESHOLD),
+      supabase.from('categories').select('id', { count: 'exact', head: true }),
+      supabase.from('categories').select('id', { count: 'exact', head: true }).eq('is_active', true),
       supabase
         .from('products')
-        .select('id, name, slug, is_active, stock, product_images(id)')
+        .select('id, name, slug, is_active, product_images(id)')
         .returns<ProductHealthRow[]>(),
-      supabase.from('categories').select('is_active').returns<CategoryHealthRow[]>(),
-      supabase.from('sales_contacts').select('*', { count: 'exact', head: true }).eq('is_active', true),
-      supabase.from('job_vacancies').select('*', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('sales_contacts').select('id', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('job_vacancies').select('id', { count: 'exact', head: true }).eq('is_active', true),
       getInquiries({ limit: 5 }),
       getAuditLogs({ limit: 6 }),
       getInquiryCount(),
@@ -168,19 +192,24 @@ export async function getDashboardData(): Promise<DashboardData> {
         .returns<ProductInquiryRow[]>(),
     ]);
 
+    if (t0) console.info(`[admin:dashboard] getDashboardData ${(performance.now() - t0).toFixed(1)}ms`);
+
     const products = productRows.data ?? [];
-    const categories = categoryRows.data ?? [];
+    const missingImagesCount = products.filter(
+      (p) => !p.product_images || p.product_images.length === 0,
+    ).length;
+    const hiddenCategoriesCount = (totalCategories ?? 0) - (visibleCategories ?? 0);
 
     return {
       hasSupabase: true,
       counts: {
-        products: products.length,
-        categories: categories.length,
-        visibleCategories: categories.filter((category) => category.is_active).length,
-        hiddenProducts: products.filter((product) => !product.is_active).length,
-        outOfStockProducts: products.filter((product) => product.stock === 0).length,
-        lowStockProducts: products.filter((product) => product.is_active && product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD).length,
-        missingImages: products.filter((product) => !product.product_images || product.product_images.length === 0).length,
+        products: totalProducts ?? 0,
+        categories: totalCategories ?? 0,
+        visibleCategories: visibleCategories ?? 0,
+        hiddenProducts: hiddenProducts ?? 0,
+        outOfStockProducts: outOfStockProducts ?? 0,
+        lowStockProducts: lowStockProducts ?? 0,
+        missingImages: missingImagesCount,
         activeContacts: contactRes.count ?? 0,
         activeJobs: jobsRes.count ?? 0,
         newInquiries: newInquiriesRes.count,
@@ -188,10 +217,10 @@ export async function getDashboardData(): Promise<DashboardData> {
         recentActivities: (activityRes.data ?? []).length,
       },
       attention: {
-        missingImages: products.filter((p) => !p.product_images || p.product_images.length === 0).length,
-        lowStock: products.filter((p) => p.is_active && p.stock <= LOW_STOCK_THRESHOLD).length,
-        hiddenProducts: products.filter((p) => !p.is_active).length,
-        hiddenCategories: categories.filter((c) => !c.is_active).length,
+        missingImages: missingImagesCount,
+        lowStock: attentionLowStock ?? 0,
+        hiddenProducts: hiddenProducts ?? 0,
+        hiddenCategories: hiddenCategoriesCount,
       },
       productInterest: buildProductInterestMetrics(products, productInterestInquiries.data ?? []),
       recentInquiries: inquiriesRes.data ?? [],

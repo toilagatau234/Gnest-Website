@@ -5,6 +5,9 @@ import type { InquiryStatus, Json, Tables } from '@/lib/types/database';
 
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 
+const SHOULD_LOG_TIMINGS =
+  process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
+
 export type Inquiry = Tables<'inquiries'>;
 
 export type AdminInquiry = Tables<'inquiries'> & {
@@ -510,59 +513,66 @@ export async function updateInquiryMetadata(
   }
 }
 
+const EMPTY_INQUIRY_STATS: InquiryStats = {
+  total: 0,
+  byStatus: { new: 0, contacted: 0, quoted: 0, closed: 0, spam: 0 },
+  assigned: 0,
+  unassigned: 0,
+  highPriority: 0,
+};
+
 export async function getInquiryStats(): Promise<{ data: InquiryStats; error: string | null }> {
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
-    const { data, error } = await supabase.from('inquiries').select('status, assigned_to, metadata');
+    const t0 = SHOULD_LOG_TIMINGS ? performance.now() : 0;
 
-    if (error) {
-      return {
-        data: {
-          total: 0,
-          byStatus: { new: 0, contacted: 0, quoted: 0, closed: 0, spam: 0 },
-          assigned: 0,
-          unassigned: 0,
-          highPriority: 0,
-        },
-        error: error.message,
-      };
-    }
+    // Eight parallel COUNT queries replace a full unbounded table scan.
+    // metadata->>priority filter pushes the JSONB predicate to Postgres.
+    const [
+      totalRes,
+      newRes,
+      contactedRes,
+      quotedRes,
+      closedRes,
+      spamRes,
+      assignedRes,
+      highPriorityRes,
+    ] = await Promise.all([
+      supabase.from('inquiries').select('id', { count: 'exact', head: true }),
+      supabase.from('inquiries').select('id', { count: 'exact', head: true }).eq('status', 'new'),
+      supabase.from('inquiries').select('id', { count: 'exact', head: true }).eq('status', 'contacted'),
+      supabase.from('inquiries').select('id', { count: 'exact', head: true }).eq('status', 'quoted'),
+      supabase.from('inquiries').select('id', { count: 'exact', head: true }).eq('status', 'closed'),
+      supabase.from('inquiries').select('id', { count: 'exact', head: true }).eq('status', 'spam'),
+      supabase.from('inquiries').select('id', { count: 'exact', head: true }).not('assigned_to', 'is', null),
+      supabase.from('inquiries').select('id', { count: 'exact', head: true }).filter('metadata->>priority', 'eq', 'high'),
+    ]);
 
-    const rows = (data ?? []) as Pick<Inquiry, 'status' | 'assigned_to' | 'metadata'>[];
-    const byStatus: Record<InquiryStatus, number> = { new: 0, contacted: 0, quoted: 0, closed: 0, spam: 0 };
-    let assigned = 0;
-    let highPriority = 0;
+    if (t0) console.info(`[admin:inquiries] getInquiryStats ${(performance.now() - t0).toFixed(1)}ms`);
 
-    for (const row of rows) {
-      byStatus[row.status] += 1;
-      if (row.assigned_to) {
-        assigned += 1;
-      }
-      if (normalizeMetadata(row.metadata).priority === 'high') {
-        highPriority += 1;
-      }
-    }
+    const total = totalRes.count ?? 0;
+    const assigned = assignedRes.count ?? 0;
 
     return {
       data: {
-        total: rows.length,
-        byStatus,
+        total,
+        byStatus: {
+          new: newRes.count ?? 0,
+          contacted: contactedRes.count ?? 0,
+          quoted: quotedRes.count ?? 0,
+          closed: closedRes.count ?? 0,
+          spam: spamRes.count ?? 0,
+        },
         assigned,
-        unassigned: rows.length - assigned,
-        highPriority,
+        unassigned: total - assigned,
+        highPriority: highPriorityRes.count ?? 0,
       },
       error: null,
     };
   } catch (err) {
     return {
-      data: {
-        total: 0,
-        byStatus: { new: 0, contacted: 0, quoted: 0, closed: 0, spam: 0 },
-        assigned: 0,
-        unassigned: 0,
-        highPriority: 0,
-      },
+      data: EMPTY_INQUIRY_STATS,
       error: err instanceof Error ? err.message : 'Không thể tải thống kê yêu cầu.',
     };
   }

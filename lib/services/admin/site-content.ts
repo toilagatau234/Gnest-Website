@@ -37,6 +37,8 @@ export interface SiteContentsPayload {
 export const SITE_CONTENT_KEY = 'dynamic_config';
 
 const MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
+const SHOULD_LOG_TIMINGS =
+  process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
 
 /**
  * Read the single `dynamic_config` row from site_contents.
@@ -45,6 +47,7 @@ const MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
  */
 export async function getSiteContents(): Promise<SiteContentsPayload> {
   const supabase = createServiceRoleClient();
+  const t0 = SHOULD_LOG_TIMINGS ? performance.now() : 0;
 
   const { data, error } = await supabase
     .from('site_contents')
@@ -52,6 +55,8 @@ export async function getSiteContents(): Promise<SiteContentsPayload> {
     .eq('key', SITE_CONTENT_KEY)
     .eq('is_active', true)
     .maybeSingle();
+
+  if (SHOULD_LOG_TIMINGS) console.info(`[admin:site-content] getSiteContents ${(performance.now() - t0).toFixed(1)}ms`);
 
   if (error || !data) {
     return getDefaultSiteContents();

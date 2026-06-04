@@ -24,6 +24,8 @@ export interface SalesContactPayload {
 const SALES_CONTACT_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
 const ADMIN_SALES_CONTACT_SELECT =
   'id, name, role, phone, zalo, avatar_url, sort_order, is_active';
+const SHOULD_LOG_TIMINGS =
+  process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
 
 function normalizePhone(phone: string) {
   return phone.trim().replace(/\s+/g, ' ');
@@ -106,12 +108,15 @@ export async function getAdminSalesContacts() {
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
+    const t0 = SHOULD_LOG_TIMINGS ? performance.now() : 0;
 
     const { data, error } = await supabase
       .from('sales_contacts')
       .select(ADMIN_SALES_CONTACT_SELECT)
       .order('sort_order', { ascending: true })
       .order('name', { ascending: true });
+
+    if (SHOULD_LOG_TIMINGS) console.info(`[admin:sales-contacts] getAdminSalesContacts ${(performance.now() - t0).toFixed(1)}ms`);
 
     if (error) {
       return { data: null, error: error.message };

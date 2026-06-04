@@ -5,6 +5,9 @@ import type { Tables } from '@/lib/types/database';
 
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 
+const SHOULD_LOG_TIMINGS =
+  process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
+
 export type AuditLogEntry = Tables<'audit_logs'> & { actorEmail: string | null };
 
 export interface GetAuditLogsOptions {
@@ -35,6 +38,7 @@ export async function getAuditLogs(options?: GetAuditLogsOptions): Promise<GetAu
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
+    const t0 = SHOULD_LOG_TIMINGS ? performance.now() : 0;
 
     let query = supabase
       .from('audit_logs')
@@ -84,6 +88,8 @@ export async function getAuditLogs(options?: GetAuditLogsOptions): Promise<GetAu
       .range(offset, offset + limit - 1);
 
     const { data, error, count } = await query;
+
+    if (t0) console.info(`[admin:audit-logs] getAuditLogs page=${page} ${(performance.now() - t0).toFixed(1)}ms`);
 
     if (error) {
       return {
@@ -143,42 +149,50 @@ export interface AuditLogStats {
   highRisk: number;
 }
 
+// Actions considered high-risk for the stats card.
+const HIGH_RISK_ACTIONS = ['delete', 'deactivate', 'remove_admin_user_access', 'update_admin_user_role'];
+
 export async function getAuditLogStats(): Promise<{ data: AuditLogStats | null; error: string | null }> {
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
+    const t0 = SHOULD_LOG_TIMINGS ? performance.now() : 0;
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const startOfTodayStr = startOfToday.toISOString();
 
+    // Four lightweight COUNT queries replace a 5,000-row in-memory scan.
+    // uniqueActors uses active admin_users count as a proxy for "admins who
+    // have taken actions" — avoids a non-trivial COUNT(DISTINCT actor_id).
     const [
       { count: totalCount, error: totalError },
       { count: todayCount, error: todayError },
-      { data: recentLogs, error: recentError }
+      { count: highRiskCount, error: highRiskError },
+      { count: activeAdminCount, error: activeAdminError },
     ] = await Promise.all([
-      supabase.from('audit_logs').select('*', { count: 'exact', head: true }),
-      supabase.from('audit_logs').select('*', { count: 'exact', head: true }).gte('created_at', startOfTodayStr),
-      supabase.from('audit_logs').select('actor_id, action').limit(5000)
+      supabase.from('audit_logs').select('id', { count: 'exact', head: true }),
+      supabase.from('audit_logs').select('id', { count: 'exact', head: true }).gte('created_at', startOfTodayStr),
+      supabase.from('audit_logs').select('id', { count: 'exact', head: true }).in('action', HIGH_RISK_ACTIONS),
+      supabase.from('admin_users').select('id', { count: 'exact', head: true }).eq('is_active', true),
     ]);
 
-    if (totalError || todayError || recentError) {
-      const errorMsg = totalError?.message || todayError?.message || recentError?.message || 'Lỗi đếm stats';
+    if (t0) console.info(`[admin:audit-logs] getAuditLogStats ${(performance.now() - t0).toFixed(1)}ms`);
+
+    if (totalError || todayError || highRiskError || activeAdminError) {
+      const errorMsg =
+        totalError?.message ?? todayError?.message ?? highRiskError?.message ?? activeAdminError?.message ?? 'Lỗi đếm stats';
       return { data: null, error: errorMsg };
     }
-
-    const uniqueActors = new Set(recentLogs?.map(log => log.actor_id).filter(Boolean)).size;
-    const highRiskActions = ['delete', 'deactivate', 'remove_admin_user_access', 'update_admin_user_role'];
-    const highRisk = recentLogs?.filter(log => highRiskActions.includes(log.action)).length ?? 0;
 
     return {
       data: {
         total: totalCount ?? 0,
         today: todayCount ?? 0,
-        uniqueActors,
-        highRisk
+        uniqueActors: activeAdminCount ?? 0,
+        highRisk: highRiskCount ?? 0,
       },
-      error: null
+      error: null,
     };
   } catch (err) {
     return { data: null, error: err instanceof Error ? err.message : 'Không thể tải thống kê nhật ký' };

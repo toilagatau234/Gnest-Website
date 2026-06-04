@@ -22,6 +22,8 @@ export interface JobVacancyPayload {
 const JOB_VACANCY_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
 const ADMIN_JOB_VACANCY_SELECT =
   'id, title, slug, description, location, salary_range, sort_order, is_active, created_at, updated_at';
+const SHOULD_LOG_TIMINGS =
+  process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
 
 function slugify(text: string): string {
   return text
@@ -62,12 +64,15 @@ export async function getAdminJobs() {
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
+    const t0 = SHOULD_LOG_TIMINGS ? performance.now() : 0;
 
     const { data, error } = await supabase
       .from('job_vacancies')
       .select(ADMIN_JOB_VACANCY_SELECT)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
+
+    if (SHOULD_LOG_TIMINGS) console.info(`[admin:jobs] getAdminJobs ${(performance.now() - t0).toFixed(1)}ms`);
 
     if (error) {
       return { data: null, error: error.message };
