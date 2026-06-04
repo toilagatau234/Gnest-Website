@@ -74,6 +74,16 @@ export interface ImportResult {
   error?: string;
 }
 
+export interface ValidationResult {
+  ok: boolean;
+  errors: ImportRowError[];
+  warnings: ImportRowWarning[];
+  validCount: number;
+  warningCount: number;
+  errorCount: number;
+  error?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Normalisation helpers
 // ---------------------------------------------------------------------------
@@ -410,6 +420,66 @@ export function validateImportRows(
   }
 
   return { errors, warnings };
+}
+
+// ---------------------------------------------------------------------------
+// Validate-only (no insert)
+// ---------------------------------------------------------------------------
+
+export async function validateProductImportRows(rows: ImportRow[]): Promise<ValidationResult> {
+  const EMPTY: ValidationResult = {
+    ok: true, errors: [], warnings: [], validCount: 0, warningCount: 0, errorCount: 0,
+  };
+
+  if (!rows || rows.length === 0) {
+    return { ...EMPTY, ok: false, error: 'Không có dữ liệu để kiểm tra.' };
+  }
+  if (rows.length > 500) {
+    return { ...EMPTY, ok: false, error: 'Tối đa 500 sản phẩm mỗi lần nhập.' };
+  }
+
+  try {
+    await requireAdminAuth(PRODUCT_IMPORT_ROLES);
+    const supabase = createServiceRoleClient();
+
+    const [categoriesResult, existingSlugsResult] = await Promise.all([
+      supabase.from('categories').select('id, slug, parent_id').eq('is_active', true),
+      supabase.from('products').select('slug'),
+    ]);
+
+    if (categoriesResult.error) {
+      return { ...EMPTY, ok: false, error: 'Không thể tải danh mục để kiểm tra. Vui lòng thử lại.' };
+    }
+    if (existingSlugsResult.error) {
+      return { ...EMPTY, ok: false, error: 'Không thể kiểm tra slug hiện có. Vui lòng thử lại.' };
+    }
+
+    const categoryMap = new Map<string, CategoryInfo>(
+      (categoriesResult.data ?? []).map((c) => [c.slug, { id: c.id, slug: c.slug, parent_id: c.parent_id }]),
+    );
+    const existingProductSlugs = new Set<string>(
+      (existingSlugsResult.data ?? []).map((p) => p.slug),
+    );
+
+    const { errors, warnings } = validateImportRows(rows, categoryMap, existingProductSlugs);
+    const errorRowSet = new Set(errors.map((e) => e.row));
+    const warnRowSet = new Set(warnings.map((w) => w.row));
+
+    return {
+      ok: errors.length === 0,
+      errors,
+      warnings,
+      validCount: rows.filter((r) => !errorRowSet.has(r.row)).length,
+      warningCount: warnRowSet.size,
+      errorCount: errorRowSet.size,
+    };
+  } catch (err) {
+    return {
+      ...EMPTY,
+      ok: false,
+      error: err instanceof Error ? err.message : 'Lỗi không xác định khi kiểm tra dữ liệu.',
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------

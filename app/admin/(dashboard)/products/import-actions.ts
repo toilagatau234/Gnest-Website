@@ -5,13 +5,43 @@ import { revalidatePath } from 'next/cache';
 import { getRequestContext } from '@/lib/services/admin/audit-metadata';
 import {
   bulkImportProducts,
+  validateProductImportRows,
   type ImportResult,
   type ImportRow,
   type ImportRowError,
   type ImportRowWarning,
+  type ValidationResult,
 } from '@/lib/services/admin/product-import';
 
-export type { ImportResult, ImportRow, ImportRowError, ImportRowWarning };
+export type { ImportResult, ImportRow, ImportRowError, ImportRowWarning, ValidationResult };
+
+export async function validateProductsImportAction(rows: ImportRow[]): Promise<ValidationResult> {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return {
+      ok: false,
+      errors: [],
+      warnings: [],
+      validCount: 0,
+      warningCount: 0,
+      errorCount: 0,
+      error: 'File không có dữ liệu sản phẩm.',
+    };
+  }
+
+  if (rows.length > 500) {
+    return {
+      ok: false,
+      errors: [],
+      warnings: [],
+      validCount: 0,
+      warningCount: 0,
+      errorCount: 0,
+      error: 'Tối đa 500 sản phẩm mỗi lần nhập.',
+    };
+  }
+
+  return validateProductImportRows(rows);
+}
 
 export async function importProductsAction(
   _prev: ImportResult,

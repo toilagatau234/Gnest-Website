@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
@@ -19,9 +19,11 @@ import { AdminModal } from '@/components/admin/AdminModal';
 import { useToast } from '@/components/admin/AdminToast';
 import {
   importProductsAction,
+  validateProductsImportAction,
   type ImportResult,
   type ImportRow,
   type ImportRowWarning,
+  type ValidationResult,
 } from '@/app/admin/(dashboard)/products/import-actions';
 
 // ---------------------------------------------------------------------------
@@ -550,27 +552,31 @@ function UploadStep({ onFile }: { onFile: (rows: ImportRow[], filename: string) 
 interface PreviewStepProps {
   filename: string;
   rows: ImportRow[];
-  state: ImportResult;
+  validationResult: ValidationResult | null;
+  isValidating: boolean;
+  importError?: string;
   isPending: boolean;
   onBack: () => void;
   onConfirm: () => void;
 }
 
-function PreviewStep({ filename, rows, state, isPending, onBack, onConfirm }: PreviewStepProps) {
-  const serverErrors = state.errors ?? [];
-  const serverWarnings = state.warnings ?? [];
-  const clientWarnings = computeClientWarnings(rows);
+function PreviewStep({
+  filename,
+  rows,
+  validationResult,
+  isValidating,
+  importError,
+  isPending,
+  onBack,
+  onConfirm,
+}: PreviewStepProps) {
+  const serverErrors = validationResult?.errors ?? [];
+  const serverWarnings = validationResult?.warnings ?? [];
 
-  // Merge client + server warnings, deduplicate by row+field
-  const seenWarnKeys = new Set<string>();
-  const allWarnings: ImportRowWarning[] = [];
-  for (const w of [...clientWarnings, ...serverWarnings]) {
-    const key = `${w.row}:${w.field}`;
-    if (!seenWarnKeys.has(key)) {
-      seenWarnKeys.add(key);
-      allWarnings.push(w);
-    }
-  }
+  // While server is validating, show client-side warnings immediately for fast feedback
+  const pendingWarnings = isValidating ? computeClientWarnings(rows) : [];
+
+  const allWarnings: ImportRowWarning[] = serverWarnings.length > 0 ? serverWarnings : pendingWarnings;
 
   const errorsByRow = new Map<number, typeof serverErrors>();
   for (const e of serverErrors) {
@@ -581,11 +587,12 @@ function PreviewStep({ filename, rows, state, isPending, onBack, onConfirm }: Pr
   const warnRowSet = new Set(allWarnings.map((w) => w.row));
   const errorRowSet = new Set(serverErrors.map((e) => e.row));
 
-  const validCount = rows.filter((r) => !errorRowSet.has(r.row) && !warnRowSet.has(r.row)).length;
+  const validCount = validationResult?.validCount ?? 0;
   const warnOnlyCount = rows.filter((r) => !errorRowSet.has(r.row) && warnRowSet.has(r.row)).length;
-  const errorCount = errorRowSet.size;
+  const errorCount = validationResult?.errorCount ?? 0;
 
   const hasErrors = serverErrors.length > 0;
+  const fatalError = validationResult?.error ?? importError;
 
   return (
     <div className="space-y-4">
@@ -612,29 +619,38 @@ function PreviewStep({ filename, rows, state, isPending, onBack, onConfirm }: Pr
 
       {/* Row summary banner */}
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#EEF2F6] bg-[#F7F9FB] px-4 py-2.5 text-xs font-semibold">
-        <span className="flex items-center gap-1 text-emerald-700">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          {validCount} dòng hợp lệ
-        </span>
-        {warnOnlyCount > 0 && (
-          <span className="flex items-center gap-1 text-amber-700">
-            <AlertTriangle className="h-3.5 w-3.5" />
-            {warnOnlyCount} dòng có cảnh báo
+        {isValidating ? (
+          <span className="flex items-center gap-1.5 text-slate-500">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Đang kiểm tra với cơ sở dữ liệu…
           </span>
-        )}
-        {errorCount > 0 && (
-          <span className="flex items-center gap-1 text-red-700">
-            <X className="h-3.5 w-3.5" />
-            {errorCount} dòng có lỗi
-          </span>
+        ) : (
+          <>
+            <span className="flex items-center gap-1 text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {validCount} dòng hợp lệ
+            </span>
+            {warnOnlyCount > 0 && (
+              <span className="flex items-center gap-1 text-amber-700">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {warnOnlyCount} dòng có cảnh báo
+              </span>
+            )}
+            {errorCount > 0 && (
+              <span className="flex items-center gap-1 text-red-700">
+                <X className="h-3.5 w-3.5" />
+                {errorCount} dòng có lỗi
+              </span>
+            )}
+          </>
         )}
       </div>
 
-      {/* Global error */}
-      {state.error && (
+      {/* Fatal / global error */}
+      {fatalError && (
         <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          {state.error}
+          {fatalError}
         </div>
       )}
 
@@ -752,21 +768,27 @@ function PreviewStep({ filename, rows, state, isPending, onBack, onConfirm }: Pr
         <button
           type="button"
           onClick={onBack}
-          disabled={isPending}
+          disabled={isPending || isValidating}
           className="text-sm font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-60"
         >
           ← Chọn file khác
         </button>
         <AdminActionButton
           onClick={onConfirm}
-          disabled={hasErrors || isPending}
-          icon={isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          disabled={isValidating || hasErrors || isPending}
+          icon={
+            isValidating || isPending
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Upload className="h-4 w-4" />
+          }
         >
-          {isPending
-            ? 'Đang nhập…'
-            : hasErrors
-              ? `Không thể nhập (${serverErrors.length} lỗi)`
-              : `Xác nhận nhập ${rows.length} sản phẩm`}
+          {isValidating
+            ? 'Đang kiểm tra…'
+            : isPending
+              ? 'Đang nhập…'
+              : hasErrors
+                ? `Không thể nhập (${serverErrors.length} lỗi)`
+                : `Xác nhận nhập ${rows.length} sản phẩm`}
         </AdminActionButton>
       </div>
     </div>
@@ -853,41 +875,50 @@ export function ProductImportDialog() {
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [filename, setFilename] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [isValidating, startValidation] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
-  const [state, formAction, isPending] = useActionState(importProductsAction, INITIAL_STATE);
+  const [importState, formAction, isImporting] = useActionState(importProductsAction, INITIAL_STATE);
 
-  const showSuccess = submitted && state.ok && state.imported != null;
+  const isPending = isImporting;
+  const showSuccess = submitted && importState.ok && importState.imported != null;
 
   useEffect(() => {
-    if (submitted && state.ok) {
+    if (submitted && importState.ok) {
       router.refresh();
     }
-  }, [submitted, state.ok, router]);
+  }, [submitted, importState.ok, router]);
 
   useEffect(() => {
-    if (submitted && state.error && !state.errors) {
-      toast(state.error, 'error');
+    if (submitted && importState.error && !importState.errors) {
+      toast(importState.error, 'error');
     }
-  }, [submitted, state.error, state.errors, toast]);
+  }, [submitted, importState.error, importState.errors, toast]);
 
   function openDialog() {
     setSubmitted(false);
     setStep('upload');
     setRows([]);
     setFilename('');
+    setValidationResult(null);
     setOpen(true);
   }
 
   function closeDialog() {
-    if (isPending) return;
+    if (isPending || isValidating) return;
     setOpen(false);
   }
 
   function handleFileParsed(parsedRows: ImportRow[], name: string) {
     setRows(parsedRows);
     setFilename(name);
+    setValidationResult(null);
     setStep('preview');
+    startValidation(async () => {
+      const result = await validateProductsImportAction(parsedRows);
+      setValidationResult(result);
+    });
   }
 
   function handleConfirm() {
@@ -903,7 +934,9 @@ export function ProductImportDialog() {
     ? 'Nhập hoàn tất'
     : step === 'upload'
       ? 'Nhập sản phẩm từ Excel'
-      : 'Xem trước & xác nhận';
+      : isValidating
+        ? 'Đang kiểm tra dữ liệu…'
+        : 'Xem trước & xác nhận';
 
   const modalDescription = showSuccess
     ? undefined
@@ -931,7 +964,7 @@ export function ProductImportDialog() {
         </form>
 
         {showSuccess && (
-          <SuccessStep result={state} onClose={closeDialog} />
+          <SuccessStep result={importState} onClose={closeDialog} />
         )}
 
         {!showSuccess && step === 'upload' && (
@@ -942,9 +975,11 @@ export function ProductImportDialog() {
           <PreviewStep
             filename={filename}
             rows={rows}
-            state={state}
+            validationResult={validationResult}
+            isValidating={isValidating}
+            importError={submitted && importState.error && !importState.errors ? importState.error : undefined}
             isPending={isPending}
-            onBack={() => setStep('upload')}
+            onBack={() => { setStep('upload'); setValidationResult(null); }}
             onConfirm={handleConfirm}
           />
         )}
