@@ -1,0 +1,9 @@
+.git
+.github
+.next
+node_modules
+coverage
+.DS_Store
+*.log
+README.md
+docs

@@ -3,6 +3,7 @@ import 'server-only';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts, Updates } from '@/lib/types/database';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { cleanupProductImageStorage } from '@/lib/services/admin/media-cleanup';
 
 const PRODUCT_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
 export const PRODUCT_IMAGES_BUCKET = 'product-images';
@@ -16,6 +17,7 @@ export interface ProductImagePayload {
   is_primary: boolean;
   is_active: boolean;
 }
+
 
 export async function createAdminProductImage(payload: ProductImagePayload) {
   try {
@@ -161,7 +163,6 @@ export async function deleteAdminProductImage(imageId: string) {
       return { data: null, error: 'Không tìm thấy hình ảnh cần xóa.' };
     }
 
-    // Delete database row
     const { error: deleteDbError } = await supabase
       .from('product_images')
       .delete()
@@ -171,29 +172,7 @@ export async function deleteAdminProductImage(imageId: string) {
       return { data: null, error: deleteDbError.message };
     }
 
-    // Safely delete from Storage
-    const { error: storageError } = await supabase.storage
-      .from(PRODUCT_IMAGES_BUCKET)
-      .remove([image.storage_path]);
-
-    // Note: If storage delete fails, we still consider db row deleted, but warn in log
-    if (storageError) {
-      console.warn(`Failed to delete storage file at ${image.storage_path}:`, storageError.message);
-    }
-
-    // Write audit log
-    await supabase.from('audit_logs').insert({
-      actor_id: adminUser.id,
-      action: 'delete',
-      entity: 'product_images',
-      entity_id: imageId,
-      metadata: { 
-        product_id: image.product_id, 
-        storage_path: image.storage_path 
-      },
-    });
-
-    // If we deleted a primary image, set another active image as primary if exists
+    // If deleted image was primary, promote another active image
     if (image.is_primary) {
       const { data: otherImages } = await supabase
         .from('product_images')
@@ -210,6 +189,23 @@ export async function deleteAdminProductImage(imageId: string) {
           .eq('id', otherImages[0].id);
       }
     }
+
+    // Storage cleanup — failure does not fail the action
+    const [cleanupResult] = await cleanupProductImageStorage([image.storage_path]);
+
+    await supabase.from('audit_logs').insert({
+      actor_id: adminUser.id,
+      action: 'delete',
+      entity: 'product_images',
+      entity_id: imageId,
+      metadata: {
+        product_id: image.product_id,
+        image_id: imageId,
+        storage_path: image.storage_path,
+        cleanup_status: cleanupResult?.deleted ? 'deleted' : cleanupResult?.skipped ? 'skipped' : 'failed',
+        cleanup_error: cleanupResult?.error ?? null,
+      },
+    });
 
     return { data: image, error: null };
   } catch (err) {
