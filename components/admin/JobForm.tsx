@@ -139,10 +139,6 @@ function buildDescriptionHtml(parsed: ParsedJobDescription) {
     );
   });
 
-  if (parsed.customHtml.trim()) {
-    chunks.push(parsed.customHtml.trim());
-  }
-
   return chunks.join('');
 }
 
@@ -164,9 +160,9 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
         responsibilities: linesToList(responsibilities),
         requirements: linesToList(requirements),
         benefits: linesToList(benefits),
-        customHtml,
+        customHtml: '',
       }),
-    [benefits, customHtml, intro, requirements, responsibilities],
+    [benefits, intro, requirements, responsibilities],
   );
 
   const hasLegacyHtml = Boolean(initialDescription.customHtml && !initialDescription.intro);
@@ -323,7 +319,7 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
           {hasLegacyHtml ? (
             <div className="space-y-2">
               <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-[10px] font-medium leading-relaxed text-amber-800">
-                Bài đăng này đang chứa HTML cũ. Nội dung gốc được giữ nguyên và sẽ hiển thị bên dưới trang tuyển dụng. Để chỉnh sửa HTML thô, liên hệ quản trị hệ thống.
+                Bài đăng này đang chứa HTML cũ. Nội dung bên dưới chỉ hiển thị để tham khảo, không thể chỉnh sửa và sẽ không được lưu lại sau khi bấm lưu.
               </div>
               <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[10px] leading-relaxed text-slate-500 whitespace-pre-wrap select-all">
                 {customHtml}
