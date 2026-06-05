@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { AlertCircle, ImageIcon, Star, Upload, X } from 'lucide-react';
 
 import { SpecsEditor } from '@/components/admin/SpecsEditor';
@@ -9,13 +9,48 @@ import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { ProductFormData } from '@/lib/services/admin/products';
 import type { AdminFormState } from '@/app/admin/(dashboard)/products/actions';
 
+// ---------------------------------------------------------------------------
+// Types exported so ProductFormDialog can share them
+// ---------------------------------------------------------------------------
+
+export interface QueuedImageFile {
+  localId: string;
+  file: File;
+  preview: string;
+  isPrimary: boolean;
+  clientError?: string;
+}
+
+export type ExistingProductImage = {
+  id: string;
+  public_url: string | null;
+  alt: string | null;
+  sort_order: number;
+  is_primary: boolean;
+  is_active: boolean;
+};
+
 interface ProductFormProps {
   formId: string;
   formAction: (payload: FormData) => void;
   state: AdminFormState;
   categories: AdminCategory[];
   product?: ProductFormData;
+  // Create mode: controlled image queue from parent
+  imageQueue?: QueuedImageFile[];
+  onFilesAdd?: (files: File[]) => void;
+  onRemoveQueuedImage?: (localId: string) => void;
+  onTogglePrimaryQueuedImage?: (localId: string) => void;
+  onClearQueue?: () => void;
+  // Edit mode: existing images (read-only preview)
+  existingImages?: ExistingProductImage[];
 }
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const MAX_IMAGES = 10;
 
 type TabId = 'basic' | 'pricing' | 'specs' | 'media';
 
@@ -29,12 +64,15 @@ const TABS: { id: TabId; label: string }[] = [
 const fieldClass = 'admin-input text-xs';
 const selectClass = 'admin-select text-xs';
 const labelClass = 'mb-1.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#646464]';
-const MAX_IMAGES = 10;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function slugify(value: string) {
   return value
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .replace(/[đĐ]/g, 'd')
     .toLowerCase()
     .trim()
@@ -43,78 +81,66 @@ function slugify(value: string) {
     .replace(/-+/g, '-');
 }
 
-/** Maps a server error message to the tab that owns the offending field. */
 function tabForError(error: string): TabId | null {
   const text = error.toLowerCase();
-  if (text.includes('specs') || text.includes('json') || text.includes('thông số')) {
-    return 'specs';
-  }
-  if (text.includes('tồn kho') || text.includes('giá') || text.includes('kho')) {
-    return 'pricing';
-  }
-  if (text.includes('tên') || text.includes('slug')) {
-    return 'basic';
-  }
+  if (text.includes('specs') || text.includes('json') || text.includes('thông số')) return 'specs';
+  if (text.includes('tồn kho') || text.includes('giá') || text.includes('kho')) return 'pricing';
+  if (text.includes('tên') || text.includes('slug')) return 'basic';
   return null;
 }
 
-export function ProductForm({ formId, formAction, state, categories, product }: ProductFormProps) {
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function ProductForm({
+  formId,
+  formAction,
+  state,
+  categories,
+  product,
+  imageQueue = [],
+  onFilesAdd,
+  onRemoveQueuedImage,
+  onTogglePrimaryQueuedImage,
+  onClearQueue,
+  existingImages,
+}: ProductFormProps) {
   const [activeTab, setActiveTab] = useState<TabId>('basic');
   const [name, setName] = useState(product?.name ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
   const [slugTouched, setSlugTouched] = useState(Boolean(product));
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [imagePreviews, setImagePreviews] = useState<{ name: string; url: string; size: number }[]>([]);
-  const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
-  const availableTabs = product ? TABS.filter((tab) => tab.id !== 'media') : TABS;
+
   const activeCategories = categories.filter(
-    (category) => category.is_active || category.id === product?.category_id,
+    (c) => c.is_active || c.id === product?.category_id,
   );
-  const visibleTab = state.error ? tabForError(state.error) ?? activeTab : activeTab;
+  const visibleTab = state.error ? (tabForError(state.error) ?? activeTab) : activeTab;
 
-  useEffect(() => {
-    return () => {
-      imagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
-    };
-  }, [imagePreviews]);
+  const validQueueCount = imageQueue.filter((f) => !f.clientError).length;
+  const invalidCount = imageQueue.filter((f) => Boolean(f.clientError)).length;
+  const mediaBadge = product ? (existingImages?.length ?? 0) : validQueueCount;
 
-  const handleNameChange = (value: string) => {
+  function handleNameChange(value: string) {
     setName(value);
-    if (!slugTouched) {
-      setSlug(slugify(value));
-    }
-  };
+    if (!slugTouched) setSlug(slugify(value));
+  }
 
-  const handleImagesChange = (files: FileList | null) => {
-    imagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
-    const selected = Array.from(files ?? []).slice(0, MAX_IMAGES);
-    setImagePreviews(
-      selected.map((file) => ({
-        name: file.name,
-        size: file.size,
-        url: URL.createObjectURL(file),
-      })),
-    );
-    setPrimaryImageIndex(0);
-  };
-
-  const clearImages = () => {
-    imagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
-    setImagePreviews([]);
-    setPrimaryImageIndex(0);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
+  function handleFileDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) onFilesAdd?.(files);
+  }
 
   return (
     <form id={formId} action={formAction} className="flex min-h-[620px] flex-col gap-5">
       {product ? <input type="hidden" name="id" value={product.id} /> : null}
 
-      {/* Sticky tab bar pinned beneath the modal header. */}
+      {/* Tab bar */}
       <div className="sticky -top-5 z-10 -mx-5 -mt-5 mb-1 flex gap-1 overflow-x-auto border-b border-[#EEF2F6] bg-white/95 px-5 pt-2 backdrop-blur">
-        {availableTabs.map((tab) => {
+        {TABS.map((tab) => {
           const active = visibleTab === tab.id;
+          const badge = tab.id === 'media' && mediaBadge > 0 ? mediaBadge : null;
           return (
             <button
               key={tab.id}
@@ -126,11 +152,17 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
               }`}
             >
               {tab.label}
+              {badge ? (
+                <span className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#4880FF]/15 px-1 text-[10px] font-black text-[#3749A6]">
+                  {badge}
+                </span>
+              ) : null}
             </button>
           );
         })}
       </div>
 
+      {/* Error banner */}
       {state.error ? (
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-[#FFF5F5] px-4 py-3">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#E31E24]" />
@@ -138,7 +170,7 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
         </div>
       ) : null}
 
-      {/* Basic info — kept mounted so all fields submit regardless of active tab */}
+      {/* ── Basic info ─────────────────────────────────────────────────────── */}
       <div className={visibleTab === 'basic' ? 'animate-fade-in flex-1 space-y-4' : 'hidden'}>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
@@ -150,7 +182,7 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
               type="text"
               required
               value={name}
-              onChange={(event) => handleNameChange(event.target.value)}
+              onChange={(e) => handleNameChange(e.target.value)}
               className={fieldClass}
               placeholder="VD: Hũ thủy tinh 500ml"
             />
@@ -165,10 +197,7 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
               type="text"
               required
               value={slug}
-              onChange={(event) => {
-                setSlugTouched(true);
-                setSlug(event.target.value);
-              }}
+              onChange={(e) => { setSlugTouched(true); setSlug(e.target.value); }}
               className={`${fieldClass} font-mono`}
               placeholder="hu-thuy-tinh-500ml"
             />
@@ -178,10 +207,8 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
             <span className={labelClass}>Danh mục thuộc về</span>
             <select name="category_id" defaultValue={product?.category_id ?? ''} className={selectClass}>
               <option value="">Chưa phân loại</option>
-              {activeCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
+              {activeCategories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </label>
@@ -208,7 +235,7 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
         </div>
       </div>
 
-      {/* Price & stock */}
+      {/* ── Pricing ────────────────────────────────────────────────────────── */}
       <div className={visibleTab === 'pricing' ? 'animate-fade-in flex-1 space-y-4' : 'hidden'}>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
@@ -220,10 +247,10 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
               step="100"
               defaultValue={product?.price ?? ''}
               className={fieldClass}
-              placeholder="Để trống nếu hiển thị “Liên hệ”"
+              placeholder='Để trống nếu hiển thị "Liên hệ"'
             />
             <span className="mt-1.5 block text-[10px] font-medium text-slate-400">
-              Để trống nếu muốn hiển thị chữ “Liên hệ” thay vì giá cụ thể.
+              Để trống nếu muốn hiển thị chữ &quot;Liên hệ&quot; thay vì giá cụ thể.
             </span>
           </label>
 
@@ -239,93 +266,197 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
         </div>
       </div>
 
-      {/* Specs tab — kept mounted so the hidden specs JSON input always submits */}
+      {/* ── Specs ──────────────────────────────────────────────────────────── */}
       <div className={visibleTab === 'specs' ? 'animate-fade-in flex-1' : 'hidden'}>
         <SpecsEditor initialSpecs={product?.specs} />
       </div>
 
-      {!product ? (
-        <div className={visibleTab === 'media' ? 'animate-fade-in flex-1 space-y-4' : 'hidden'}>
-          <input type="hidden" name="primary_image_index" value={primaryImageIndex} />
-
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-6 py-8 text-center transition hover:border-[#1B3A6B]/50 hover:bg-slate-50">
-            <Upload className="h-8 w-8 text-slate-300" />
-            <span className="text-xs font-semibold text-slate-600">Chọn nhiều ảnh sản phẩm từ máy tính</span>
-            <span className="text-[10px] font-medium text-slate-400">
-              JPG, JPEG, PNG, WebP. Tối đa 5 MB/ảnh và {MAX_IMAGES} ảnh mỗi sản phẩm.
-            </span>
-            <input
-              ref={fileInputRef}
-              name="product_images"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              className="sr-only"
-              onChange={(event) => handleImagesChange(event.target.files)}
-            />
-          </label>
-
-          {imagePreviews.length > 0 ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-bold text-slate-700">
-                  {imagePreviews.length} ảnh đã chọn. Ảnh đầu tiên mặc định là thumbnail.
+      {/* ── Media ──────────────────────────────────────────────────────────── */}
+      <div className={visibleTab === 'media' ? 'animate-fade-in flex-1 space-y-4' : 'hidden'}>
+        {product ? (
+          /* Edit mode: read-only grid + redirect note */
+          <div className="space-y-4">
+            {existingImages && existingImages.length > 0 ? (
+              <>
+                <p className="text-xs font-semibold text-slate-600">
+                  {existingImages.length} hình ảnh hiện có
                 </p>
-                <button
-                  type="button"
-                  onClick={clearImages}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
-                >
-                  <X className="h-3.5 w-3.5" />
-                  Xóa ảnh đã chọn
-                </button>
+                <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-5">
+                  {[...existingImages]
+                    .sort((a, b) => a.sort_order - b.sort_order)
+                    .map((img) => (
+                      <div
+                        key={img.id}
+                        className={`relative aspect-square overflow-hidden rounded-xl border bg-slate-50 ${
+                          img.is_primary
+                            ? 'border-[#1B3A6B] ring-2 ring-[#1B3A6B]/20'
+                            : 'border-slate-200'
+                        } ${!img.is_active ? 'opacity-50' : ''}`}
+                      >
+                        {img.public_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={img.public_url}
+                            alt={img.alt ?? 'Ảnh sản phẩm'}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <ImageIcon className="h-5 w-5 text-slate-300" />
+                          </div>
+                        )}
+                        {img.is_primary ? (
+                          <div className="absolute bottom-0 left-0 right-0 bg-[#1B3A6B]/90 py-0.5 text-center text-[8px] font-bold uppercase tracking-wide text-white">
+                            Ảnh chính
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/40 px-4 py-10 text-center">
+                <ImageIcon className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                <p className="text-xs font-bold text-slate-500">Chưa có hình ảnh nào.</p>
               </div>
+            )}
+            <div className="rounded-xl border border-blue-100 bg-blue-50/40 px-4 py-3 text-xs text-blue-700">
+              Để tải lên, sắp xếp hoặc xóa ảnh, hãy dùng nút{' '}
+              <strong>Media &amp; Giá sỉ</strong> bên dưới sản phẩm trong danh sách.
+            </div>
+          </div>
+        ) : (
+          /* Create mode: queue-based file picker with individual removal */
+          <div className="space-y-3">
+            {/* Drop zone */}
+            <label
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-6 py-8 text-center transition hover:border-[#1B3A6B]/50 hover:bg-slate-50"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleFileDrop}
+            >
+              <Upload className="h-8 w-8 text-slate-300" />
+              <span className="text-xs font-semibold text-slate-600">
+                Kéo thả hoặc <span className="text-[#1B3A6B] underline underline-offset-2">chọn ảnh từ máy tính</span>
+              </span>
+              <span className="text-[10px] font-medium text-slate-400">
+                JPG · PNG · WebP · Tối đa 5 MB/ảnh · {MAX_IMAGES} ảnh mỗi sản phẩm
+              </span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="sr-only"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length > 0) onFilesAdd?.(files);
+                  e.target.value = '';
+                }}
+              />
+            </label>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {imagePreviews.map((preview, index) => {
-                  const selected = primaryImageIndex === index;
-                  return (
-                    <button
-                      key={`${preview.name}-${index}`}
-                      type="button"
-                      onClick={() => setPrimaryImageIndex(index)}
-                      className={`overflow-hidden rounded-xl border bg-white text-left transition ${
-                        selected
-                          ? 'border-[#1B3A6B] ring-2 ring-[#1B3A6B]/15'
-                          : 'border-slate-200 hover:border-slate-300'
+            {imageQueue.length > 0 ? (
+              <div className="space-y-3">
+                {/* Summary row */}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-slate-600">
+                    {validQueueCount > 0 ? (
+                      <span className="text-slate-700">{validQueueCount} ảnh sẵn sàng tải lên</span>
+                    ) : null}
+                    {invalidCount > 0 ? (
+                      <span className="ml-1.5 text-rose-500">· {invalidCount} ảnh không hợp lệ</span>
+                    ) : null}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onClearQueue}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Xóa tất cả
+                  </button>
+                </div>
+
+                {/* Image grid */}
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {imageQueue.map((item) => (
+                    <div
+                      key={item.localId}
+                      className={`overflow-hidden rounded-xl border bg-white transition ${
+                        item.clientError
+                          ? 'border-rose-200 bg-rose-50/40'
+                          : item.isPrimary
+                            ? 'border-[#1B3A6B] ring-2 ring-[#1B3A6B]/15'
+                            : 'border-slate-200'
                       }`}
                     >
-                      <div
-                        className="relative aspect-video bg-slate-100 bg-cover bg-center"
-                        style={{ backgroundImage: `url(${preview.url})` }}
-                      >
-                        {selected ? (
-                          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-[#1B3A6B] px-2 py-1 text-[10px] font-bold text-white shadow-sm">
-                            <Star className="h-3 w-3 fill-white" />
+                      {/* Thumbnail */}
+                      <div className="relative aspect-video bg-slate-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.preview}
+                          alt={item.file.name}
+                          className="h-full w-full object-cover"
+                        />
+                        {item.isPrimary && !item.clientError ? (
+                          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-[#1B3A6B] px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                            <Star className="h-2.5 w-2.5 fill-white" />
                             Thumbnail
                           </span>
                         ) : null}
+                        {/* Remove button */}
+                        <button
+                          type="button"
+                          onClick={() => onRemoveQueuedImage?.(item.localId)}
+                          className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1 shadow transition hover:bg-red-50 hover:text-red-600"
+                          title="Bỏ ảnh này"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                      <div className="space-y-1 p-3">
-                        <p className="truncate text-[11px] font-bold text-slate-700" title={preview.name}>
-                          {preview.name}
+
+                      {/* Card body */}
+                      <div className="space-y-2 p-3">
+                        <p className="truncate text-[11px] font-semibold text-slate-700" title={item.file.name}>
+                          {item.file.name}
                         </p>
                         <p className="text-[10px] text-slate-400">
-                          {(preview.size / 1024 / 1024).toFixed(2)} MB
+                          {(item.file.size / 1024 / 1024).toFixed(2)} MB
                         </p>
+
+                        {item.clientError ? (
+                          <p className="flex items-start gap-1 text-[10px] font-semibold text-rose-600">
+                            <AlertCircle className="mt-px h-3 w-3 shrink-0" />
+                            {item.clientError}
+                          </p>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onTogglePrimaryQueuedImage?.(item.localId)}
+                            className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-semibold transition ${
+                              item.isPrimary
+                                ? 'bg-[#1B3A6B]/10 text-[#1B3A6B]'
+                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                            }`}
+                          >
+                            <Star className={`h-3 w-3 ${item.isPrimary ? 'fill-[#1B3A6B]' : ''}`} />
+                            {item.isPrimary ? 'Ảnh chính' : 'Đặt làm ảnh chính'}
+                          </button>
+                        )}
                       </div>
-                    </button>
-                  );
-                })}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-[#EEF2F6] bg-slate-50/60 px-4 py-3 text-xs leading-relaxed text-slate-500">
-              Có thể bỏ qua ảnh khi tạo. Admin vẫn thêm hoặc sắp xếp ảnh sau trong mục Media & Giá sỉ.
-            </div>
-          )}
-        </div>
-      ) : null}
+            ) : (
+              <div className="rounded-xl border border-[#EEF2F6] bg-slate-50/60 px-4 py-3 text-xs leading-relaxed text-slate-500">
+                Có thể bỏ qua ảnh khi tạo. Thêm hoặc sắp xếp ảnh sau trong mục{' '}
+                <strong>Media &amp; Giá sỉ</strong>.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </form>
   );
 }
