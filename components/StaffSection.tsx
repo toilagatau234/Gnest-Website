@@ -111,17 +111,14 @@ export function StaffSection() {
                   href={`https://zalo.me/${person.cleanPhone}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block mt-3 w-20 h-20 sm:w-24 sm:h-24 mx-auto border border-dtl-border p-1 rounded overflow-hidden hover:border-dtl-navy transition-colors bg-white relative"
+                  className="mt-2 flex w-full items-center justify-center gap-1.5 sm:gap-2 bg-[#0068FF] text-white py-2 px-2 rounded transition-colors hover:bg-[#0057d9]"
+                  aria-label={`Nhắn tin Zalo: ${person.phone}`}
                 >
-                  <Image
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=https://zalo.me/${person.cleanPhone}`}
-                    alt={`QR Zalo ${person.name}`}
-                    width={96}
-                    height={96}
-                    className="w-full h-full block object-contain"
-                  />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.52 3.66 1.42 5.18L2 22l4.94-1.39A9.96 9.96 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm4.93 13.57c-.2.56-1.18 1.07-1.63 1.14-.42.06-.96.09-1.55-.1-.36-.11-.82-.27-1.41-.53-2.46-1.06-4.07-3.52-4.2-3.68-.12-.17-.98-1.3-.98-2.48 0-1.18.62-1.76.84-2 .22-.24.48-.3.64-.3h.46c.15 0 .35-.06.55.42.2.48.68 1.66.74 1.78.06.12.1.26.02.42-.08.16-.12.26-.24.4-.12.14-.25.3-.36.4-.12.12-.24.25-.1.49.14.24.62.98 1.33 1.59.92.8 1.7 1.05 1.94 1.17.24.12.38.1.52-.06.14-.16.6-.7.76-.94.16-.24.32-.2.54-.12.22.08 1.4.66 1.64.78.24.12.4.18.46.28.06.1.06.58-.14 1.14z"/>
+                  </svg>
+                  <span className="font-bold text-[11px] sm:text-[13px]">Chat Zalo</span>
                 </a>
-                <div className="text-[10px] text-dtl-gray mt-1.5">Quét Zalo</div>
               </div>
             </Interactive3DTilt>
           ))}
