@@ -119,6 +119,9 @@ function validateRow(row: BulkRow, allRows: BulkRow[]): Record<string, string> {
   if (row.stock !== '' && (!Number.isInteger(Number(row.stock)) || Number(row.stock) < 0)) {
     errs.stock = 'Số nguyên >= 0';
   }
+  if (row.images.some((img) => img.clientError)) {
+    errs.images = 'Hàng có ảnh không hợp lệ';
+  }
   return errs;
 }
 
@@ -213,84 +216,101 @@ function RowImagePanel({
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {images.map((img) => (
-        <div key={img.localId} className="relative flex-shrink-0">
-          <div
-            className={`relative h-14 w-14 overflow-hidden rounded-lg border-2 ${
-              img.isPrimary ? 'border-[#1B3A6B]' : 'border-[#E5E9EF]'
-            } ${img.clientError ? 'opacity-60' : ''}`}
-          >
-            <Image
-              src={img.preview}
-              alt=""
-              fill
-              className="object-cover"
-              unoptimized
-            />
-            {img.clientError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-red-500/20">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-              </div>
-            )}
-          </div>
-          {!disabled && (
-            <>
-              <button
-                type="button"
-                onClick={() => onRemove(img.localId)}
-                className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 hover:bg-red-50 hover:text-red-500"
-                title="Xóa ảnh"
-              >
-                <X className="h-2.5 w-2.5" />
-              </button>
-              {!img.isPrimary && !img.clientError && (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {images.map((img) => (
+          <div key={img.localId} className="relative flex-shrink-0">
+            <div
+              className={`relative h-14 w-14 overflow-hidden rounded-lg border-2 ${
+                img.isPrimary ? 'border-[#1B3A6B]' : 'border-[#E5E9EF]'
+              } ${img.clientError ? 'opacity-60' : ''}`}
+            >
+              <Image
+                src={img.preview}
+                alt=""
+                fill
+                className="object-cover"
+                unoptimized
+              />
+              {img.clientError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-red-500/20">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                </div>
+              )}
+            </div>
+            {!disabled && (
+              <>
                 <button
                   type="button"
-                  onClick={() => onSetPrimary(img.localId)}
-                  className="absolute -bottom-1.5 -left-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 hover:bg-amber-50 hover:text-amber-500"
-                  title="Đặt làm ảnh chính"
+                  onClick={() => onRemove(img.localId)}
+                  className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 hover:bg-red-50 hover:text-red-500"
+                  title="Xóa ảnh"
                 >
-                  <Star className="h-2.5 w-2.5" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
-              )}
-            </>
-          )}
-          {img.isPrimary && (
-            <Star className="absolute -bottom-1.5 -left-1.5 h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-          )}
+                {!img.isPrimary && !img.clientError && (
+                  <button
+                    type="button"
+                    onClick={() => onSetPrimary(img.localId)}
+                    className="absolute -bottom-1.5 -left-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 hover:bg-amber-50 hover:text-amber-500"
+                    title="Đặt làm ảnh chính"
+                  >
+                    <Star className="h-2.5 w-2.5" />
+                  </button>
+                )}
+              </>
+            )}
+            {img.isPrimary && (
+              <Star className="absolute -bottom-1.5 -left-1.5 h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+            )}
+          </div>
+        ))}
+
+        {images.length < MAX_IMGS_PER_ROW && !disabled && (
+          <>
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-[#E5E9EF] text-slate-300 hover:border-[#1B3A6B]/50 hover:text-[#1B3A6B]/50"
+              title="Thêm ảnh"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".jpg,.jpeg,.png,.webp"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) {
+                  onAddFiles(e.target.files);
+                  e.target.value = '';
+                }
+              }}
+            />
+          </>
+        )}
+
+        <span className="text-[10px] text-slate-400">
+          {images.length}/{MAX_IMGS_PER_ROW} ảnh · ★ = ảnh chính
+        </span>
+      </div>
+
+      {images.some((img) => img.clientError) && (
+        <div className="flex flex-col gap-1 text-[10px] text-red-500 mt-1">
+          {images
+            .filter((img) => img.clientError)
+            .map((img) => (
+              <p key={img.localId} className="flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                <span>
+                  <strong>{img.file.name}</strong>: {img.clientError}
+                </span>
+              </p>
+            ))}
         </div>
-      ))}
-
-      {images.length < MAX_IMGS_PER_ROW && !disabled && (
-        <>
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-[#E5E9EF] text-slate-300 hover:border-[#1B3A6B]/50 hover:text-[#1B3A6B]/50"
-            title="Thêm ảnh"
-          >
-            <Plus className="h-5 w-5" />
-          </button>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".jpg,.jpeg,.png,.webp"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.length) {
-                onAddFiles(e.target.files);
-                e.target.value = '';
-              }
-            }}
-          />
-        </>
       )}
-
-      <span className="text-[10px] text-slate-400">
-        {images.length}/{MAX_IMGS_PER_ROW} ảnh · ★ = ảnh chính
-      </span>
     </div>
   );
 }
@@ -451,15 +471,20 @@ function RowEditor({
             type="button"
             onClick={onToggleImages}
             className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition ${
-              row.images.length > 0
-                ? 'bg-[#1B3A6B]/10 text-[#1B3A6B] hover:bg-[#1B3A6B]/20'
-                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              row.errors.images
+                ? 'bg-red-50 text-red-600 hover:bg-red-100 ring-1 ring-red-300'
+                : row.images.length > 0
+                  ? 'bg-[#1B3A6B]/10 text-[#1B3A6B] hover:bg-[#1B3A6B]/20'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
             }`}
-            title={row.expandImages ? 'Ẩn bảng ảnh' : 'Xem/thêm ảnh'}
+            title={row.errors.images ? row.errors.images : row.expandImages ? 'Ẩn bảng ảnh' : 'Xem/thêm ảnh'}
           >
             <ImageIcon className="h-3 w-3" />
             {row.images.length > 0 ? row.images.length : '+'}
           </button>
+          {row.errors.images && (
+            <p className="mt-0.5 text-[9px] text-red-500 leading-none">{row.errors.images}</p>
+          )}
         </td>
 
         {/* Status */}
@@ -576,8 +601,15 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
       prev.map((r) => {
         if (r.clientId !== clientId) return r;
         const next = { ...r, ...patch };
-        // When the user edits a field on an invalid row, reset it back to draft
-        if (r.status === 'invalid' && !('status' in patch)) {
+        // Clear the edited field's error
+        const nextErrors = { ...r.errors };
+        for (const key of Object.keys(patch)) {
+          delete nextErrors[key];
+        }
+        next.errors = nextErrors;
+
+        // When the user edits a field on an invalid or failed row, reset it back to draft
+        if ((r.status === 'invalid' || r.status === 'failed') && !('status' in patch)) {
           next.status = 'draft';
         }
         return next;
@@ -590,12 +622,18 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
       prev.map((r) => {
         if (r.clientId !== clientId) return r;
         const autoSlug = r.slug === '' || r.slug === slugify(r.name);
+        const nextErrors = { ...r.errors };
+        delete nextErrors.name;
+        if (autoSlug) {
+          delete nextErrors.slug;
+        }
         return {
           ...r,
           name,
           slug: autoSlug ? slugify(name) : r.slug,
-          // Reset invalid → draft when the user starts correcting the row
-          status: r.status === 'invalid' ? 'draft' : r.status,
+          // Reset invalid/failed → draft when the user starts correcting the row
+          status: r.status === 'invalid' || r.status === 'failed' ? 'draft' : r.status,
+          errors: nextErrors,
         };
       }),
     );
@@ -619,7 +657,22 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
             clientError: validateImage(file) ?? undefined,
           });
         }
-        return { ...r, images: [...r.images, ...newImgs] };
+        const updatedImages = [...r.images, ...newImgs];
+
+        // Revalidate image errors on row
+        const nextErrors = { ...r.errors };
+        if (updatedImages.some((img) => img.clientError)) {
+          nextErrors.images = 'Hàng có ảnh không hợp lệ';
+        } else {
+          delete nextErrors.images;
+        }
+
+        return {
+          ...r,
+          images: updatedImages,
+          status: r.status === 'invalid' || r.status === 'failed' ? 'draft' : r.status,
+          errors: nextErrors,
+        };
       }),
     );
   }
@@ -633,7 +686,21 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
         if (removed?.isPrimary && rest.length > 0) {
           rest[0] = { ...rest[0], isPrimary: true };
         }
-        return { ...r, images: rest };
+
+        // Revalidate image errors on row
+        const nextErrors = { ...r.errors };
+        if (rest.some((img) => img.clientError)) {
+          nextErrors.images = 'Hàng có ảnh không hợp lệ';
+        } else {
+          delete nextErrors.images;
+        }
+
+        return {
+          ...r,
+          images: rest,
+          status: r.status === 'invalid' || r.status === 'failed' ? 'draft' : r.status,
+          errors: nextErrors,
+        };
       }),
     );
   }
@@ -737,16 +804,21 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
           );
 
           const failedImages: string[] = [];
-          let sortOrder = 0;
+
+          // Build indexed image pairs before upload for stable sort order in concurrent execution
+          const imagesWithSortOrder = validImgs.map((img, idx) => ({
+            img,
+            sortOrder: idx,
+          }));
 
           await runConcurrent(
-            validImgs,
-            async (img) => {
+            imagesWithSortOrder,
+            async ({ img, sortOrder }) => {
               const fd = new FormData();
               fd.append('product_id', result.productId!);
               fd.append('file', img.file);
               fd.append('alt', '');
-              fd.append('sort_order', String(sortOrder++));
+              fd.append('sort_order', String(sortOrder));
               fd.append('is_primary', String(img.isPrimary));
               const res = await uploadProductImageAction({ ok: false }, fd);
               if (!res.ok) failedImages.push(img.file.name);
