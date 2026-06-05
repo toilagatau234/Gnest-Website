@@ -28,10 +28,11 @@ import type { AdminCategory } from '@/lib/services/admin/categories';
 
 type RowStatus =
   | 'draft'
+  | 'invalid'
   | 'creating'
-  | 'uploading'
+  | 'uploading_images'
   | 'success'
-  | 'partial'
+  | 'partial_success'
   | 'failed';
 
 interface RowImage {
@@ -149,44 +150,44 @@ async function runConcurrent<T>(
 
 const STATUS_LABELS: Record<RowStatus, string> = {
   draft: 'Nháp',
+  invalid: 'Lỗi nhập liệu',
   creating: 'Đang tạo…',
-  uploading: 'Tải ảnh…',
+  uploading_images: 'Đang tải ảnh…',
   success: 'Thành công',
-  partial: 'Lỗi ảnh',
+  partial_success: 'Lỗi ảnh',
   failed: 'Thất bại',
 };
 
 const STATUS_COLORS: Record<RowStatus, string> = {
   draft: 'bg-slate-100 text-slate-500',
+  invalid: 'bg-red-50 text-red-600',
   creating: 'bg-blue-50 text-blue-600',
-  uploading: 'bg-indigo-50 text-indigo-600',
+  uploading_images: 'bg-indigo-50 text-indigo-600',
   success: 'bg-emerald-50 text-emerald-700',
-  partial: 'bg-amber-50 text-amber-700',
+  partial_success: 'bg-amber-50 text-amber-700',
   failed: 'bg-red-50 text-red-600',
 };
 
-function StatusBadge({
-  row,
-  hasErrors,
-}: {
-  row: BulkRow;
-  hasErrors: boolean;
-}) {
-  if (hasErrors && row.status === 'draft') {
+function StatusBadge({ row }: { row: BulkRow }) {
+  const hasErrors = Object.keys(row.errors).length > 0;
+
+  if (hasErrors || row.status === 'invalid') {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600">
-        <AlertCircle className="h-2.5 w-2.5" /> Lỗi
+        <AlertCircle className="h-2.5 w-2.5" /> Lỗi nhập liệu
       </span>
     );
   }
+
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_COLORS[row.status]}`}
     >
-      {(row.status === 'creating' || row.status === 'uploading') && (
+      {(row.status === 'creating' || row.status === 'uploading_images') && (
         <Loader2 className="h-2.5 w-2.5 animate-spin" />
       )}
       {row.status === 'success' && <CheckCircle2 className="h-2.5 w-2.5" />}
+      {row.status === 'partial_success' && <AlertCircle className="h-2.5 w-2.5" />}
       {STATUS_LABELS[row.status]}
     </span>
   );
@@ -328,15 +329,18 @@ function RowEditor({
   onDelete,
 }: RowEditorProps) {
   const hasErrors = Object.keys(row.errors).length > 0;
-  const isLocked = row.status === 'creating' || row.status === 'uploading';
-  const isDone = row.status === 'success';
+  const isLocked = row.status === 'creating' || row.status === 'uploading_images';
+  // success and partial_success are both terminal — product already exists in DB
+  const isDone = row.status === 'success' || row.status === 'partial_success';
 
   const rowBg = isDone
-    ? 'bg-emerald-50/40'
-    : hasErrors
+    ? row.status === 'success'
+      ? 'bg-emerald-50/40'
+      : 'bg-amber-50/40'
+    : hasErrors || row.status === 'invalid'
       ? 'bg-red-50/40'
-      : row.status === 'failed' || row.status === 'partial'
-        ? 'bg-amber-50/40'
+      : row.status === 'failed'
+        ? 'bg-red-50/20'
         : '';
 
   const inp = (hasError?: boolean) =>
@@ -461,7 +465,7 @@ function RowEditor({
         {/* Status */}
         <td className="px-2 py-1.5">
           <div className="flex flex-col gap-0.5">
-            <StatusBadge row={row} hasErrors={hasErrors} />
+            <StatusBadge row={row} />
             {row.serverError && (
               <p className="text-[10px] text-red-500" title={row.serverError}>
                 {row.serverError.slice(0, 40)}
@@ -471,6 +475,11 @@ function RowEditor({
             {row.failedImages && row.failedImages.length > 0 && (
               <p className="text-[10px] text-amber-600">
                 Ảnh lỗi: {row.failedImages.join(', ')}
+              </p>
+            )}
+            {row.status === 'partial_success' && (
+              <p className="text-[10px] text-amber-700">
+                Vào Media &amp; Giá sỉ để tải lại ảnh.
               </p>
             )}
           </div>
@@ -563,7 +572,17 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
   }
 
   function patchRow(clientId: string, patch: Partial<BulkRow>) {
-    setRows((prev) => prev.map((r) => (r.clientId === clientId ? { ...r, ...patch } : r)));
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.clientId !== clientId) return r;
+        const next = { ...r, ...patch };
+        // When the user edits a field on an invalid row, reset it back to draft
+        if (r.status === 'invalid' && !('status' in patch)) {
+          next.status = 'draft';
+        }
+        return next;
+      }),
+    );
   }
 
   function handleNameChange(clientId: string, name: string) {
@@ -571,7 +590,13 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
       prev.map((r) => {
         if (r.clientId !== clientId) return r;
         const autoSlug = r.slug === '' || r.slug === slugify(r.name);
-        return { ...r, name, slug: autoSlug ? slugify(name) : r.slug };
+        return {
+          ...r,
+          name,
+          slug: autoSlug ? slugify(name) : r.slug,
+          // Reset invalid → draft when the user starts correcting the row
+          status: r.status === 'invalid' ? 'draft' : r.status,
+        };
       }),
     );
   }
@@ -628,14 +653,26 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
   async function handleSubmit() {
     if (isSubmitting) return;
 
-    // Validate all non-success rows
-    const validated = rows.map((row) =>
-      row.status === 'success' ? row : { ...row, errors: validateRow(row, rows) },
-    );
+    // Validate all non-terminal rows and set explicit `invalid` status
+    const validated = rows.map((row) => {
+      if (row.status === 'success' || row.status === 'partial_success') return row;
+      const errors = validateRow(row, rows);
+      const hasErrs = Object.keys(errors).length > 0;
+      return {
+        ...row,
+        errors,
+        status: hasErrs ? ('invalid' as RowStatus) : row.status,
+      };
+    });
     setRows(validated);
 
+    // Only process rows that are clean and haven't already produced a product
     const pending = validated.filter(
-      (r) => r.status !== 'success' && Object.keys(r.errors).length === 0,
+      (r) =>
+        r.status !== 'success' &&
+        r.status !== 'partial_success' &&
+        r.status !== 'invalid' &&
+        Object.keys(r.errors).length === 0,
     );
     if (pending.length === 0) return;
 
@@ -694,7 +731,7 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
           setRows((prev) =>
             prev.map((r) =>
               r.clientId === result.clientId
-                ? { ...r, status: 'uploading', productId: result.productId }
+                ? { ...r, status: 'uploading_images', productId: result.productId }
                 : r,
             ),
           );
@@ -721,7 +758,7 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
             prev.map((r) => {
               if (r.clientId !== result.clientId) return r;
               return failedImages.length > 0
-                ? { ...r, status: 'partial', failedImages }
+                ? { ...r, status: 'partial_success', failedImages }
                 : { ...r, status: 'success' };
             }),
           );
@@ -737,19 +774,27 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
   // --- Derived counts ---
 
   const successCount = rows.filter((r) => r.status === 'success').length;
-  const failedCount = rows.filter((r) => r.status === 'failed' || r.status === 'partial').length;
-  const invalidCount = rows.filter((r) => Object.keys(r.errors).length > 0).length;
+  const partialCount = rows.filter((r) => r.status === 'partial_success').length;
+  const failedCount = rows.filter((r) => r.status === 'failed').length;
+  const invalidCount = rows.filter(
+    (r) => r.status === 'invalid' || Object.keys(r.errors).length > 0,
+  ).length;
+  // Only rows that haven't yet produced a product and have no errors are "pending"
   const pendingCount = rows.filter(
-    (r) => r.status !== 'success' && Object.keys(r.errors).length === 0,
+    (r) =>
+      r.status !== 'success' &&
+      r.status !== 'partial_success' &&
+      r.status !== 'invalid' &&
+      Object.keys(r.errors).length === 0,
   ).length;
   const processingCount = rows.filter(
-    (r) => r.status === 'creating' || r.status === 'uploading',
+    (r) => r.status === 'creating' || r.status === 'uploading_images',
   ).length;
 
   return (
     <div className="flex flex-col gap-4">
       {/* Result summary strip */}
-      {(successCount > 0 || failedCount > 0) && (
+      {(successCount > 0 || partialCount > 0 || failedCount > 0) && (
         <div className="flex flex-wrap items-center gap-4 rounded-xl border border-[#EEF2F6] bg-[#F7F9FB] px-4 py-2.5 text-xs">
           {successCount > 0 && (
             <span className="flex items-center gap-1.5 font-semibold text-emerald-700">
@@ -757,10 +802,16 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
               {successCount} thành công
             </span>
           )}
+          {partialCount > 0 && (
+            <span className="flex items-center gap-1.5 font-semibold text-amber-700">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {partialCount} tạo được nhưng ảnh lỗi — vào Media &amp; Giá sỉ để tải lại
+            </span>
+          )}
           {failedCount > 0 && (
             <span className="flex items-center gap-1.5 font-semibold text-red-600">
               <AlertCircle className="h-3.5 w-3.5" />
-              {failedCount} thất bại — còn có thể chỉnh sửa
+              {failedCount} thất bại — có thể sửa và thử lại
             </span>
           )}
         </div>
@@ -806,7 +857,9 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
                 categories={categories}
                 disabled={isSubmitting}
                 onNameChange={(v) => handleNameChange(row.clientId, v)}
-                onFieldChange={(field, value) => patchRow(row.clientId, { [field]: value } as Partial<BulkRow>)}
+                onFieldChange={(field, value) =>
+                  patchRow(row.clientId, { [field]: value } as Partial<BulkRow>)
+                }
                 onToggleImages={() => patchRow(row.clientId, { expandImages: !row.expandImages })}
                 onAddImages={(files) => addImages(row.clientId, files)}
                 onRemoveImage={(localId) => removeImage(row.clientId, localId)}
