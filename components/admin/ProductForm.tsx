@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { AlertCircle, ImageIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AlertCircle, ImageIcon, Star, Upload, X } from 'lucide-react';
 
 import { SpecsEditor } from '@/components/admin/SpecsEditor';
 import { AdminToggle } from '@/components/admin/AdminToggle';
@@ -17,17 +17,19 @@ interface ProductFormProps {
   product?: ProductFormData;
 }
 
-type TabId = 'basic' | 'pricing' | 'specs';
+type TabId = 'basic' | 'pricing' | 'specs' | 'media';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'basic', label: 'Thông tin cơ bản' },
   { id: 'pricing', label: 'Giá & kho sỉ' },
   { id: 'specs', label: 'Thông số kỹ thuật' },
+  { id: 'media', label: 'Hình ảnh' },
 ];
 
 const fieldClass = 'admin-input text-xs';
 const selectClass = 'admin-select text-xs';
 const labelClass = 'mb-1.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#646464]';
+const MAX_IMAGES = 10;
 
 function slugify(value: string) {
   return value
@@ -61,15 +63,47 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
   const [name, setName] = useState(product?.name ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
   const [slugTouched, setSlugTouched] = useState(Boolean(product));
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imagePreviews, setImagePreviews] = useState<{ name: string; url: string; size: number }[]>([]);
+  const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
+  const availableTabs = product ? TABS.filter((tab) => tab.id !== 'media') : TABS;
   const activeCategories = categories.filter(
     (category) => category.is_active || category.id === product?.category_id,
   );
   const visibleTab = state.error ? tabForError(state.error) ?? activeTab : activeTab;
 
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    };
+  }, [imagePreviews]);
+
   const handleNameChange = (value: string) => {
     setName(value);
     if (!slugTouched) {
       setSlug(slugify(value));
+    }
+  };
+
+  const handleImagesChange = (files: FileList | null) => {
+    imagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    const selected = Array.from(files ?? []).slice(0, MAX_IMAGES);
+    setImagePreviews(
+      selected.map((file) => ({
+        name: file.name,
+        size: file.size,
+        url: URL.createObjectURL(file),
+      })),
+    );
+    setPrimaryImageIndex(0);
+  };
+
+  const clearImages = () => {
+    imagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    setImagePreviews([]);
+    setPrimaryImageIndex(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -79,7 +113,7 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
 
       {/* Sticky tab bar pinned beneath the modal header. */}
       <div className="sticky -top-5 z-10 -mx-5 -mt-5 mb-1 flex gap-1 overflow-x-auto border-b border-[#EEF2F6] bg-white/95 px-5 pt-2 backdrop-blur">
-        {TABS.map((tab) => {
+        {availableTabs.map((tab) => {
           const active = visibleTab === tab.id;
           return (
             <button
@@ -209,6 +243,89 @@ export function ProductForm({ formId, formAction, state, categories, product }: 
       <div className={visibleTab === 'specs' ? 'animate-fade-in flex-1' : 'hidden'}>
         <SpecsEditor initialSpecs={product?.specs} />
       </div>
+
+      {!product ? (
+        <div className={visibleTab === 'media' ? 'animate-fade-in flex-1 space-y-4' : 'hidden'}>
+          <input type="hidden" name="primary_image_index" value={primaryImageIndex} />
+
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-6 py-8 text-center transition hover:border-[#1B3A6B]/50 hover:bg-slate-50">
+            <Upload className="h-8 w-8 text-slate-300" />
+            <span className="text-xs font-semibold text-slate-600">Chọn nhiều ảnh sản phẩm từ máy tính</span>
+            <span className="text-[10px] font-medium text-slate-400">
+              JPG, JPEG, PNG, WebP. Tối đa 5 MB/ảnh và {MAX_IMAGES} ảnh mỗi sản phẩm.
+            </span>
+            <input
+              ref={fileInputRef}
+              name="product_images"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="sr-only"
+              onChange={(event) => handleImagesChange(event.target.files)}
+            />
+          </label>
+
+          {imagePreviews.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-bold text-slate-700">
+                  {imagePreviews.length} ảnh đã chọn. Ảnh đầu tiên mặc định là thumbnail.
+                </p>
+                <button
+                  type="button"
+                  onClick={clearImages}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Xóa ảnh đã chọn
+                </button>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {imagePreviews.map((preview, index) => {
+                  const selected = primaryImageIndex === index;
+                  return (
+                    <button
+                      key={`${preview.name}-${index}`}
+                      type="button"
+                      onClick={() => setPrimaryImageIndex(index)}
+                      className={`overflow-hidden rounded-xl border bg-white text-left transition ${
+                        selected
+                          ? 'border-[#1B3A6B] ring-2 ring-[#1B3A6B]/15'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div
+                        className="relative aspect-video bg-slate-100 bg-cover bg-center"
+                        style={{ backgroundImage: `url(${preview.url})` }}
+                      >
+                        {selected ? (
+                          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-[#1B3A6B] px-2 py-1 text-[10px] font-bold text-white shadow-sm">
+                            <Star className="h-3 w-3 fill-white" />
+                            Thumbnail
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="space-y-1 p-3">
+                        <p className="truncate text-[11px] font-bold text-slate-700" title={preview.name}>
+                          {preview.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {(preview.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[#EEF2F6] bg-slate-50/60 px-4 py-3 text-xs leading-relaxed text-slate-500">
+              Có thể bỏ qua ảnh khi tạo. Admin vẫn thêm hoặc sắp xếp ảnh sau trong mục Media & Giá sỉ.
+            </div>
+          )}
+        </div>
+      ) : null}
     </form>
   );
 }

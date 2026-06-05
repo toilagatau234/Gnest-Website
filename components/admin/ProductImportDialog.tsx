@@ -54,10 +54,7 @@ const ALL_COLUMNS = [
   'height',
   'diameter',
   'material',
-  // Product images → product_images table
-  'image_1_url',
-  'image_2_url',
-  'image_3_url',
+  // Legacy image URL fields are parsed only to warn and ignore.
   // Bulk discount tiers → product_bulk_discounts table
   'tier_1_min_quantity',
   'tier_1_price',
@@ -92,9 +89,6 @@ async function downloadTemplate() {
       height: '12cm',
       diameter: '58mm',
       material: 'Thủy tinh',
-      image_1_url: 'https://cdn.example.com/hu-thuy-tinh-500ml-1.jpg',
-      image_2_url: 'https://cdn.example.com/hu-thuy-tinh-500ml-2.jpg',
-      image_3_url: '',
       tier_1_min_quantity: 10,
       tier_1_price: 17000,
       tier_2_min_quantity: 50,
@@ -118,9 +112,6 @@ async function downloadTemplate() {
       height: '',
       diameter: '58mm',
       material: 'Thiếc',
-      image_1_url: 'https://cdn.example.com/nap-thiec-58mm.jpg',
-      image_2_url: '',
-      image_3_url: '',
       tier_1_min_quantity: 100,
       tier_1_price: 1900,
       tier_2_min_quantity: 500,
@@ -144,9 +135,6 @@ async function downloadTemplate() {
       height: '',
       diameter: '',
       material: '',
-      image_1_url: '',
-      image_2_url: '',
-      image_3_url: '',
       tier_1_min_quantity: '',
       tier_1_price: '',
       tier_2_min_quantity: '',
@@ -173,9 +161,6 @@ async function downloadTemplate() {
     ['—', 'height', 'Tùy chọn', 'products.specs.height', 'Chiều cao. VD: 12cm. Được lưu vào trường specs JSON.'],
     ['—', 'diameter', 'Tùy chọn', 'products.specs.diameter', 'Đường kính. VD: 58mm. Được lưu vào trường specs JSON.'],
     ['—', 'material', 'Tùy chọn', 'products.specs.material', 'Chất liệu. VD: Thủy tinh, Thiếc, Nhựa PP. Được lưu vào trường specs JSON.'],
-    ['—', 'image_1_url', 'Tùy chọn', 'product_images[0]', 'URL ảnh chính (https://...). Ảnh đầu tiên được đặt làm ảnh chính (is_primary=true).'],
-    ['—', 'image_2_url', 'Tùy chọn', 'product_images[1]', 'URL ảnh phụ thứ hai (https://...).'],
-    ['—', 'image_3_url', 'Tùy chọn', 'product_images[2]', 'URL ảnh phụ thứ ba (https://...).'],
     ['—', 'tier_1_min_quantity', 'Tùy chọn', 'product_bulk_discounts.min_quantity', 'Số lượng tối thiểu của bậc giá sỉ 1 (số nguyên > 0). Phải có cả tier_1_price.'],
     ['—', 'tier_1_price', 'Tùy chọn', 'product_bulk_discounts.price_per_unit', 'Giá mỗi đơn vị ở bậc sỉ 1 (số ≥ 0). Phải có cả tier_1_min_quantity.'],
     ['—', 'tier_2_min_quantity', 'Tùy chọn', 'product_bulk_discounts.min_quantity', 'Tương tự bậc 1 nhưng cho bậc 2.'],
@@ -188,7 +173,7 @@ async function downloadTemplate() {
     ['GHI CHÚ', 'Giới hạn', '', '', 'Tối đa 500 dòng dữ liệu mỗi lần import.'],
     ['GHI CHÚ', 'Không đổi tên cột', '', '', 'Tên cột trong sheet "Products Template" phải giữ nguyên (case-insensitive).'],
     ['GHI CHÚ', 'Preview bắt buộc', '', '', 'Hệ thống luôn hiển thị màn hình xem trước. Dữ liệu chỉ được lưu sau khi admin xác nhận.'],
-    ['GHI CHÚ', 'Ảnh — URL bên ngoài', '', '', 'Cột image_X_url nhận URL https://... Ảnh không được upload vào Supabase Storage khi import.'],
+    ['GHI CHÚ', 'Hình ảnh sản phẩm', '', '', 'Excel import chỉ tạo dữ liệu sản phẩm. Hình ảnh phải được thêm sau từ trang chỉnh sửa/media sản phẩm. Cột image_X_url (nếu có trong file cũ) sẽ bị bỏ qua và hiện cảnh báo.'],
     ['GHI CHÚ', 'specs JSON nâng cao', '', '', 'Có thể thêm cột "specs" với JSON object để lưu thuộc tính tuỳ ý. Sẽ được merge với unit/volume/...'],
     ['KHÔNG HỖ TRỢ', 'wholesale_price', '', '', 'Không có trong schema. Nếu có giá trị sẽ bị bỏ qua và hiển thị cảnh báo khi preview.'],
     ['KHÔNG HỖ TRỢ', 'tags', '', '', 'Chưa có trong schema. Nếu có giá trị sẽ bị bỏ qua và hiển thị cảnh báo khi preview.'],
@@ -210,9 +195,6 @@ async function downloadTemplate() {
     ['height', 'Text tự do', '12cm'],
     ['diameter', 'Text tự do', '58mm'],
     ['material', 'Text tự do', 'Thủy tinh'],
-    ['image_1_url', 'URL bắt đầu bằng https://, hoặc để trống', 'https://cdn.example.com/sp.jpg'],
-    ['image_2_url', 'URL bắt đầu bằng https://, hoặc để trống', 'https://cdn.example.com/sp2.jpg'],
-    ['image_3_url', 'URL bắt đầu bằng https://, hoặc để trống', ''],
     ['tier_N_min_quantity', 'Số nguyên > 0, hoặc để trống', '10'],
     ['tier_N_price', 'Số không âm, hoặc để trống', '17000'],
     ['', '', ''],
@@ -237,9 +219,6 @@ async function downloadTemplate() {
     { wch: 10 }, // height
     { wch: 10 }, // diameter
     { wch: 14 }, // material
-    { wch: 44 }, // image_1_url
-    { wch: 44 }, // image_2_url
-    { wch: 44 }, // image_3_url
     { wch: 20 }, // tier_1_min_quantity
     { wch: 14 }, // tier_1_price
     { wch: 20 }, // tier_2_min_quantity
@@ -249,7 +228,7 @@ async function downloadTemplate() {
     { wch: 20 }, // tier_4_min_quantity
     { wch: 14 }, // tier_4_price
   ];
-  ws['!autofilter'] = { ref: `A1:X${sampleRows.length + 1}` };
+  ws['!autofilter'] = { ref: `A1:U${sampleRows.length + 1}` };
   ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
 
   // Instructions sheet
@@ -304,6 +283,17 @@ function computeClientWarnings(rows: ImportRow[]): ImportRowWarning[] {
         value: String(tags).slice(0, 30),
         message: 'tags chưa được hỗ trợ trong schema và sẽ bị bỏ qua.',
       });
+    }
+    for (const field of ['image_1_url', 'image_2_url', 'image_3_url'] as const) {
+      const val = row[field];
+      if (val !== null && val !== undefined && val !== '') {
+        warnings.push({
+          row: row.row,
+          field,
+          value: String(val).slice(0, 60),
+          message: 'Excel import chỉ tạo dữ liệu sản phẩm. Cột ảnh bị bỏ qua — thêm ảnh sau từ trang chỉnh sửa sản phẩm.',
+        });
+      }
     }
   }
   return warnings;
@@ -419,9 +409,8 @@ function parseFile(file: File): Promise<ParsedFile> {
 // ---------------------------------------------------------------------------
 
 function countImages(row: ImportRow): number {
-  return [row.image_1_url, row.image_2_url, row.image_3_url].filter(
-    (u) => u !== null && u !== undefined && u !== '',
-  ).length;
+  void row;
+  return 0;
 }
 
 function countTiers(row: ImportRow): number {
@@ -518,7 +507,7 @@ function UploadStep({ onFile }: { onFile: (rows: ImportRow[], filename: string) 
       {/* Column guide */}
       <div className="rounded-xl border border-[#EEF2F6] bg-white p-4">
         <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">
-          Cột trong file Excel (24 cột — xem sheet &quot;Instructions&quot; trong file mẫu)
+          Cột trong file Excel (21 cột — xem sheet &quot;Instructions&quot; trong file mẫu)
         </p>
         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
           {[
@@ -850,12 +839,6 @@ function SuccessStep({
         <p className="mt-1 text-sm text-slate-500">
           Đã tạo{' '}
           <span className="font-bold text-slate-700">{result.imported}</span> sản phẩm
-          {result.image_count ? (
-            <>
-              {', '}
-              <span className="font-bold text-slate-700">{result.image_count}</span> ảnh
-            </>
-          ) : null}
           {result.tier_count ? (
             <>
               {', '}
@@ -894,7 +877,7 @@ function SuccessStep({
 
 type Step = 'upload' | 'preview';
 
-export function ProductImportDialog() {
+export function ProductImportDialog({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -979,6 +962,40 @@ export function ProductImportDialog() {
       ? 'Tạo nhiều sản phẩm cùng lúc từ file Excel hoặc CSV.'
       : 'Kiểm tra dữ liệu và lỗi trước khi nhập vào hệ thống.';
 
+  const content = (
+    <>
+      <form ref={formRef} action={formAction} className="hidden">
+        <input type="hidden" name="rows" defaultValue="" />
+      </form>
+
+      {showSuccess && (
+        <SuccessStep result={importState} onClose={closeDialog} />
+      )}
+
+      {!showSuccess && step === 'upload' && (
+        <UploadStep onFile={handleFileParsed} />
+      )}
+
+      {!showSuccess && step === 'preview' && (
+        <PreviewStep
+          filename={filename}
+          rows={rows}
+          validationResult={validationResult}
+          isValidating={isValidating}
+          importError={submitted && importState.error && !importState.errors ? importState.error : undefined}
+          isPending={isPending}
+          onBack={() => { setStep('upload'); setValidationResult(null); }}
+          onConfirm={handleConfirm}
+          onRetry={handleRetry}
+        />
+      )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="min-h-[520px]">{content}</div>;
+  }
+
   return (
     <>
       <AdminActionButton variant="secondary" icon={<FileSpreadsheet className="h-4 w-4" />} onClick={openDialog}>
@@ -993,32 +1010,7 @@ export function ProductImportDialog() {
         size="2xl"
         dismissible={!isPending}
       >
-        {/* Hidden form — submits only when user confirms */}
-        <form ref={formRef} action={formAction} className="hidden">
-          <input type="hidden" name="rows" defaultValue="" />
-        </form>
-
-        {showSuccess && (
-          <SuccessStep result={importState} onClose={closeDialog} />
-        )}
-
-        {!showSuccess && step === 'upload' && (
-          <UploadStep onFile={handleFileParsed} />
-        )}
-
-        {!showSuccess && step === 'preview' && (
-          <PreviewStep
-            filename={filename}
-            rows={rows}
-            validationResult={validationResult}
-            isValidating={isValidating}
-            importError={submitted && importState.error && !importState.errors ? importState.error : undefined}
-            isPending={isPending}
-            onBack={() => { setStep('upload'); setValidationResult(null); }}
-            onConfirm={handleConfirm}
-            onRetry={handleRetry}
-          />
-        )}
+        {content}
       </AdminModal>
     </>
   );
