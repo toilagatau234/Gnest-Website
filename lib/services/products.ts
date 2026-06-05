@@ -7,18 +7,35 @@ export type ProductImage = Tables<'product_images'>;
 export type ProductBulkDiscount = Tables<'product_bulk_discounts'>;
 export type Product = Tables<'products'>;
 
-export type ProductWithDetails = Product & {
-  categories: Tables<'categories'> | null;
-  product_images: ProductImage[];
-  product_bulk_discounts: ProductBulkDiscount[];
+export type ProductWithDetails = Pick<
+  Product,
+  'id' | 'name' | 'slug' | 'description' | 'price' | 'stock' | 'category_id' | 'specs'
+> & {
+  product_images: Pick<ProductImage, 'public_url' | 'sort_order' | 'is_primary' | 'is_active'>[];
+  product_bulk_discounts: Pick<ProductBulkDiscount, 'min_quantity' | 'price_per_unit' | 'is_active'>[];
 };
 
 const productSelect = `
-  *,
-  categories (*),
-  product_images (*),
-  product_bulk_discounts (*)
-`;
+  id,
+  name,
+  slug,
+  description,
+  price,
+  stock,
+  specs,
+  category_id,
+  product_images (
+    public_url,
+    sort_order,
+    is_primary,
+    is_active
+  ),
+  product_bulk_discounts (
+    min_quantity,
+    price_per_unit,
+    is_active
+  )
+` as const;
 
 function isSupabaseConfigured() {
   return !!(
@@ -71,65 +88,3 @@ export async function getProducts() {
   });
 }
 
-export async function getProductsByCategorySlug(categorySlug: string) {
-  const supabase = getSupabase();
-  const visibleCategoryIds = await getVisibleCategorySet();
-
-  // 1. Query category by slug first
-  const { data: categoryData, error: catError } = await supabase
-    .from('categories')
-    .select('id')
-    .eq('slug', categorySlug)
-    .eq('is_active', true)
-    .maybeSingle();
-
-  if (catError) {
-    throw new Error(`Failed to load category "${categorySlug}": ${catError.message}`);
-  }
-
-  if (!categoryData) {
-    return [];
-  }
-
-  if (!visibleCategoryIds.has(categoryData.id)) {
-    return [];
-  }
-
-  // 2. Query products by category_id
-  const { data, error } = await supabase
-    .from('products')
-    .select(productSelect)
-    .eq('is_active', true)
-    .eq('category_id', categoryData.id)
-    .order('created_at', { ascending: false })
-    .returns<ProductWithDetails[]>();
-
-  if (error) {
-    throw new Error(`Failed to load products for category "${categorySlug}": ${error.message}`);
-  }
-
-  return data ?? [];
-}
-
-export async function getProductBySlug(slug: string) {
-  const supabase = getSupabase();
-  const visibleCategoryIds = await getVisibleCategorySet();
-
-  const { data, error } = await supabase
-    .from('products')
-    .select(productSelect)
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .maybeSingle()
-    .returns<ProductWithDetails | null>();
-
-  if (error) {
-    throw new Error(`Failed to load product "${slug}": ${error.message}`);
-  }
-
-  if (data?.category_id && !visibleCategoryIds.has(data.category_id)) {
-    return null;
-  }
-
-  return data;
-}

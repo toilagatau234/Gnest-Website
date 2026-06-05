@@ -229,15 +229,15 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
             <table className="min-w-[1100px] w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="p-4 w-16">Ảnh</th>
-                  <th className="p-4">Sản phẩm</th>
-                  <th className="p-4">Danh mục</th>
-                  <th className="p-4">Giá niêm yết</th>
-                  <th className="p-4">Tồn kho</th>
-                  <th className="p-4">Media</th>
-                  <th className="p-4">Trạng thái</th>
-                  <th className="p-4">Cập nhật</th>
-                  <th className="p-4 text-right">Thao tác</th>
+                  <th className="p-4 w-16 shrink-0">Ảnh</th>
+                  <th className="p-4 min-w-[180px]">Sản phẩm</th>
+                  <th className="p-4 whitespace-nowrap">Danh mục</th>
+                  <th className="p-4 whitespace-nowrap">Giá niêm yết</th>
+                  <th className="p-4 whitespace-nowrap">Tồn kho</th>
+                  <th className="p-4 whitespace-nowrap">Media</th>
+                  <th className="p-4 whitespace-nowrap">Trạng thái</th>
+                  <th className="p-4 whitespace-nowrap">Cập nhật</th>
+                  <th className="p-4 whitespace-nowrap text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
@@ -270,10 +270,10 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
                         )}
                       </td>
 
-                      <td className="p-4">
+                      <td className="p-4 max-w-[240px]">
                         <div className="space-y-1">
-                          <p className="text-[13px] font-bold text-slate-800">{item.name}</p>
-                          <p className="font-mono text-[10px] text-slate-400">/{item.slug}</p>
+                          <p className="line-clamp-2 text-[13px] font-bold text-slate-800">{item.name}</p>
+                          <p className="max-w-[210px] truncate font-mono text-[10px] text-slate-400">/{item.slug}</p>
                           <div className="flex flex-wrap gap-1.5 pt-1">
                             {imageCount === 0 ? (
                               <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-700">
@@ -289,11 +289,11 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
                         </div>
                       </td>
 
-                      <td className="p-4 font-medium text-slate-600">
+                      <td className="p-4 whitespace-nowrap font-medium text-slate-600">
                         {item.categories?.name ?? getCategoryName(categoryNameById, item.category_id)}
                       </td>
 
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         {item.price !== null ? (
                           <span className="font-semibold text-slate-800">
                             {item.price.toLocaleString('vi-VN')} đ
@@ -303,7 +303,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
                         )}
                       </td>
 
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         <div className="space-y-1">
                           <p className="font-mono font-bold text-slate-700">
                             {item.stock.toLocaleString('vi-VN')}
@@ -321,7 +321,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
                         </div>
                       </td>
 
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         <div className="space-y-1">
                           <span
                             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
@@ -341,7 +341,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
                         </div>
                       </td>
 
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         <span
                           className={`inline-block rounded-md border px-2.5 py-0.5 text-[10px] font-bold ${
                             item.is_active
@@ -353,11 +353,11 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
                         </span>
                       </td>
 
-                      <td className="p-4 font-mono text-[10px] text-slate-400">
+                      <td className="p-4 whitespace-nowrap font-mono text-[10px] text-slate-400">
                         <FormattedDate date={item.updated_at} type="date" />
                       </td>
 
-                      <td className="p-4 text-right">
+                      <td className="p-4 whitespace-nowrap text-right">
                         <ProductRowActions categories={categories} product={item} />
                       </td>
                     </tr>
