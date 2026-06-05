@@ -168,44 +168,6 @@ export async function getActivePublicProductQuoteContextById(
   };
 }
 
-export async function getPublicProductsByCategorySlug(
-  categorySlug: string
-): Promise<PublicProductDetail[]> {
-  const supabase = await createClient();
-  const visibleCategoryIds = await getVisibleCategorySet();
-
-  const { data: category, error: catError } = await supabase
-    .from('categories')
-    .select('id')
-    .eq('slug', categorySlug)
-    .eq('is_active', true)
-    .maybeSingle();
-
-  if (catError) {
-    throw new Error(`Failed to load category "${categorySlug}": ${catError.message}`);
-  }
-
-  if (!category) return [];
-  if (!visibleCategoryIds.has(category.id)) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from('products')
-    .select(publicProductSelect)
-    .eq('is_active', true)
-    .eq('category_id', category.id)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    throw new Error(`Failed to load products for category "${categorySlug}": ${error.message}`);
-  }
-
-  return (data as unknown as RawPublicProduct[])
-    .filter((product) => !product.categories?.id || visibleCategoryIds.has(product.categories.id))
-    .map(toPublicProductDetail);
-}
-
 export type PublicProductCard = {
   id: string;
   name: string;
@@ -248,6 +210,9 @@ export async function getPublicProductsPage({
   pageSize: number;
   filters?: Record<string, string[]>;
 }): Promise<PublicProductListResult> {
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.min(48, Math.max(1, pageSize));
+
   const supabase = await createClient();
   const visibleCategoryIds = await getVisibleCategorySet();
 
@@ -262,7 +227,7 @@ export async function getPublicProductsPage({
       .maybeSingle();
 
     if (!category || !visibleCategoryIds.has(category.id)) {
-      return { items: [], page, pageSize, total: 0, pageCount: 0, hasNextPage: false };
+      return { items: [], page: safePage, pageSize: safePageSize, total: 0, pageCount: 0, hasNextPage: false };
     }
 
     // Include child categories if the category is a parent
@@ -286,7 +251,7 @@ export async function getPublicProductsPage({
 
   // If no visible categories are in target, return empty
   if (targetCategoryIds.length === 0) {
-    return { items: [], page, pageSize, total: 0, pageCount: 0, hasNextPage: false };
+    return { items: [], page: safePage, pageSize: safePageSize, total: 0, pageCount: 0, hasNextPage: false };
   }
 
   // Start building query on products table
@@ -297,10 +262,13 @@ export async function getPublicProductsPage({
     .in('category_id', targetCategoryIds);
 
   // Apply specs filters
-  if (filters) {
+  if (filters && typeof filters === 'object') {
     Object.entries(filters).forEach(([key, values]) => {
-      if (values && values.length > 0) {
-        query = query.in(`specs->>${key}`, values);
+      if (Array.isArray(values)) {
+        const cleanValues = values.filter((v) => typeof v === 'string' && v.trim() !== '');
+        if (cleanValues.length > 0) {
+          query = query.in(`specs->>${key}`, cleanValues);
+        }
       }
     });
   }
@@ -311,8 +279,8 @@ export async function getPublicProductsPage({
     .order('id', { ascending: false });
 
   // Calculate range
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
+  const from = (safePage - 1) * safePageSize;
+  const to = from + safePageSize - 1;
   query = query.range(from, to);
 
   const { data, count, error } = await query;
@@ -323,11 +291,11 @@ export async function getPublicProductsPage({
 
   const products = data ?? [];
   const total = count ?? 0;
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const hasNextPage = page < pageCount;
+  const pageCount = Math.max(1, Math.ceil(total / safePageSize));
+  const hasNextPage = safePage < pageCount;
 
   if (products.length === 0) {
-    return { items: [], page, pageSize, total, pageCount, hasNextPage };
+    return { items: [], page: safePage, pageSize: safePageSize, total, pageCount, hasNextPage };
   }
 
   const productIds = products.map((p) => p.id);
@@ -407,8 +375,8 @@ export async function getPublicProductsPage({
 
   return {
     items,
-    page,
-    pageSize,
+    page: safePage,
+    pageSize: safePageSize,
     total,
     pageCount,
     hasNextPage,
@@ -419,7 +387,10 @@ export async function searchPublicProducts(
   queryText: string,
   limit: number = 5
 ): Promise<PublicProductCard[]> {
-  if (!queryText || queryText.trim().length < 2) return [];
+  const trimmedQuery = (queryText ?? '').trim();
+  if (trimmedQuery.length < 2) return [];
+
+  const safeLimit = Math.min(10, Math.max(1, limit));
 
   const supabase = await createClient();
   const visibleCategoryIds = await getVisibleCategorySet();
@@ -429,8 +400,8 @@ export async function searchPublicProducts(
     .from('products')
     .select('id, name, slug, price, stock, category_id, specs')
     .eq('is_active', true)
-    .ilike('name', `%${queryText}%`)
-    .limit(limit);
+    .ilike('name', `%${trimmedQuery}%`)
+    .limit(safeLimit);
 
   if (error) {
     throw new Error(`Failed to search products: ${error.message}`);
