@@ -7,9 +7,13 @@ import { ScrollReveal } from '@/components/ScrollReveal';
 import { StaffSection } from '@/components/StaffSection';
 import { WhyUsSection } from '@/components/WhyUsSection';
 import { getPublicSiteContents } from '@/lib/services/site-content';
+import { getHomepageProducts } from '@/lib/services/public-products';
 
 export default async function Home() {
-  const siteContents = await getPublicSiteContents();
+  const [siteContents, overviewProducts] = await Promise.all([
+    getPublicSiteContents(),
+    getHomepageProducts(),
+  ]);
 
   return (
     <>
@@ -24,7 +28,7 @@ export default async function Home() {
       </ScrollReveal>
 
       <ScrollReveal direction="up" delay={0.1}>
-        <ProductsRender />
+        <ProductsRender overviewProducts={overviewProducts} />
       </ScrollReveal>
 
       <ScrollReveal direction="up" delay={0.1}>

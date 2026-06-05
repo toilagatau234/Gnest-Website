@@ -1,11 +1,13 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Minus, Phone, Plus, X } from 'lucide-react';
 
 import { getDiscountedPrice } from '@/lib/cart-context';
 import { useModal } from '@/lib/context';
+import { getPublicProductBySlugAction } from '@/app/actions/public-products';
+import { CatalogItem } from '@/lib/data';
 
 export function ProductModal() {
   const {
@@ -43,16 +45,85 @@ function ProductModalContent({
   closeProductDetail: () => void;
   openContactModal: () => void;
 }) {
+  const [detailedProduct, setDetailedProduct] = useState<CatalogItem | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [mainImgIdx, setMainImgIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  const imgs = activeProduct.imgs?.length ? activeProduct.imgs : activeProduct.img ? [activeProduct.img] : [];
-  const mainImg = imgs[mainImgIdx];
-  const unitPrice = activeProduct.price ? getDiscountedPrice(activeProduct, quantity) : undefined;
-  const retailPrice = activeProduct.price;
+  // Reset states during render when the active product changes
+  const [prevProductId, setPrevProductId] = useState<string | undefined>(undefined);
+  if (activeProduct.id !== prevProductId) {
+    setPrevProductId(activeProduct.id);
+    setDetailedProduct(null);
+    setMainImgIdx(0);
+    setQuantity(1);
+  }
+
+  useEffect(() => {
+    if (!activeProduct.id) return;
+
+    // Check if the product is a lightweight card.
+    // Lightweight cards from pagination or search don't have descriptions, full bulkDiscounts tiers, or multiple images.
+    // So if description is missing, or bulkDiscounts is missing, or imgs is missing/empty, load it.
+    const isLightweight =
+      activeProduct.desc === undefined ||
+      activeProduct.desc === '' ||
+      activeProduct.bulkDiscounts === undefined ||
+      activeProduct.imgs === undefined;
+
+    if (!isLightweight) return;
+
+    let isCurrent = true;
+    Promise.resolve().then(() => {
+      if (isCurrent) setIsLoading(true);
+    });
+
+    getPublicProductBySlugAction(activeProduct.id)
+      .then((detail) => {
+        if (!isCurrent || !detail) return;
+        const mapped: CatalogItem = {
+          id: detail.slug,
+          name: detail.name,
+          img: (detail.images && detail.images[0]?.public_url) || '/placeholder.svg',
+          imgs: detail.images.map((img) => img.public_url).filter((url): url is string => !!url),
+          dungTich: detail.specs.dungTich ? String(detail.specs.dungTich) : undefined,
+          quyCach: detail.specs.quyCach ? String(detail.specs.quyCach) : undefined,
+          phiNap: detail.specs.phiNap ? String(detail.specs.phiNap) : undefined,
+          loaiNap: detail.specs.loaiNap ? String(detail.specs.loaiNap) : undefined,
+          color: detail.specs.color ? String(detail.specs.color) : undefined,
+          desc: detail.description || '',
+          price: detail.price ?? undefined,
+          stock: detail.stock,
+          bulkDiscounts: detail.bulkDiscounts.map((d) => ({
+            threshold: d.min_quantity,
+            pricePerUnit: d.price_per_unit,
+          })),
+          categoryId: detail.category?.slug || '',
+        };
+        setDetailedProduct(mapped);
+      })
+      .catch((err) => {
+        console.error('Failed to load product details in modal:', err);
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeProduct.id, activeProduct.desc, activeProduct.bulkDiscounts, activeProduct.imgs]);
+
+  const displayProduct = detailedProduct || activeProduct;
+  const imgs = displayProduct.imgs?.length ? displayProduct.imgs : displayProduct.img ? [displayProduct.img] : [];
+  const mainImg = imgs[mainImgIdx] || imgs[0];
+  const unitPrice = displayProduct.price ? getDiscountedPrice(displayProduct, quantity) : undefined;
+  const retailPrice = displayProduct.price;
   const bestWholesale =
-    activeProduct.bulkDiscounts && activeProduct.bulkDiscounts.length > 0
-      ? Math.min(...activeProduct.bulkDiscounts.map((discount) => discount.pricePerUnit))
+    displayProduct.bulkDiscounts && displayProduct.bulkDiscounts.length > 0
+      ? Math.min(...displayProduct.bulkDiscounts.map((discount) => discount.pricePerUnit))
       : null;
   const maxSavingsPercent =
     retailPrice && bestWholesale ? Math.round(((retailPrice - bestWholesale) / retailPrice) * 100) : 0;
@@ -89,7 +160,7 @@ function ProductModalContent({
               <div className="relative w-full h-[220px] md:h-auto md:aspect-square rounded bg-white border border-dtl-border">
                 <Image
                   src={mainImg}
-                  alt={activeProduct.name}
+                  alt={displayProduct.name}
                   fill
                   sizes="(max-width: 768px) 100vw, 380px"
                   className="object-contain p-2.5"
@@ -115,7 +186,7 @@ function ProductModalContent({
                     <div className="relative w-full h-full">
                       <Image
                         src={src}
-                        alt={`${activeProduct.name} ${idx + 1}`}
+                        alt={`${displayProduct.name} ${idx + 1}`}
                         fill
                         sizes="58px"
                         className="object-contain"
@@ -129,31 +200,38 @@ function ProductModalContent({
 
           <div className="flex-1 md:overflow-y-auto p-4 md:p-5 md:px-6">
             <h2 className="text-[15px] md:text-[17px] font-extrabold text-dtl-dark mb-1.5 leading-[1.3]">
-              {activeProduct.name}
+              {displayProduct.name}
             </h2>
 
-            {activeProduct.stock !== undefined && (
+            {displayProduct.stock !== undefined && (
               <div className="mb-3 flex flex-wrap gap-1.5">
-                {activeProduct.stock === 0 ? (
+                {displayProduct.stock === 0 ? (
                   <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 text-[11px] font-black px-2.5 py-1 rounded-full border border-red-100">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
                     Hết hàng (tạm ngưng nhận đơn)
                   </span>
-                ) : activeProduct.stock <= 15 ? (
+                ) : displayProduct.stock <= 15 ? (
                   <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 text-[11px] font-black px-2.5 py-1 rounded-full border border-amber-100">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
-                    Sắp hết hàng (chỉ còn {activeProduct.stock} sản phẩm)
+                    Sắp hết hàng (chỉ còn {displayProduct.stock} sản phẩm)
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-[11px] font-black px-2.5 py-1 rounded-full border border-emerald-100">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    Sẵn hàng trong kho ({activeProduct.stock} sản phẩm)
+                    Sẵn hàng trong kho ({displayProduct.stock} sản phẩm)
                   </span>
                 )}
               </div>
             )}
 
-            {activeProduct.price && (
+            {isLoading && (
+              <div className="mb-4.5 flex items-center gap-2 text-xs font-semibold text-dtl-navy bg-dtl-bg-alt/50 border border-dtl-border/60 p-2.5 rounded-lg animate-pulse">
+                <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-dtl-red rounded-full animate-spin"></div>
+                <span>Đang tải thông tin chi tiết và giá sỉ mới nhất...</span>
+              </div>
+            )}
+
+            {displayProduct.price && (
               <div className="mb-4 bg-dtl-bg-alt/50 p-4 rounded-lg border border-dtl-border">
                 {maxSavingsPercent > 0 && (
                   <div className="mb-3.5 flex items-center gap-2 bg-gradient-to-r from-orange-500 to-dtl-red text-white text-[11px] font-extrabold px-3 py-1.5 rounded-lg shadow-sm">
@@ -169,19 +247,19 @@ function ProductModalContent({
                   <span className="text-sm text-dtl-gray font-medium pb-1">/ theo đơn vị tính</span>
                 </div>
 
-                {activeProduct.bulkDiscounts && activeProduct.bulkDiscounts.length > 0 && (
+                {displayProduct.bulkDiscounts && displayProduct.bulkDiscounts.length > 0 && (
                   <div className="mt-4">
                     <h5 className="text-[11px] font-extrabold text-dtl-navy mb-2.5 uppercase tracking-wider flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 bg-dtl-red rounded-full animate-ping"></span>
                       Bảng chiết khấu giá sỉ tốt nhất
                     </h5>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                      {[{ threshold: 1, pricePerUnit: activeProduct.price }, ...activeProduct.bulkDiscounts].map(
+                      {[{ threshold: 1, pricePerUnit: displayProduct.price }, ...displayProduct.bulkDiscounts].map(
                         (tier, idx) => {
                           const isSelected =
                             quantity >= tier.threshold &&
-                            (idx === activeProduct.bulkDiscounts!.length ||
-                              quantity < activeProduct.bulkDiscounts![idx].threshold);
+                            (idx === displayProduct.bulkDiscounts!.length ||
+                              quantity < displayProduct.bulkDiscounts![idx].threshold);
 
                           return (
                             <button
@@ -230,7 +308,7 @@ function ProductModalContent({
             {activeProductCategory.filterDefs && (
               <div className="border border-dtl-border rounded-[5px] overflow-hidden mb-4">
                 {activeProductCategory.filterDefs.map((def) => {
-                  const val = activeProduct[def.key as keyof typeof activeProduct];
+                  const val = displayProduct[def.key as keyof typeof displayProduct];
                   if (!val) return null;
 
                   return (
@@ -252,9 +330,9 @@ function ProductModalContent({
                 <div className="text-[13px] font-bold text-dtl-dark">Số lượng:</div>
                 <div className="flex items-center border border-dtl-border rounded-lg bg-white overflow-hidden">
                   <button
-                    disabled={activeProduct.stock === 0}
+                    disabled={displayProduct.stock === 0}
                     onClick={() => {
-                      if (activeProduct.stock === 0) return;
+                      if (displayProduct.stock === 0) return;
                       setQuantity(Math.max(1, quantity - 1));
                     }}
                     className="w-8 h-8 flex items-center justify-center text-dtl-gray hover:text-dtl-navy hover:bg-dtl-bg-alt transition-colors"
@@ -265,12 +343,12 @@ function ProductModalContent({
                     type="number"
                     min="1"
                     value={quantity}
-                    disabled={activeProduct.stock === 0}
+                    disabled={displayProduct.stock === 0}
                     onChange={(e) => {
-                      if (activeProduct.stock === 0) return;
+                      if (displayProduct.stock === 0) return;
                       let val = parseInt(e.target.value, 10) || 1;
-                      if (activeProduct.stock !== undefined) {
-                        val = Math.min(activeProduct.stock, val);
+                      if (displayProduct.stock !== undefined) {
+                        val = Math.min(displayProduct.stock, val);
                       }
                       setQuantity(Math.max(1, val));
                     }}
@@ -278,12 +356,12 @@ function ProductModalContent({
                   />
                   <button
                     disabled={
-                      activeProduct.stock === 0 ||
-                      (activeProduct.stock !== undefined && quantity >= activeProduct.stock)
+                      displayProduct.stock === 0 ||
+                      (displayProduct.stock !== undefined && quantity >= displayProduct.stock)
                     }
                     onClick={() => {
-                      if (activeProduct.stock === 0) return;
-                      if (activeProduct.stock !== undefined && quantity >= activeProduct.stock) return;
+                      if (displayProduct.stock === 0) return;
+                      if (displayProduct.stock !== undefined && quantity >= displayProduct.stock) return;
                       setQuantity(quantity + 1);
                     }}
                     className="w-8 h-8 flex items-center justify-center text-dtl-gray hover:text-dtl-navy hover:bg-dtl-bg-alt transition-colors"
@@ -307,10 +385,10 @@ function ProductModalContent({
               </div>
             </div>
 
-            {activeProduct.desc && (
+            {displayProduct.desc && (
               <div
                 className="text-[13px] text-dtl-dark leading-[1.75]"
-                dangerouslySetInnerHTML={{ __html: activeProduct.desc }}
+                dangerouslySetInnerHTML={{ __html: displayProduct.desc }}
               />
             )}
           </div>

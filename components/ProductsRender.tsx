@@ -6,8 +6,14 @@ import Link from 'next/link';
 import { LazyProductImageDisplay } from './LazyProductImageDisplay';
 import { useCategories } from '@/lib/categories-context';
 import { Interactive3DTilt } from './Interactive3DTilt';
+import { CatalogItem } from '@/lib/data';
+import { PublicProductCard } from '@/lib/services/public-products';
 
-export function ProductsRender() {
+interface ProductsRenderProps {
+  overviewProducts?: Record<string, PublicProductCard[]>;
+}
+
+export function ProductsRender({ overviewProducts }: ProductsRenderProps = {}) {
   const { openProductDetail, openContactModal } = useModal();
   const { catalog, categories, loading } = useCategories();
 
@@ -33,8 +39,27 @@ export function ProductsRender() {
         const cat = catalog[dbCat.id];
         if (!cat) return null;
         
-        // Only show first 4 items in overview
-        const overviewItems = cat.items.slice(0, 4);
+        const itemsFromOverview = overviewProducts?.[dbCat.id] || [];
+        const overviewItems: CatalogItem[] = itemsFromOverview.length > 0
+          ? itemsFromOverview.map(card => ({
+              id: card.slug,
+              name: card.name,
+              img: card.thumbnailUrl || '/placeholder.svg',
+              imgs: card.thumbnailUrl ? [card.thumbnailUrl] : [],
+              price: card.price ?? undefined,
+              stock: card.stock,
+              categoryId: dbCat.id,
+              dungTich: card.specs.dungTich,
+              quyCach: card.specs.quyCach,
+              phiNap: card.specs.phiNap,
+              loaiNap: card.specs.loaiNap,
+              color: card.specs.color,
+              bulkDiscounts: card.hasActiveBulkDiscount && card.minBulkPrice ? [
+                { threshold: 10, pricePerUnit: card.minBulkPrice }
+              ] : undefined
+            }))
+          : (cat.items || []).slice(0, 4);
+          
         const isAlt = index % 2 !== 0;
 
         return (

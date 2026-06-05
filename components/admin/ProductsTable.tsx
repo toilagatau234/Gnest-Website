@@ -272,8 +272,8 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
 
                       <td className="p-4 max-w-[240px]">
                         <div className="space-y-1">
-                          <p className="line-clamp-2 text-[13px] font-bold text-slate-800">{item.name}</p>
-                          <p className="max-w-[210px] truncate font-mono text-[10px] text-slate-400">/{item.slug}</p>
+                          <p className="line-clamp-2 text-[13px] font-bold text-slate-800" title={item.name}>{item.name}</p>
+                          <p className="max-w-[210px] truncate font-mono text-[10px] text-slate-400" title={`/${item.slug}`}>/{item.slug}</p>
                           <div className="flex flex-wrap gap-1.5 pt-1">
                             {imageCount === 0 ? (
                               <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-700">
@@ -289,7 +289,10 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
                         </div>
                       </td>
 
-                      <td className="p-4 whitespace-nowrap font-medium text-slate-600">
+                      <td 
+                        className="p-4 max-w-[150px] truncate font-medium text-slate-600"
+                        title={item.categories?.name ?? getCategoryName(categoryNameById, item.category_id)}
+                      >
                         {item.categories?.name ?? getCategoryName(categoryNameById, item.category_id)}
                       </td>
 

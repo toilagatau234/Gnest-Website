@@ -11,7 +11,6 @@ import {
   getCatalogFromCategories,
 } from './data';
 import { getCategories } from './services/categories';
-import { getProducts } from './services/products';
 
 interface CategoriesContextType {
   categories: DbCategory[];
@@ -45,7 +44,6 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
       try {
         setLoading(true);
         const dbCats = await getCategories();
-        const dbProds = await getProducts();
 
         // 1. Map Categories
         const mappedCategories: DbCategory[] = dbCats.map((c) => {
@@ -62,48 +60,8 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
           };
         });
 
-        // 2. Map Products
-        const mappedItems: CatalogItem[] = dbProds.map((p) => {
-          const cat = p.category_id ? dbCats.find((c) => c.id === p.category_id) : null;
-          const categorySlug = cat ? cat.slug : '';
-
-          const specsObj = p.specs && typeof p.specs === 'object' ? (p.specs as Record<string, any>) : {};
-
-          const activeImages = (p.product_images || [])
-            .filter((img) => img.is_active)
-            .sort((a, b) => a.sort_order - b.sort_order);
-          const imageUrls = activeImages.map((img) => img.public_url).filter(Boolean) as string[];
-          const primaryImg = activeImages.find((img) => img.is_primary) || activeImages[0];
-          const primaryImageUrl = primaryImg ? primaryImg.public_url : '/placeholder.svg';
-
-          const bulkDiscountsList = (p.product_bulk_discounts || [])
-            .filter((d) => d.is_active)
-            .sort((a, b) => a.min_quantity - b.min_quantity)
-            .map((d) => ({
-              threshold: d.min_quantity,
-              pricePerUnit: d.price_per_unit,
-            }));
-
-          return {
-            id: p.slug,
-            name: p.name,
-            img: primaryImageUrl || null,
-            imgs: imageUrls.length > 0 ? imageUrls : undefined,
-            dungTich: specsObj.dungTich ? String(specsObj.dungTich) : undefined,
-            quyCach: specsObj.quyCach ? String(specsObj.quyCach) : undefined,
-            phiNap: specsObj.phiNap ? String(specsObj.phiNap) : undefined,
-            loaiNap: specsObj.loaiNap ? String(specsObj.loaiNap) : undefined,
-            color: specsObj.color ? String(specsObj.color) : undefined,
-            desc: p.description || '',
-            price: p.price ?? undefined,
-            stock: p.stock ?? 0,
-            bulkDiscounts: bulkDiscountsList.length > 0 ? bulkDiscountsList : undefined,
-            categoryId: categorySlug,
-          };
-        });
-
         setCategories(mappedCategories);
-        setCatalog(getCatalogFromCategories(mappedCategories, mappedItems));
+        setCatalog(getCatalogFromCategories(mappedCategories, []));
         setIsDbHealthy(true);
       } catch (err) {
         console.warn('Failed to load categories/products from Supabase. Falling back to default data.', err);

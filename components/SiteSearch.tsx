@@ -6,6 +6,7 @@ import { Search, X, Package } from 'lucide-react';
 import { CatalogCategory, CatalogItem } from '@/lib/data';
 import { useModal } from '@/lib/context';
 import { useCategories } from '@/lib/categories-context';
+import { searchPublicProductsAction } from '@/app/actions/public-products';
 
 interface SearchResult {
   product: CatalogItem;
@@ -34,36 +35,64 @@ export function SiteSearch() {
 
   useEffect(() => {
     if (debouncedQuery.trim().length < 2) {
-      const timer = setTimeout(() => {
-        setResults([]);
-        setIsSearching(false);
-      }, 0);
-      return () => clearTimeout(timer);
+      return;
     }
 
-    const searchTerm = debouncedQuery.toLowerCase();
-    const newResults: SearchResult[] = [];
-
-    // Search across all categories
-    Object.entries(catalog).forEach(([slug, category]) => {
-      category.items.forEach(item => {
-        if (item.name.toLowerCase().includes(searchTerm)) {
-          newResults.push({
-            product: item,
-            category,
-            categorySlug: slug
-          });
-        }
-      });
+    let isCurrent = true;
+    Promise.resolve().then(() => {
+      if (isCurrent) setIsSearching(true);
     });
 
-    // Simulate a brief API fetch duration so the visual transition feels robust and polished
-    const timer = setTimeout(() => {
-      setResults(newResults);
-      setIsSearching(false);
-    }, 200);
+    searchPublicProductsAction(debouncedQuery)
+      .then((cards) => {
+        if (!isCurrent) return;
 
-    return () => clearTimeout(timer);
+        const mappedResults: SearchResult[] = cards.map((c) => {
+          const catSlug = c.category_slug || '';
+          const category = catalog[catSlug] || {
+            title: c.category_name || '',
+            type: 'product',
+            hasFilters: false,
+            items: [],
+          };
+
+          return {
+            product: {
+              id: c.slug,
+              name: c.name,
+              img: c.thumbnailUrl || '/placeholder.svg',
+              imgs: c.thumbnailUrl ? [c.thumbnailUrl] : undefined,
+              price: c.price ?? undefined,
+              stock: c.stock,
+              categoryId: catSlug,
+              dungTich: c.specs.dungTich,
+              quyCach: c.specs.quyCach,
+              phiNap: c.specs.phiNap,
+              loaiNap: c.specs.loaiNap,
+              color: c.specs.color,
+              bulkDiscounts: c.hasActiveBulkDiscount && c.minBulkPrice ? [
+                { threshold: 10, pricePerUnit: c.minBulkPrice }
+              ] : undefined
+            },
+            category,
+            categorySlug: catSlug,
+          };
+        });
+
+        setResults(mappedResults);
+      })
+      .catch((err) => {
+        console.error('Search query failed:', err);
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsSearching(false);
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
   }, [debouncedQuery, catalog]);
 
   // Close search when clicking outside
@@ -99,6 +128,7 @@ export function SiteSearch() {
   const handleClose = () => {
     setIsOpen(false);
     setQuery('');
+    setResults([]);
   };
 
   const handleResultClick = (result: SearchResult) => {
@@ -130,6 +160,7 @@ export function SiteSearch() {
                 setIsSearching(true);
               } else {
                 setIsSearching(false);
+                setResults([]);
               }
             }}
             placeholder="Tìm theo tên..."

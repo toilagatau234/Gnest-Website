@@ -134,12 +134,37 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
   const { page = 1, pageSize = 30, q, categoryId, status, stock, price } = params;
   const safePage = Math.max(1, page);
   const safePageSize = Math.min(100, Math.max(1, pageSize));
-  const from = (safePage - 1) * safePageSize;
-  const to = from + safePageSize - 1;
 
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
+
+    // --- Phase 0: Fetch total count first to enable out-of-range page clamping ---
+    let countQuery = supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true });
+
+    if (q) countQuery = countQuery.or(`name.ilike.%${q}%,slug.ilike.%${q}%`);
+    if (categoryId && categoryId !== 'all') countQuery = countQuery.eq('category_id', categoryId);
+    if (status === 'active') countQuery = countQuery.eq('is_active', true);
+    else if (status === 'hidden') countQuery = countQuery.eq('is_active', false);
+    if (stock === 'out_of_stock') countQuery = countQuery.eq('stock', 0);
+    else if (stock === 'in_stock') countQuery = countQuery.gt('stock', 0);
+    else if (stock === 'low_stock') countQuery = countQuery.gt('stock', 0).lte('stock', 5);
+    if (price === 'fixed') countQuery = countQuery.not('price', 'is', null);
+    else if (price === 'contact') countQuery = countQuery.is('price', null);
+
+    const { count: countTotal, error: countError } = await countQuery;
+    if (countError) {
+      return { data: [], total: 0, page: safePage, pageSize: safePageSize, pageCount: 0, error: countError.message };
+    }
+
+    const total = countTotal ?? 0;
+    const pageCount = Math.max(1, Math.ceil(total / safePageSize));
+    const clampedPage = safePage > pageCount ? pageCount : safePage;
+
+    const from = (clampedPage - 1) * safePageSize;
+    const to = from + safePageSize - 1;
 
     // --- Phase 1: slim base query — no description, specs, or nested arrays ---
     const t0 = SHOULD_LOG_TIMINGS ? Date.now() : 0;
@@ -148,7 +173,6 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
       .from('products')
       .select(
         'id, name, slug, category_id, price, stock, is_active, updated_at, created_at, categories(id, name, slug)',
-        { count: 'exact' },
       )
       .order('created_at', { ascending: false })
       .range(from, to);
@@ -163,13 +187,12 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
     if (price === 'fixed') query = query.not('price', 'is', null);
     else if (price === 'contact') query = query.is('price', null);
 
-    const { data: baseRows, count, error } = await query.returns<ProductBaseRow[]>();
+    const { data: baseRows, error } = await query.returns<ProductBaseRow[]>();
 
-    if (t0) console.log(`[admin-timing] getAdminProductsPage base: ${Date.now() - t0}ms (page=${safePage}, size=${safePageSize})`);
+    if (t0) console.log(`[admin-timing] getAdminProductsPage base: ${Date.now() - t0}ms (page=${clampedPage}, size=${safePageSize})`);
 
-    if (error) return { data: [], total: 0, page: safePage, pageSize: safePageSize, pageCount: 0, error: error.message };
+    if (error) return { data: [], total, page: clampedPage, pageSize: safePageSize, pageCount, error: error.message };
 
-    const total = count ?? 0;
     const rows = baseRows ?? [];
     const productIds = rows.map((r) => r.id as string);
 
@@ -177,9 +200,9 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
       return {
         data: [],
         total,
-        page: safePage,
+        page: clampedPage,
         pageSize: safePageSize,
-        pageCount: Math.max(1, Math.ceil(total / safePageSize)),
+        pageCount,
         error: null,
       };
     }
@@ -248,9 +271,9 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
     return {
       data,
       total,
-      page: safePage,
+      page: clampedPage,
       pageSize: safePageSize,
-      pageCount: Math.max(1, Math.ceil(total / safePageSize)),
+      pageCount,
       error: null,
     };
   } catch (err) {

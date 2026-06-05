@@ -10,10 +10,13 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCategories } from "@/lib/categories-context";
+import { CatalogItem } from "@/lib/data";
+import { PublicProductCard } from "@/lib/services/public-products";
+import { getPublicProductsPageAction } from "@/app/actions/public-products";
 
 function FilterGroup({
   def,
@@ -116,9 +119,55 @@ function ProductImageDisplay({
 export function CatalogPage({ slug }: { slug: string }) {
   const { openProductDetail } = useModal();
   const { catalog, categories, loading } = useCategories();
-  const [activeFilters, setActiveFilters] = useState<
-    Record<string, Set<string>>
-  >({});
+
+  // Local state for server-driven pagination
+  const [page, setPage] = useState(1);
+  const [items, setItems] = useState<PublicProductCard[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
+
+  // Reset filters and page when slug changes during render
+  const [prevSlug, setPrevSlug] = useState(slug);
+  if (slug !== prevSlug) {
+    setPrevSlug(slug);
+    setPage(1);
+    setActiveFilters({});
+  }
+
+  // Fetch dynamic products from the server action
+  useEffect(() => {
+    let isCurrent = true;
+    Promise.resolve().then(() => {
+      if (isCurrent) setIsPageLoading(true);
+    });
+
+    getPublicProductsPageAction({
+      categorySlug: slug,
+      page,
+      pageSize: 12,
+      filters: activeFilters,
+    })
+      .then((res) => {
+        if (!isCurrent) return;
+        setItems(res.items);
+        setTotal(res.total);
+        setPageCount(res.pageCount);
+      })
+      .catch((err) => {
+        console.error("Failed to load products page:", err);
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsPageLoading(false);
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [slug, page, activeFilters]);
 
   if (loading) {
     return (
@@ -131,17 +180,9 @@ export function CatalogPage({ slug }: { slug: string }) {
     );
   }
 
-  let cat = catalog[slug];
+  let categoryDetail = catalog[slug];
 
   if (slug === "all") {
-    const allItems = Object.keys(catalog).flatMap((key) => {
-      // Make sure we carry categoryTitle
-      return (catalog[key]?.items || []).map((item) => ({
-        ...item,
-        categoryTitle: catalog[key].title,
-      }));
-    });
-
     // Collect all filter defs from every category
     const allDefs = Object.values(catalog)
       .filter((c) => c.hasFilters && c.filterDefs)
@@ -172,16 +213,16 @@ export function CatalogPage({ slug }: { slug: string }) {
       values: Array.from(def.values),
     }));
 
-    cat = {
+    categoryDetail = {
       title: "Tất cả danh mục",
       type: "product",
       hasFilters: extraFilters.length > 0,
       filterDefs: extraFilters,
-      items: allItems,
+      items: [],
     };
   }
 
-  if (!cat) {
+  if (!categoryDetail) {
     return (
       <div className="p-16 text-center text-dtl-gray text-lg font-medium">
         Không tìm thấy phân mục {slug}
@@ -191,46 +232,51 @@ export function CatalogPage({ slug }: { slug: string }) {
 
   const handleFilterClick = (key: string, value: string) => {
     setActiveFilters((prev) => {
-      const next = { ...prev };
+      const current = prev[key] || [];
+      const nextValues = current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value];
 
-      if (!next[key]) {
-        next[key] = new Set();
-      } else {
-        next[key] = new Set(next[key]);
+      const nextFilters = { ...prev, [key]: nextValues };
+      if (nextValues.length === 0) {
+        delete nextFilters[key];
       }
-
-      if (next[key].has(value)) {
-        next[key].delete(value);
-      } else {
-        next[key].add(value);
-      }
-
-      return next;
+      return nextFilters;
     });
+    setPage(1); // Reset page on filter changes
   };
 
-  const clearAllFilters = () => setActiveFilters({});
+  const clearAllFilters = () => {
+    setActiveFilters({});
+    setPage(1);
+  };
 
   const isFilterActive = (key: string, value: string) => {
-    return activeFilters[key]?.has(value) || false;
+    return activeFilters[key]?.includes(value) || false;
   };
 
-  const activeGroups = Object.entries(activeFilters).filter(
-    ([, v]) => v.size > 0,
-  );
-  const hasActiveFilters = activeGroups.length > 0;
+  const hasActiveFilters = Object.keys(activeFilters).length > 0;
 
-  const visibleItems = cat.items.filter((item) => {
-    if (activeGroups.length === 0) return true;
-    return activeGroups.every(([key, vals]) => {
-      const itemVal = (item as any)[key];
-      return itemVal && vals.has(itemVal);
-    });
-  });
+  // Map PublicProductCard to CatalogItem for rendering compatibility
+  const visibleItems: CatalogItem[] = items.map((card) => ({
+    id: card.slug,
+    name: card.name,
+    img: card.thumbnailUrl || '/placeholder.svg',
+    imgs: card.thumbnailUrl ? [card.thumbnailUrl] : [],
+    price: card.price ?? undefined,
+    stock: card.stock,
+    categoryId: card.category_slug || '',
+    dungTich: card.specs.dungTich,
+    quyCach: card.specs.quyCach,
+    phiNap: card.specs.phiNap,
+    loaiNap: card.specs.loaiNap,
+    color: card.specs.color,
+    bulkDiscounts: card.hasActiveBulkDiscount && card.minBulkPrice ? [
+      { threshold: 10, pricePerUnit: card.minBulkPrice }
+    ] : undefined
+  }));
 
-  const allEmpty = cat.items.every(
-    (i) => !i.img && (!i.imgs || i.imgs.length === 0),
-  );
+  const allEmpty = items.length > 0 && items.every((i) => !i.thumbnailUrl);
 
   // Build category tree - separates products and services
   const rootProductCategories = categories.filter(
@@ -341,7 +387,7 @@ export function CatalogPage({ slug }: { slug: string }) {
           </div>
         </div>
 
-        {cat.hasFilters && cat.filterDefs && (
+        {categoryDetail.hasFilters && categoryDetail.filterDefs && (
           <div className="bg-white border border-dtl-border rounded-xl shadow-sm overflow-hidden">
             <div className="px-5 py-4 bg-dtl-bg-alt/50 border-b border-dtl-border flex justify-between items-center">
               <h3 className="text-[14px] font-black uppercase tracking-[0.5px] text-dtl-navy flex items-center gap-2">
@@ -358,7 +404,7 @@ export function CatalogPage({ slug }: { slug: string }) {
             </div>
 
             <div className="p-5 divide-y divide-dtl-border/50">
-              {cat.filterDefs.map((def) => (
+              {categoryDetail.filterDefs.map((def) => (
                 <FilterGroup
                   key={def.key}
                   def={def as any}
@@ -376,7 +422,7 @@ export function CatalogPage({ slug }: { slug: string }) {
         <div className="flex items-center gap-3 bg-dtl-navy text-white px-5 py-4.5 mb-5 rounded-lg shadow-sm">
           <div className="w-1.5 self-stretch bg-dtl-red rounded-full"></div>
           <h1 className="text-lg font-black uppercase tracking-wide">
-            {cat.title}
+            {categoryDetail.title}
           </h1>
         </div>
 
@@ -384,18 +430,11 @@ export function CatalogPage({ slug }: { slug: string }) {
           <div className="text-[13px] text-dtl-gray">
             {hasActiveFilters ? (
               <>
-                Hiển thị{" "}
-                <strong className="text-dtl-navy font-bold">
-                  {visibleItems.length}
-                </strong>{" "}
-                / {cat.items.length} mục phù hợp
+                Hiển thị <strong className="text-dtl-navy font-bold">{total}</strong> kết quả phù hợp
               </>
             ) : (
               <>
-                <strong className="text-dtl-dark font-bold text-sm tracking-wide">
-                  {cat.items.length}
-                </strong>{" "}
-                mục hiện có
+                Tất cả <strong className="text-dtl-dark font-bold text-sm tracking-wide">{total}</strong> sản phẩm hiện có
               </>
             )}
           </div>
@@ -416,105 +455,139 @@ export function CatalogPage({ slug }: { slug: string }) {
           </div>
         )}
 
-        {visibleItems.length > 0 ? (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
-            {visibleItems.map((item, idx) => {
-              const hasDetail = !!item.desc;
-
-              return (
-                <div
-                  key={idx}
-                  className="relative bg-white border border-dtl-border rounded-lg overflow-hidden transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:border-dtl-navy/40 hover:-translate-y-1 flex flex-col group cursor-pointer"
-                >
-                  {/* Full-card navigation link — z-[1] below button */}
-                  <Link
-                    href={`/san-pham/${item.id}`}
-                    className="absolute inset-0 z-[1] rounded-lg"
-                    aria-label={`Xem chi tiết ${item.name}`}
-                  />
-
-                  {/* Card content — pointer-events-none so link overlay handles card clicks */}
-                  <div className="pointer-events-none">
-                    <div className="relative w-full aspect-square bg-[#fff] p-4 border-b border-dtl-bg-alt overflow-hidden flex items-center justify-center">
-                      {item.stock !== undefined && (
-                        <div className="absolute top-2 right-2 z-20 font-black uppercase tracking-wide leading-none">
-                          {item.stock === 0 ? (
-                            <span className="bg-red-50 text-red-600 px-1.5 py-1 text-[9px] rounded border border-red-200 shadow-sm block">
-                              Hết hàng
-                            </span>
-                          ) : item.stock <= 15 ? (
-                            <span className="bg-amber-50 text-amber-600 px-1.5 py-1 text-[9px] rounded border border-amber-200 shadow-sm block">
-                              Chỉ còn {item.stock}
-                            </span>
-                          ) : null}
-                        </div>
-                      )}
-                      <ProductImageDisplay
-                        imgs={item.imgs}
-                        img={item.img}
-                        alt={item.name}
-                      />
-                    </div>
-
-                    <div className="p-3 md:p-4 bg-white flex-1 flex flex-col items-center">
-                      <h3 className="text-[13px] md:text-[14.5px] font-bold text-dtl-dark text-center leading-[1.4] transition-colors group-hover:text-dtl-red mb-2.5 h-10 line-clamp-2 overflow-hidden text-ellipsis">
-                        {item.name}
-                      </h3>
-
-                      {item.price && item.price > 0 ? (
-                        <div className="mb-3 text-center">
-                          <div className="text-dtl-red text-[15px] font-extrabold">
-                            {item.price.toLocaleString("vi-VN")}đ
-                          </div>
-                          {item.bulkDiscounts &&
-                            item.bulkDiscounts.length > 0 && (
-                              <div className="text-[10px] text-dtl-gray mt-0.5">
-                                Sỉ từ{" "}
-                                {item.bulkDiscounts[
-                                  item.bulkDiscounts.length - 1
-                                ].pricePerUnit.toLocaleString("vi-VN")}
-                                đ
-                              </div>
-                            )}
-                        </div>
-                      ) : (
-                        <div className="mb-3 text-dtl-gray text-xs font-semibold">
-                          Báo giá qua hotline
-                        </div>
-                      )}
-
-                      {cat.filterDefs && (
-                        <div className="flex flex-wrap gap-1.5 justify-center mb-3">
-                          {cat.filterDefs.map((def) => {
-                            const val = (item as any)[def.key];
-                            if (!val) return null;
-                            return (
-                              <span
-                                key={def.key}
-                                className="text-[10px] bg-dtl-bg-alt text-dtl-navy font-semibold px-2 py-0.5 rounded border border-dtl-border/60 uppercase tracking-tight"
-                              >
-                                {val}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Button re-enables pointer events at z-[2] above the link overlay */}
-                  <div className="px-3 md:px-4 pb-3 md:pb-4 relative z-[2] pointer-events-auto">
-                    <button
-                      onClick={() => openProductDetail(item, cat)}
-                      className="w-full bg-[#f8f9fa] group-hover:bg-dtl-red text-dtl-navy group-hover:text-white font-bold text-[11px] md:text-xs py-[9px] rounded transition-all border border-dtl-border group-hover:border-dtl-red flex items-center justify-center gap-1.5 cursor-pointer shadow-sm duration-300"
-                    >
-                      <Info className="w-3.5 h-3.5" /> Chi Tiết & Báo Giá Sỉ
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+        {isPageLoading ? (
+          <div className="py-20 flex flex-col items-center justify-center text-dtl-gray bg-white rounded-lg border border-dtl-border shadow-sm min-h-[300px]">
+            <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-dtl-red animate-spin mb-4"></div>
+            <p className="text-sm font-medium">Đang tải danh sách sản phẩm...</p>
           </div>
+        ) : visibleItems.length > 0 ? (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
+              {visibleItems.map((item, idx) => {
+                return (
+                  <div
+                    key={idx}
+                    className="relative bg-white border border-dtl-border rounded-lg overflow-hidden transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:border-dtl-navy/40 hover:-translate-y-1 flex flex-col group cursor-pointer"
+                  >
+                    {/* Full-card navigation link — z-[1] below button */}
+                    <Link
+                      href={`/san-pham/${item.id}`}
+                      className="absolute inset-0 z-[1] rounded-lg"
+                      aria-label={`Xem chi tiết ${item.name}`}
+                    />
+
+                    {/* Card content — pointer-events-none so link overlay handles card clicks */}
+                    <div className="pointer-events-none">
+                      <div className="relative w-full aspect-square bg-[#fff] p-4 border-b border-dtl-bg-alt overflow-hidden flex items-center justify-center">
+                        {item.stock !== undefined && (
+                          <div className="absolute top-2 right-2 z-20 font-black uppercase tracking-wide leading-none">
+                            {item.stock === 0 ? (
+                              <span className="bg-red-50 text-red-600 px-1.5 py-1 text-[9px] rounded border border-red-200 shadow-sm block">
+                                Hết hàng
+                              </span>
+                            ) : item.stock <= 15 ? (
+                              <span className="bg-amber-50 text-amber-600 px-1.5 py-1 text-[9px] rounded border border-amber-200 shadow-sm block">
+                                Chỉ còn {item.stock}
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
+                        <ProductImageDisplay
+                          imgs={item.imgs}
+                          img={item.img}
+                          alt={item.name}
+                        />
+                      </div>
+
+                      <div className="p-3 md:p-4 bg-white flex-1 flex flex-col items-center">
+                        <h3 className="text-[13px] md:text-[14.5px] font-bold text-dtl-dark text-center leading-[1.4] transition-colors group-hover:text-dtl-red mb-2.5 h-10 line-clamp-2 overflow-hidden text-ellipsis">
+                          {item.name}
+                        </h3>
+
+                        {item.price && item.price > 0 ? (
+                          <div className="mb-3 text-center">
+                            <div className="text-dtl-red text-[15px] font-extrabold">
+                              {item.price.toLocaleString("vi-VN")}đ
+                            </div>
+                            {item.bulkDiscounts &&
+                              item.bulkDiscounts.length > 0 && (
+                                <div className="text-[10px] text-dtl-gray mt-0.5">
+                                  Sỉ từ{" "}
+                                  {item.bulkDiscounts[
+                                    item.bulkDiscounts.length - 1
+                                  ].pricePerUnit.toLocaleString("vi-VN")}
+                                  đ
+                                </div>
+                              )}
+                          </div>
+                        ) : (
+                          <div className="mb-3 text-dtl-gray text-xs font-semibold">
+                            Báo giá qua hotline
+                          </div>
+                        )}
+
+                        {categoryDetail.filterDefs && (
+                          <div className="flex flex-wrap gap-1.5 justify-center mb-3">
+                            {categoryDetail.filterDefs.map((def) => {
+                              const val = (item as any)[def.key];
+                              if (!val) return null;
+                              return (
+                                <span
+                                  key={def.key}
+                                  className="text-[10px] bg-dtl-bg-alt text-dtl-navy font-semibold px-2 py-0.5 rounded border border-dtl-border/60 uppercase tracking-tight"
+                                >
+                                  {val}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Button re-enables pointer events at z-[2] above the link overlay */}
+                    <div className="px-3 md:px-4 pb-3 md:pb-4 relative z-[2] pointer-events-auto">
+                      <button
+                        onClick={() => openProductDetail(item, categoryDetail)}
+                        className="w-full bg-[#f8f9fa] group-hover:bg-dtl-red text-dtl-navy group-hover:text-white font-bold text-[11px] md:text-xs py-[9px] rounded transition-all border border-dtl-border group-hover:border-dtl-red flex items-center justify-center gap-1.5 cursor-pointer shadow-sm duration-300"
+                      >
+                        <Info className="w-3.5 h-3.5" /> Chi Tiết & Báo Giá Sỉ
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination controls */}
+            {pageCount > 1 && (
+              <div className="mt-8 flex items-center justify-center gap-3 border-t border-dtl-border pt-6">
+                <button
+                  disabled={page === 1}
+                  onClick={() => {
+                    setPage((p) => Math.max(1, p - 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="px-4 py-2 border border-dtl-border rounded-lg text-[13px] font-bold text-dtl-navy hover:bg-dtl-bg-alt hover:text-dtl-red transition-all cursor-pointer disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-dtl-navy disabled:cursor-not-allowed"
+                >
+                  Trang trước
+                </button>
+                <span className="text-[13px] font-bold text-dtl-navy">
+                  Trang {page} / {pageCount}
+                </span>
+                <button
+                  disabled={page === pageCount}
+                  onClick={() => {
+                    setPage((p) => Math.min(pageCount, p + 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="px-4 py-2 border border-dtl-border rounded-lg text-[13px] font-bold text-dtl-navy hover:bg-dtl-bg-alt hover:text-dtl-red transition-all cursor-pointer disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-dtl-navy disabled:cursor-not-allowed"
+                >
+                  Trang sau
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-16 px-4 text-[15px] bg-dtl-bg-alt rounded-lg text-dtl-gray border border-dashed border-dtl-border">
             <svg

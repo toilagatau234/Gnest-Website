@@ -205,3 +205,453 @@ export async function getPublicProductsByCategorySlug(
     .filter((product) => !product.categories?.id || visibleCategoryIds.has(product.categories.id))
     .map(toPublicProductDetail);
 }
+
+export type PublicProductCard = {
+  id: string;
+  name: string;
+  slug: string;
+  price: number | null;
+  stock: number;
+  category_id: string | null;
+  category_slug: string | null;
+  category_name: string | null;
+  thumbnailUrl: string | null;
+  imageCount: number;
+  hasActiveBulkDiscount: boolean;
+  minBulkPrice?: number | null;
+  specs: {
+    dungTich?: string;
+    quyCach?: string;
+    phiNap?: string;
+    loaiNap?: string;
+    color?: string;
+  };
+};
+
+export type PublicProductListResult = {
+  items: PublicProductCard[];
+  page: number;
+  pageSize: number;
+  total: number;
+  pageCount: number;
+  hasNextPage: boolean;
+};
+
+export async function getPublicProductsPage({
+  categorySlug,
+  page,
+  pageSize,
+  filters,
+}: {
+  categorySlug: string;
+  page: number;
+  pageSize: number;
+  filters?: Record<string, string[]>;
+}): Promise<PublicProductListResult> {
+  const supabase = await createClient();
+  const visibleCategoryIds = await getVisibleCategorySet();
+
+  // Resolve category if slug is not 'all'
+  let targetCategoryIds: string[] | null = null;
+  if (categorySlug !== 'all') {
+    const { data: category } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('slug', categorySlug)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!category || !visibleCategoryIds.has(category.id)) {
+      return { items: [], page, pageSize, total: 0, pageCount: 0, hasNextPage: false };
+    }
+
+    // Include child categories if the category is a parent
+    const { data: allCats } = await supabase
+      .from('categories')
+      .select('id, parent_id');
+    const descendants = [category.id];
+    const findChildren = (parentId: string) => {
+      const children = (allCats ?? []).filter((c) => c.parent_id === parentId);
+      for (const child of children) {
+        descendants.push(child.id);
+        findChildren(child.id);
+      }
+    };
+    findChildren(category.id);
+
+    targetCategoryIds = descendants.filter((id) => visibleCategoryIds.has(id));
+  } else {
+    targetCategoryIds = Array.from(visibleCategoryIds);
+  }
+
+  // If no visible categories are in target, return empty
+  if (targetCategoryIds.length === 0) {
+    return { items: [], page, pageSize, total: 0, pageCount: 0, hasNextPage: false };
+  }
+
+  // Start building query on products table
+  let query = supabase
+    .from('products')
+    .select('id, name, slug, price, stock, category_id, specs', { count: 'exact' })
+    .eq('is_active', true)
+    .in('category_id', targetCategoryIds);
+
+  // Apply specs filters
+  if (filters) {
+    Object.entries(filters).forEach(([key, values]) => {
+      if (values && values.length > 0) {
+        query = query.in(`specs->>${key}`, values);
+      }
+    });
+  }
+
+  // Order stably: created_at DESC, id DESC
+  query = query
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false });
+
+  // Calculate range
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  query = query.range(from, to);
+
+  const { data, count, error } = await query;
+
+  if (error) {
+    throw new Error(`Failed to query public products: ${error.message}`);
+  }
+
+  const products = data ?? [];
+  const total = count ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const hasNextPage = page < pageCount;
+
+  if (products.length === 0) {
+    return { items: [], page, pageSize, total, pageCount, hasNextPage };
+  }
+
+  const productIds = products.map((p) => p.id);
+
+  // Fetch images and bulk discounts for these product IDs only
+  const [imagesResult, discountsResult, categoriesResult] = await Promise.all([
+    supabase
+      .from('product_images')
+      .select('product_id, public_url, sort_order, is_primary')
+      .eq('is_active', true)
+      .in('product_id', productIds),
+    supabase
+      .from('product_bulk_discounts')
+      .select('product_id, price_per_unit')
+      .eq('is_active', true)
+      .in('product_id', productIds),
+    supabase
+      .from('categories')
+      .select('id, name, slug')
+      .in('id', products.map((p) => p.category_id).filter(Boolean) as string[]),
+  ]);
+
+  const imagesMap = new Map<string, typeof imagesResult.data>();
+  (imagesResult.data ?? []).forEach((img) => {
+    const list = imagesMap.get(img.product_id) ?? [];
+    list.push(img);
+    imagesMap.set(img.product_id, list);
+  });
+
+  const discountsMap = new Map<string, typeof discountsResult.data>();
+  (discountsResult.data ?? []).forEach((d) => {
+    const list = discountsMap.get(d.product_id) ?? [];
+    list.push(d);
+    discountsMap.set(d.product_id, list);
+  });
+
+  const categoriesMap = new Map(
+    (categoriesResult.data ?? []).map((c) => [c.id, c])
+  );
+
+  const items: PublicProductCard[] = products.map((p) => {
+    const pImages = imagesMap.get(p.id) ?? [];
+    const sortedImages = [...pImages].sort((a, b) => a.sort_order - b.sort_order);
+    const primaryImg = sortedImages.find((img) => img.is_primary) || sortedImages[0];
+    const thumbnailUrl = primaryImg ? primaryImg.public_url : null;
+
+    const pDiscounts = discountsMap.get(p.id) ?? [];
+    const minBulkPrice = pDiscounts.length > 0 
+      ? Math.min(...pDiscounts.map((d) => d.price_per_unit)) 
+      : null;
+
+    const cat = p.category_id ? categoriesMap.get(p.category_id) : null;
+    const specsObj = p.specs && typeof p.specs === 'object' ? (p.specs as Record<string, any>) : {};
+
+    return {
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      price: p.price,
+      stock: p.stock,
+      category_id: p.category_id,
+      category_slug: cat ? cat.slug : null,
+      category_name: cat ? cat.name : null,
+      thumbnailUrl,
+      imageCount: pImages.length,
+      hasActiveBulkDiscount: pDiscounts.length > 0,
+      minBulkPrice,
+      specs: {
+        dungTich: specsObj.dungTich ? String(specsObj.dungTich) : undefined,
+        quyCach: specsObj.quyCach ? String(specsObj.quyCach) : undefined,
+        phiNap: specsObj.phiNap ? String(specsObj.phiNap) : undefined,
+        loaiNap: specsObj.loaiNap ? String(specsObj.loaiNap) : undefined,
+        color: specsObj.color ? String(specsObj.color) : undefined,
+      },
+    };
+  });
+
+  return {
+    items,
+    page,
+    pageSize,
+    total,
+    pageCount,
+    hasNextPage,
+  };
+}
+
+export async function searchPublicProducts(
+  queryText: string,
+  limit: number = 5
+): Promise<PublicProductCard[]> {
+  if (!queryText || queryText.trim().length < 2) return [];
+
+  const supabase = await createClient();
+  const visibleCategoryIds = await getVisibleCategorySet();
+
+  // Search by name
+  const { data: products, error } = await supabase
+    .from('products')
+    .select('id, name, slug, price, stock, category_id, specs')
+    .eq('is_active', true)
+    .ilike('name', `%${queryText}%`)
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Failed to search products: ${error.message}`);
+  }
+
+  // Filter visible categories
+  const visibleProducts = (products ?? []).filter(
+    (p) => !p.category_id || visibleCategoryIds.has(p.category_id)
+  );
+
+  if (visibleProducts.length === 0) return [];
+
+  const productIds = visibleProducts.map((p) => p.id);
+
+  // Fetch images/discounts/categories for these products
+  const [imagesResult, discountsResult, categoriesResult] = await Promise.all([
+    supabase
+      .from('product_images')
+      .select('product_id, public_url, sort_order, is_primary')
+      .eq('is_active', true)
+      .in('product_id', productIds),
+    supabase
+      .from('product_bulk_discounts')
+      .select('product_id, price_per_unit')
+      .eq('is_active', true)
+      .in('product_id', productIds),
+    supabase
+      .from('categories')
+      .select('id, name, slug')
+      .in('id', visibleProducts.map((p) => p.category_id).filter(Boolean) as string[]),
+  ]);
+
+  const imagesMap = new Map<string, typeof imagesResult.data>();
+  (imagesResult.data ?? []).forEach((img) => {
+    const list = imagesMap.get(img.product_id) ?? [];
+    list.push(img);
+    imagesMap.set(img.product_id, list);
+  });
+
+  const discountsMap = new Map<string, typeof discountsResult.data>();
+  (discountsResult.data ?? []).forEach((d) => {
+    const list = discountsMap.get(d.product_id) ?? [];
+    list.push(d);
+    discountsMap.set(d.product_id, list);
+  });
+
+  const categoriesMap = new Map(
+    (categoriesResult.data ?? []).map((c) => [c.id, c])
+  );
+
+  return visibleProducts.map((p) => {
+    const pImages = imagesMap.get(p.id) ?? [];
+    const sortedImages = [...pImages].sort((a, b) => a.sort_order - b.sort_order);
+    const primaryImg = sortedImages.find((img) => img.is_primary) || sortedImages[0];
+    const thumbnailUrl = primaryImg ? primaryImg.public_url : null;
+
+    const pDiscounts = discountsMap.get(p.id) ?? [];
+    const minBulkPrice = pDiscounts.length > 0 
+      ? Math.min(...pDiscounts.map((d) => d.price_per_unit)) 
+      : null;
+
+    const cat = p.category_id ? categoriesMap.get(p.category_id) : null;
+    const specsObj = p.specs && typeof p.specs === 'object' ? (p.specs as Record<string, any>) : {};
+
+    return {
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      price: p.price,
+      stock: p.stock,
+      category_id: p.category_id,
+      category_slug: cat ? cat.slug : null,
+      category_name: cat ? cat.name : null,
+      thumbnailUrl,
+      imageCount: pImages.length,
+      hasActiveBulkDiscount: pDiscounts.length > 0,
+      minBulkPrice,
+      specs: {
+        dungTich: specsObj.dungTich ? String(specsObj.dungTich) : undefined,
+        quyCach: specsObj.quyCach ? String(specsObj.quyCach) : undefined,
+        phiNap: specsObj.phiNap ? String(specsObj.phiNap) : undefined,
+        loaiNap: specsObj.loaiNap ? String(specsObj.loaiNap) : undefined,
+        color: specsObj.color ? String(specsObj.color) : undefined,
+      },
+    };
+  });
+}
+
+export async function getHomepageProducts(): Promise<Record<string, PublicProductCard[]>> {
+  const supabase = await createClient();
+  const visibleCategoryIds = await getVisibleCategorySet();
+
+  // Load root product categories
+  const { data: rootCats } = await supabase
+    .from('categories')
+    .select('id, parent_id, slug, is_active, type')
+    .eq('type', 'product')
+    .is('parent_id', null)
+    .eq('is_active', true);
+
+  const activeRootIds = (rootCats ?? []).map((c) => c.id).filter((id) => visibleCategoryIds.has(id));
+
+  if (activeRootIds.length === 0) return {};
+
+  // Find all descendants for each root category
+  const { data: allCats } = await supabase
+    .from('categories')
+    .select('id, parent_id');
+
+  const rootDescendantsMap = new Map<string, string[]>();
+  activeRootIds.forEach((rootId) => {
+    const descendants: string[] = [rootId];
+    const findChildren = (parentId: string) => {
+      const children = (allCats ?? []).filter((c) => c.parent_id === parentId);
+      for (const child of children) {
+        descendants.push(child.id);
+        findChildren(child.id);
+      }
+    };
+    findChildren(rootId);
+    rootDescendantsMap.set(rootId, descendants.filter((id) => visibleCategoryIds.has(id)));
+  });
+
+  // Query products for all these categories
+  const allCategoryIds = Array.from(new Set(Array.from(rootDescendantsMap.values()).flat()));
+
+  if (allCategoryIds.length === 0) return {};
+
+  const { data: products, error } = await supabase
+    .from('products')
+    .select('id, name, slug, price, stock, category_id, specs')
+    .eq('is_active', true)
+    .in('category_id', allCategoryIds)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to load homepage products: ${error.message}`);
+  }
+
+  // Filter and build items
+  const productIds = (products ?? []).map((p) => p.id);
+
+  const [imagesResult, discountsResult, categoriesResult] = await Promise.all([
+    supabase
+      .from('product_images')
+      .select('product_id, public_url, sort_order, is_primary')
+      .eq('is_active', true)
+      .in('product_id', productIds),
+    supabase
+      .from('product_bulk_discounts')
+      .select('product_id, price_per_unit')
+      .eq('is_active', true)
+      .in('product_id', productIds),
+    supabase
+      .from('categories')
+      .select('id, name, slug')
+      .in('id', (products ?? []).map((p) => p.category_id).filter(Boolean) as string[]),
+  ]);
+
+  const imagesMap = new Map<string, typeof imagesResult.data>();
+  (imagesResult.data ?? []).forEach((img) => {
+    const list = imagesMap.get(img.product_id) ?? [];
+    list.push(img);
+    imagesMap.set(img.product_id, list);
+  });
+
+  const discountsMap = new Map<string, typeof discountsResult.data>();
+  (discountsResult.data ?? []).forEach((d) => {
+    const list = discountsMap.get(d.product_id) ?? [];
+    list.push(d);
+    discountsMap.set(d.product_id, list);
+  });
+
+  const categoriesMap = new Map(
+    (categoriesResult.data ?? []).map((c) => [c.id, c])
+  );
+
+  const allItemsMapped: PublicProductCard[] = (products ?? []).map((p) => {
+    const pImages = imagesMap.get(p.id) ?? [];
+    const sortedImages = [...pImages].sort((a, b) => a.sort_order - b.sort_order);
+    const primaryImg = sortedImages.find((img) => img.is_primary) || sortedImages[0];
+    const thumbnailUrl = primaryImg ? primaryImg.public_url : null;
+
+    const pDiscounts = discountsMap.get(p.id) ?? [];
+    const minBulkPrice = pDiscounts.length > 0 
+      ? Math.min(...pDiscounts.map((d) => d.price_per_unit)) 
+      : null;
+
+    const cat = p.category_id ? categoriesMap.get(p.category_id) : null;
+    const specsObj = p.specs && typeof p.specs === 'object' ? (p.specs as Record<string, any>) : {};
+
+    return {
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      price: p.price,
+      stock: p.stock,
+      category_id: p.category_id,
+      category_slug: cat ? cat.slug : null,
+      category_name: cat ? cat.name : null,
+      thumbnailUrl,
+      imageCount: pImages.length,
+      hasActiveBulkDiscount: pDiscounts.length > 0,
+      minBulkPrice,
+      specs: {
+        dungTich: specsObj.dungTich ? String(specsObj.dungTich) : undefined,
+        quyCach: specsObj.quyCach ? String(specsObj.quyCach) : undefined,
+        phiNap: specsObj.phiNap ? String(specsObj.phiNap) : undefined,
+        loaiNap: specsObj.loaiNap ? String(specsObj.loaiNap) : undefined,
+        color: specsObj.color ? String(specsObj.color) : undefined,
+      },
+    };
+  });
+
+  // Group and slice to 4 items per root category
+  const result: Record<string, PublicProductCard[]> = {};
+  activeRootIds.forEach((rootId) => {
+    const descendants = rootDescendantsMap.get(rootId) ?? [];
+    const rootItems = allItemsMapped.filter((item) => item.category_id && descendants.includes(item.category_id));
+    result[rootId] = rootItems.slice(0, 4);
+  });
+
+  return result;
+}
