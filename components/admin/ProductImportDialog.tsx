@@ -520,7 +520,7 @@ function UploadStep({ onFile }: { onFile: (rows: ImportRow[], filename: string) 
             { col: 'is_active', note: 'true/false/1/0/yes/no/active/hidden' },
             { col: 'description', note: 'Tùy chọn — text thuần' },
             { col: 'unit / volume / height / diameter / material', note: 'Tùy chọn — lưu vào specs JSONB' },
-            { col: 'Hình ảnh sản phẩm', note: 'Excel import chỉ tạo dữ liệu sản phẩm. Thêm ảnh sau từ trang chỉnh sửa/media sản phẩm.' },
+            { col: 'image_1_url / image_2_url / image_3_url', note: 'Tùy chọn — URL https://' },
             { col: 'tier_N_min_quantity + tier_N_price', note: 'Tùy chọn — bậc giá sỉ (N=1..4)' },
           ].map(({ col, note, required }) => (
             <div key={col} className="flex items-baseline gap-1.5">

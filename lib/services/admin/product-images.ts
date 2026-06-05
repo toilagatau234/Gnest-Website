@@ -18,6 +18,50 @@ export interface ProductImagePayload {
   is_active: boolean;
 }
 
+function isInternalProductImagePath(storagePath: string) {
+  return storagePath.startsWith('products/') && !storagePath.startsWith('http://') && !storagePath.startsWith('https://');
+}
+
+export async function cleanupUnusedProductImageStoragePaths(
+  storagePaths: string[],
+): Promise<{ deleted: string[]; skipped: string[]; failed: { path: string; error: string }[] }> {
+  const supabase = createServiceRoleClient();
+  const uniquePaths = [...new Set(storagePaths.filter(Boolean))];
+  const deleted: string[] = [];
+  const skipped: string[] = [];
+  const failed: { path: string; error: string }[] = [];
+
+  for (const path of uniquePaths) {
+    if (!isInternalProductImagePath(path)) {
+      skipped.push(path);
+      continue;
+    }
+
+    const { count, error: countError } = await supabase
+      .from('product_images')
+      .select('id', { count: 'exact', head: true })
+      .eq('storage_path', path);
+
+    if (countError) {
+      failed.push({ path, error: countError.message });
+      continue;
+    }
+
+    if ((count ?? 0) > 0) {
+      skipped.push(path);
+      continue;
+    }
+
+    const { error } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([path]);
+    if (error) {
+      failed.push({ path, error: error.message });
+    } else {
+      deleted.push(path);
+    }
+  }
+
+  return { deleted, skipped, failed };
+}
 
 export async function createAdminProductImage(payload: ProductImagePayload) {
   try {
