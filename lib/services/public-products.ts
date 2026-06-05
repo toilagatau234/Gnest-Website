@@ -525,25 +525,42 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
     rootDescendantsMap.set(rootId, descendants.filter((id) => visibleCategoryIds.has(id)));
   });
 
-  // Query products for all these categories
-  const allCategoryIds = Array.from(new Set(Array.from(rootDescendantsMap.values()).flat()));
+  // Query products per root category with limit of 4 in parallel
+  const rootIdToProductIds = new Map<string, string[]>();
+  const allProductsMap = new Map<string, { id: string; name: string; slug: string; price: number | null; stock: number; category_id: string | null; specs: any }>();
 
-  if (allCategoryIds.length === 0) return {};
+  const queries = activeRootIds.map(async (rootId) => {
+    const descendants = rootDescendantsMap.get(rootId) ?? [];
+    if (descendants.length === 0) return;
 
-  const { data: products, error } = await supabase
-    .from('products')
-    .select('id, name, slug, price, stock, category_id, specs')
-    .eq('is_active', true)
-    .in('category_id', allCategoryIds)
-    .order('created_at', { ascending: false });
+    const { data: rootProducts, error: rootError } = await supabase
+      .from('products')
+      .select('id, name, slug, price, stock, category_id, specs')
+      .eq('is_active', true)
+      .in('category_id', descendants)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(4);
 
-  if (error) {
-    throw new Error(`Failed to load homepage products: ${error.message}`);
-  }
+    if (rootError) {
+      throw new Error(`Failed to load homepage products for root category "${rootId}": ${rootError.message}`);
+    }
 
-  // Filter and build items
-  const productIds = (products ?? []).map((p) => p.id);
+    const ids = (rootProducts ?? []).map((p) => p.id);
+    rootIdToProductIds.set(rootId, ids);
+    (rootProducts ?? []).forEach((p) => {
+      allProductsMap.set(p.id, p);
+    });
+  });
 
+  await Promise.all(queries);
+
+  const uniqueProducts = Array.from(allProductsMap.values());
+  const productIds = uniqueProducts.map((p) => p.id);
+
+  if (productIds.length === 0) return {};
+
+  // Batch query images, bulk discounts, and categories for selected product IDs
   const [imagesResult, discountsResult, categoriesResult] = await Promise.all([
     supabase
       .from('product_images')
@@ -558,7 +575,7 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
     supabase
       .from('categories')
       .select('id, name, slug')
-      .in('id', (products ?? []).map((p) => p.category_id).filter(Boolean) as string[]),
+      .in('id', uniqueProducts.map((p) => p.category_id).filter(Boolean) as string[]),
   ]);
 
   const imagesMap = new Map<string, typeof imagesResult.data>();
@@ -579,7 +596,7 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
     (categoriesResult.data ?? []).map((c) => [c.id, c])
   );
 
-  const allItemsMapped: PublicProductCard[] = (products ?? []).map((p) => {
+  const itemsMapped = uniqueProducts.map((p) => {
     const pImages = imagesMap.get(p.id) ?? [];
     const sortedImages = [...pImages].sort((a, b) => a.sort_order - b.sort_order);
     const primaryImg = sortedImages.find((img) => img.is_primary) || sortedImages[0];
@@ -616,12 +633,18 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
     };
   });
 
-  // Group and slice to 4 items per root category
+  const itemsMap = new Map<string, typeof itemsMapped[0]>();
+  itemsMapped.forEach((item) => {
+    itemsMap.set(item.id, item);
+  });
+
   const result: Record<string, PublicProductCard[]> = {};
   activeRootIds.forEach((rootId) => {
-    const descendants = rootDescendantsMap.get(rootId) ?? [];
-    const rootItems = allItemsMapped.filter((item) => item.category_id && descendants.includes(item.category_id));
-    result[rootId] = rootItems.slice(0, 4);
+    const productIdsForRoot = rootIdToProductIds.get(rootId) ?? [];
+    const rootItems = productIdsForRoot
+      .map((id) => itemsMap.get(id))
+      .filter((item): item is NonNullable<typeof item> => !!item);
+    result[rootId] = rootItems;
   });
 
   return result;
