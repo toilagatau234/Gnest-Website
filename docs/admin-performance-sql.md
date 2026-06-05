@@ -22,6 +22,7 @@ create index if not exists products_is_active_idx       on public.products(is_ac
 create index if not exists products_created_at_idx      on public.products(created_at desc);
 create index if not exists products_updated_at_idx      on public.products(updated_at desc);
 create index if not exists products_stock_idx           on public.products(stock);
+create index if not exists products_cat_active_sort_idx  on public.products(category_id, is_active, created_at desc, id desc);
 
 -- Categories
 create index if not exists categories_is_active_idx     on public.categories(is_active);
@@ -32,6 +33,8 @@ create index if not exists product_images_product_primary_idx
   on public.product_images(product_id, is_primary);
 create index if not exists product_images_product_active_idx
   on public.product_images(product_id, is_active);
+create index if not exists product_images_active_primary_order_idx
+  on public.product_images(product_id, is_active, is_primary, sort_order);
 
 -- Product Bulk Discounts (composite)
 create index if not exists product_bulk_discounts_product_active_idx
