@@ -201,6 +201,9 @@ create index if not exists categories_parent_id_idx on public.categories(parent_
 create index if not exists categories_slug_idx on public.categories(slug);
 create index if not exists products_category_id_idx on public.products(category_id);
 create index if not exists products_slug_idx on public.products(slug);
+create index if not exists products_created_at_id_idx on public.products(created_at desc, id desc);
+create index if not exists products_status_created_at_idx on public.products(is_active, created_at desc, id desc);
+create index if not exists products_category_status_created_at_idx on public.products(category_id, is_active, created_at desc, id desc);
 create index if not exists product_images_product_id_idx on public.product_images(product_id);
 create index if not exists product_bulk_discounts_product_id_idx on public.product_bulk_discounts(product_id);
 create index if not exists inquiries_status_idx on public.inquiries(status);
