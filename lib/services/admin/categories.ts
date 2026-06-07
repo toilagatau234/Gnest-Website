@@ -46,13 +46,14 @@ function logTiming(label: string, durationMs: number) {
 }
 
 function normalizeCategoryPayload(payload: CategoryPayload): Inserts<'categories'> {
+  const isService = payload.type === 'service';
   return {
     name: payload.name.trim(),
     slug: payload.slug.trim().toLowerCase(),
     type: payload.type,
-    parent_id: payload.parent_id || null,
+    parent_id: isService ? null : (payload.parent_id || null),
     sort_order: payload.sort_order,
-    has_filters: payload.has_filters,
+    has_filters: isService ? false : payload.has_filters,
     is_active: payload.is_active,
   };
 }
@@ -71,12 +72,13 @@ function toCategoryAuditSnapshot(category: CategoryAuditRow) {
 
 async function findDuplicateSortOrder(
   supabase: ReturnType<typeof createServiceRoleClient>,
-  payload: { parent_id: string | null; sort_order: number },
+  payload: { type: CategoryType; parent_id: string | null; sort_order: number },
   excludeCategoryId?: string,
 ) {
   let query = supabase
     .from('categories')
     .select('id, name')
+    .eq('type', payload.type)
     .eq('sort_order', payload.sort_order);
 
   query = payload.parent_id ? query.eq('parent_id', payload.parent_id) : query.is('parent_id', null);
@@ -199,6 +201,7 @@ export async function createAdminCategory(payload: CategoryPayload, requestConte
   }
 
   const duplicateResult = await findDuplicateSortOrder(supabase, {
+    type: payload.type,
     parent_id: insertPayload.parent_id ?? null,
     sort_order: payload.sort_order,
   });
@@ -263,6 +266,7 @@ export async function updateAdminCategory(categoryId: string, payload: CategoryP
   const duplicateResult = await findDuplicateSortOrder(
     supabase,
     {
+      type: payload.type,
       parent_id: updatePayload.parent_id ?? null,
       sort_order: payload.sort_order,
     },

@@ -108,17 +108,19 @@ export function CategoryForm({ formId, formAction, state, categories, category, 
           </label>
         )}
 
-        <label className="block">
-          <span className={labelClass}>{fixedType === 'service' ? 'Dịch vụ cha' : 'Danh mục cha'}</span>
-          <select name="parent_id" defaultValue={category?.parent_id ?? ''} className={selectClass}>
-            <option value="">Không có (danh mục gốc)</option>
-            {availableParents.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {fixedType !== 'service' && (
+          <label className="block">
+            <span className={labelClass}>Danh mục cha</span>
+            <select name="parent_id" defaultValue={category?.parent_id ?? ''} className={selectClass}>
+              <option value="">Không có (danh mục gốc)</option>
+              {availableParents.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label className="block sm:col-span-2">
           <span className={labelClass}>Display Priority</span>
@@ -138,12 +140,14 @@ export function CategoryForm({ formId, formAction, state, categories, category, 
       </div>
 
       <div className="admin-soft-panel space-y-2.5 px-4 py-3.5">
-        <AdminToggle
-          name="has_filters"
-          defaultChecked={category?.has_filters ?? false}
-          label="Có bộ lọc tìm kiếm"
-          description="Hiển thị thanh lọc thuộc tính trong danh mục này."
-        />
+        {fixedType !== 'service' && (
+          <AdminToggle
+            name="has_filters"
+            defaultChecked={category?.has_filters ?? false}
+            label="Có bộ lọc tìm kiếm"
+            description="Hiển thị thanh lọc thuộc tính trong danh mục này."
+          />
+        )}
         <AdminToggle
           name="is_active"
           defaultChecked={category?.is_active ?? true}

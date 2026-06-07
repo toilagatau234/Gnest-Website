@@ -59,9 +59,9 @@ function readCategoryPayload(formData: FormData): CategoryPayload {
     name,
     slug,
     type,
-    parent_id: parentId || null,
+    parent_id: type === 'service' ? null : (parentId || null),
     sort_order: sortOrder,
-    has_filters: readBoolean(formData, 'has_filters'),
+    has_filters: type === 'service' ? false : readBoolean(formData, 'has_filters'),
     is_active: readBoolean(formData, 'is_active'),
   };
 }

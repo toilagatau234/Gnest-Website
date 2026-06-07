@@ -35,7 +35,7 @@ export default async function ServicesPage() {
         action={<CategoryFormDialog categories={safeCategories} fixedType="service" />}
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <AdminStatCard
           label="Tổng dịch vụ"
           value={safeCategories.length}
@@ -54,12 +54,6 @@ export default async function ServicesPage() {
           icon={<EyeOff className="h-4 w-4" />}
           hint="Tạm ngưng hiển thị công khai"
           tone="accent"
-        />
-        <AdminStatCard
-          label="Cấu trúc cây"
-          value={`${parentCount}/${childCount}`}
-          icon={<Layers3 className="h-4 w-4" />}
-          hint="Dịch vụ cha / dịch vụ con"
         />
       </div>
 

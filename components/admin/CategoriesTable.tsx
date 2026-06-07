@@ -281,7 +281,7 @@ function CategoryTableView({ categories, allCategories, categoryById, fixedType 
             <th className="p-3.5">{fixedType === 'service' ? 'Tên dịch vụ' : 'Tên danh mục'}</th>
             <th className="p-3.5">Slug</th>
             {!fixedType && <th className="p-3.5">Loại</th>}
-            <th className="p-3.5">{fixedType === 'service' ? 'Dịch vụ cha' : 'Danh mục cha'}</th>
+            {fixedType !== 'service' && <th className="p-3.5">Danh mục cha</th>}
             <th className="p-3.5">Display Priority</th>
             <th className="p-3.5">Trạng thái</th>
             <th className="p-3.5 text-right">Thao tác</th>
@@ -307,7 +307,7 @@ function CategoryTableView({ categories, allCategories, categoryById, fixedType 
                     <CategoryTypeBadge type={category.type} />
                   </td>
                 )}
-                <td className="p-3.5 text-[#646464]">{parent ? parent.name : '—'}</td>
+                {fixedType !== 'service' && <td className="p-3.5 text-[#646464]">{parent ? parent.name : '—'}</td>}
                 <td className="p-3.5 font-mono font-semibold text-[#646464]">
                   {category.sort_order}
                 </td>
