@@ -80,6 +80,7 @@ export function StaffSection() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   const checkScroll = () => {
     if (scrollContainerRef.current) {
@@ -190,6 +191,18 @@ export function StaffSection() {
     };
   }, []);
 
+  // Autoplay effect for carousel only (when staff.length >= 5)
+  useEffect(() => {
+    if (staff.length < 5 || isPaused) return;
+
+    const interval = setInterval(() => {
+      const nextIndex = (activeIndex + 1) % staff.length;
+      scrollToItem(nextIndex);
+    }, 6000); // Auto-scroll every 6000ms
+
+    return () => clearInterval(interval);
+  }, [staff.length, activeIndex, isPaused]);
+
   const isSingle = staff.length === 1;
   const isCarousel = staff.length >= 5;
 
@@ -211,7 +224,19 @@ export function StaffSection() {
             </div>
           </div>
         ) : isCarousel ? (
-          <div className="relative w-full group mt-8">
+          <div 
+            className="relative w-full group mt-8"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            onFocus={() => setIsPaused(true)}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget)) {
+                setIsPaused(false);
+              }
+            }}
+            onTouchStart={() => setIsPaused(true)}
+            onTouchEnd={() => setIsPaused(false)}
+          >
             {/* Left Scroll Button */}
             <button
               onClick={() => scroll('left')}
@@ -221,7 +246,7 @@ export function StaffSection() {
                   ? 'opacity-0 group-hover:opacity-100 hover:text-dtl-red hover:bg-white hover:scale-105 active:scale-95 pointer-events-auto'
                   : 'opacity-0 pointer-events-none'
               }`}
-              aria-label="Previous staff member"
+              aria-label="Xem nhân viên trước"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -253,7 +278,7 @@ export function StaffSection() {
                   ? 'opacity-0 group-hover:opacity-100 hover:text-dtl-red hover:bg-white hover:scale-105 active:scale-95 pointer-events-auto'
                   : 'opacity-0 pointer-events-none'
               }`}
-              aria-label="Next staff member"
+              aria-label="Xem nhân viên tiếp theo"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -269,7 +294,8 @@ export function StaffSection() {
                       ? 'w-6 bg-dtl-red'
                       : 'w-2 bg-slate-300 hover:bg-slate-400'
                   }`}
-                  aria-label={`Go to staff member ${index + 1}`}
+                  aria-label={`Xem nhân viên số ${index + 1}`}
+                  aria-current={index === activeIndex ? 'true' : undefined}
                 />
               ))}
             </div>
