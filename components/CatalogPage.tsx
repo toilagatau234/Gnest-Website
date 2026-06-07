@@ -1,22 +1,24 @@
 "use client";
 
-import { useModal } from "@/lib/context";
-import {
-  Layers,
-  Info,
-  Check,
-  Filter,
-  List,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCategories } from "@/lib/categories-context";
-import { CatalogItem } from "@/lib/data";
-import { PublicProductCard } from "@/lib/services/public-products";
+import {
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  Info,
+  Layers,
+  List,
+} from "lucide-react";
+
 import { getPublicProductsPageAction } from "@/app/actions/public-products";
+import { useModal } from "@/lib/context";
+import { useCategories } from "@/lib/categories-context";
+import { CatalogItem, CatalogCategory } from "@/lib/data";
+import { PublicProductCard } from "@/lib/services/public-products";
+
+type ProductLoadStatus = "idle" | "loading" | "success" | "empty" | "error";
 
 function FilterGroup({
   def,
@@ -33,28 +35,28 @@ function FilterGroup({
     <div className="py-4 first:pt-0 last:pb-0">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between text-[14px] font-bold text-dtl-dark mb-3 tracking-wide hover:text-dtl-red transition-colors"
+        className="flex w-full items-center justify-between text-[14px] font-bold tracking-wide text-dtl-dark transition-colors hover:text-dtl-red"
       >
         {def.label}
         {isExpanded ? (
-          <ChevronUp className="w-4 h-4 text-dtl-gray" />
+          <ChevronUp className="h-4 w-4 text-dtl-gray" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-dtl-gray" />
+          <ChevronDown className="h-4 w-4 text-dtl-gray" />
         )}
       </button>
 
       {isExpanded && (
-        <div className="flex flex-wrap gap-2.5">
+        <div className="mt-3 flex flex-wrap gap-2.5">
           {def.values.map((val) => {
             const active = isFilterActive(def.key, val);
             return (
               <button
                 key={val}
                 onClick={() => handleFilterClick(def.key, val)}
-                className={`inline-flex items-center justify-center px-3 py-1.5 border rounded-lg text-[13px] font-medium transition-all ${
+                className={`inline-flex items-center justify-center rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-all ${
                   active
-                    ? "bg-dtl-navy border-dtl-navy text-white shadow-md"
-                    : "bg-white border-dtl-border text-dtl-gray hover:border-dtl-navy/40 hover:bg-dtl-bg-alt/50 hover:text-dtl-navy"
+                    ? "border-dtl-navy bg-dtl-navy text-white shadow-md"
+                    : "border-dtl-border bg-white text-dtl-gray hover:border-dtl-navy/40 hover:bg-dtl-bg-alt/50 hover:text-dtl-navy"
                 }`}
               >
                 {val}
@@ -80,11 +82,11 @@ function ProductImageDisplay({
 
   if (images.length === 0) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#f0f4f9] to-[#e4eaf3] gap-2 rounded">
-        <div className="w-12 h-12 bg-dtl-navy rounded-xl flex items-center justify-center shadow-inner">
-          <Layers className="text-white w-6 h-6" />
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded bg-gradient-to-br from-[#f0f4f9] to-[#e4eaf3]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-dtl-navy shadow-inner">
+          <Layers className="h-6 w-6 text-white" />
         </div>
-        <span className="text-xs text-[#8fa3be] font-medium tracking-wide">
+        <span className="text-xs font-medium tracking-wide text-[#8fa3be]">
           Coming Soon
         </span>
       </div>
@@ -95,23 +97,45 @@ function ProductImageDisplay({
   const secondaryImg = images.length > 1 ? images[1] : null;
 
   return (
-    <div className="w-full h-full relative group">
+    <div className="group relative h-full w-full">
       <Image
         src={primaryImg}
         alt={alt}
         fill
         sizes="(max-width: 768px) 50vw, 25vw"
-        className={`object-contain mix-blend-multiply transition-all duration-300 group-hover:scale-105 ${secondaryImg ? "group-hover:opacity-0" : ""}`}
+        className={`object-contain mix-blend-multiply transition-all duration-300 group-hover:scale-105 ${
+          secondaryImg ? "group-hover:opacity-0" : ""
+        }`}
       />
-      {secondaryImg && (
+      {secondaryImg ? (
         <Image
           src={secondaryImg}
           alt={alt}
           fill
           sizes="(max-width: 768px) 50vw, 25vw"
-          className="absolute inset-0 object-contain mix-blend-multiply opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105"
+          className="absolute inset-0 object-contain mix-blend-multiply opacity-0 transition-all duration-300 group-hover:scale-105 group-hover:opacity-100"
         />
-      )}
+      ) : null}
+    </div>
+  );
+}
+
+function ProductGridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-3 md:gap-5 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div
+          key={index}
+          className="overflow-hidden rounded-lg border border-dtl-border bg-white shadow-sm"
+        >
+          <div className="aspect-square animate-pulse bg-slate-100" />
+          <div className="space-y-3 p-4">
+            <div className="h-4 animate-pulse rounded bg-slate-100" />
+            <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100" />
+            <div className="h-9 animate-pulse rounded bg-slate-100" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -120,15 +144,16 @@ export function CatalogPage({ slug }: { slug: string }) {
   const { openProductDetail } = useModal();
   const { catalog, categories, loading } = useCategories();
 
-  // Local state for server-driven pagination
   const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<ProductLoadStatus>("idle");
   const [items, setItems] = useState<PublicProductCard[]>([]);
   const [total, setTotal] = useState(0);
   const [pageCount, setPageCount] = useState(1);
-  const [isPageLoading, setIsPageLoading] = useState(true);
-  const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>(
+    {},
+  );
 
-  // Reset filters and page when slug changes during render
   const [prevSlug, setPrevSlug] = useState(slug);
   if (slug !== prevSlug) {
     setPrevSlug(slug);
@@ -136,11 +161,13 @@ export function CatalogPage({ slug }: { slug: string }) {
     setActiveFilters({});
   }
 
-  // Fetch dynamic products from the server action
   useEffect(() => {
     let isCurrent = true;
+
     Promise.resolve().then(() => {
-      if (isCurrent) setIsPageLoading(true);
+      if (!isCurrent) return;
+      setStatus("loading");
+      setLoadError(null);
     });
 
     getPublicProductsPageAction({
@@ -154,14 +181,20 @@ export function CatalogPage({ slug }: { slug: string }) {
         setItems(res.items);
         setTotal(res.total);
         setPageCount(res.pageCount);
+        setStatus(res.items.length > 0 ? "success" : "empty");
       })
       .catch((err) => {
+        if (!isCurrent) return;
         console.error("Failed to load products page:", err);
-      })
-      .finally(() => {
-        if (isCurrent) {
-          setIsPageLoading(false);
-        }
+        setItems([]);
+        setTotal(0);
+        setPageCount(1);
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : "Không thể tải danh sách sản phẩm lúc này.",
+        );
+        setStatus("error");
       });
 
     return () => {
@@ -171,8 +204,8 @@ export function CatalogPage({ slug }: { slug: string }) {
 
   if (loading) {
     return (
-      <div className="max-w-[1220px] mx-auto px-5 py-24 flex flex-col items-center justify-center min-h-[400px]">
-        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-dtl-red animate-spin mb-4.5"></div>
+      <div className="mx-auto flex min-h-[400px] max-w-[1220px] flex-col items-center justify-center px-5 py-24">
+        <div className="mb-4.5 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-dtl-red" />
         <p className="text-sm font-semibold text-slate-500">
           Đang tải thông tin sản phẩm và dịch vụ...
         </p>
@@ -183,12 +216,10 @@ export function CatalogPage({ slug }: { slug: string }) {
   let categoryDetail = catalog[slug];
 
   if (slug === "all") {
-    // Collect all filter defs from every category
     const allDefs = Object.values(catalog)
       .filter((c) => c.hasFilters && c.filterDefs)
       .flatMap((c) => c.filterDefs || []);
 
-    // Deduplicate by key and merge values
     const mergedDefsMap = new Map<
       string,
       { key: string; label: string; values: Set<string> }
@@ -201,10 +232,11 @@ export function CatalogPage({ slug }: { slug: string }) {
           label: def.label,
           values: new Set(def.values),
         });
-      } else {
-        const existing = mergedDefsMap.get(def.key)!;
-        def.values.forEach((v) => existing.values.add(v));
+        return;
       }
+
+      const existing = mergedDefsMap.get(def.key)!;
+      def.values.forEach((value) => existing.values.add(value));
     });
 
     const extraFilters = Array.from(mergedDefsMap.values()).map((def) => ({
@@ -224,7 +256,7 @@ export function CatalogPage({ slug }: { slug: string }) {
 
   if (!categoryDetail) {
     return (
-      <div className="p-16 text-center text-dtl-gray text-lg font-medium">
+      <div className="p-16 text-center text-lg font-medium text-dtl-gray">
         Không tìm thấy phân mục {slug}
       </div>
     );
@@ -243,7 +275,7 @@ export function CatalogPage({ slug }: { slug: string }) {
       }
       return nextFilters;
     });
-    setPage(1); // Reset page on filter changes
+    setPage(1);
   };
 
   const clearAllFilters = () => {
@@ -251,34 +283,30 @@ export function CatalogPage({ slug }: { slug: string }) {
     setPage(1);
   };
 
-  const isFilterActive = (key: string, value: string) => {
-    return activeFilters[key]?.includes(value) || false;
-  };
+  const isFilterActive = (key: string, value: string) =>
+    activeFilters[key]?.includes(value) || false;
 
   const hasActiveFilters = Object.keys(activeFilters).length > 0;
 
-  // Map PublicProductCard to CatalogItem for rendering compatibility
   const visibleItems: CatalogItem[] = items.map((card) => ({
     id: card.slug,
     name: card.name,
-    img: card.thumbnailUrl || '/placeholder.svg',
+    img: card.thumbnailUrl || "/placeholder.svg",
     imgs: card.thumbnailUrl ? [card.thumbnailUrl] : [],
     price: card.price ?? undefined,
     stock: card.stock,
-    categoryId: card.category_slug || '',
+    categoryId: card.category_slug || "",
     dungTich: card.specs.dungTich,
     quyCach: card.specs.quyCach,
     phiNap: card.specs.phiNap,
     loaiNap: card.specs.loaiNap,
     color: card.specs.color,
-    bulkDiscounts: card.hasActiveBulkDiscount && card.minBulkPrice ? [
-      { threshold: 10, pricePerUnit: card.minBulkPrice }
-    ] : undefined
+    bulkDiscounts:
+      card.hasActiveBulkDiscount && card.minBulkPrice
+        ? [{ threshold: 10, pricePerUnit: card.minBulkPrice }]
+        : undefined,
   }));
 
-  const allEmpty = items.length > 0 && items.every((i) => !i.thumbnailUrl);
-
-  // Build category tree - separates products and services
   const rootProductCategories = categories.filter(
     (c) => c.type === "product" && !c.parentId,
   );
@@ -286,14 +314,12 @@ export function CatalogPage({ slug }: { slug: string }) {
   const serviceCategories = categories.filter((c) => c.type === "service");
 
   return (
-    <div className="max-w-[1220px] mx-auto px-5 py-8 flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
-      {/* Sidebar Filters */}
-      <div className="w-full md:w-[280px] shrink-0 flex flex-col gap-6">
-        {/* Category List */}
-        <div className="bg-white border border-dtl-border rounded-xl shadow-sm overflow-hidden">
-          <div className="px-5 py-4 bg-dtl-bg-alt/50 border-b border-dtl-border flex justify-between items-center">
-            <h3 className="text-[14px] font-black uppercase tracking-[0.5px] text-dtl-navy flex items-center gap-2">
-              <List className="w-4 h-4 text-dtl-red" /> Danh Mục Sản Phẩm
+    <div className="mx-auto flex max-w-[1220px] flex-col items-start gap-6 px-5 py-8 md:flex-row lg:gap-8">
+      <div className="flex w-full shrink-0 flex-col gap-6 md:w-[280px]">
+        <div className="overflow-hidden rounded-xl border border-dtl-border bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-dtl-border bg-dtl-bg-alt/50 px-5 py-4">
+            <h3 className="flex items-center gap-2 text-[14px] font-black uppercase tracking-[0.5px] text-dtl-navy">
+              <List className="h-4 w-4 text-dtl-red" /> Danh Mục Sản Phẩm
             </h3>
           </div>
           <div className="p-3">
@@ -301,7 +327,7 @@ export function CatalogPage({ slug }: { slug: string }) {
               <li>
                 <Link
                   href="/danh-muc"
-                  className={`block px-3 py-2 rounded-lg text-[14px] font-semibold transition-colors ${
+                  className={`block rounded-lg px-3 py-2 text-[14px] font-semibold transition-colors ${
                     slug === "all"
                       ? "bg-dtl-red text-white"
                       : "text-dtl-dark hover:bg-dtl-bg-alt hover:text-dtl-red"
@@ -319,32 +345,31 @@ export function CatalogPage({ slug }: { slug: string }) {
                 const hasActiveChild = children.some(
                   (child) => slug === child.id,
                 );
-                const showChildren = children.length > 0;
 
                 return (
                   <li key={key} className="pt-1">
                     <Link
                       href={`/danh-muc/${key}`}
-                      className={`block px-3 py-2 rounded-lg text-[13.5px] font-semibold transition-colors ${
+                      className={`block rounded-lg px-3 py-2 text-[13.5px] font-semibold transition-colors ${
                         isRootActive
                           ? "bg-dtl-red text-white"
                           : hasActiveChild
-                            ? "text-dtl-red font-bold"
+                            ? "font-bold text-dtl-red"
                             : "text-dtl-dark hover:bg-dtl-bg-alt hover:text-dtl-red"
                       }`}
                     >
                       {category.title}
                     </Link>
-                    {showChildren && (
-                      <ul className="pl-4 mt-1 border-l-2 border-dtl-bg-alt ml-4 space-y-1">
+                    {children.length > 0 ? (
+                      <ul className="ml-4 mt-1 space-y-1 border-l-2 border-dtl-bg-alt pl-4">
                         {children.map((childCat) => (
                           <li key={childCat.id}>
                             <Link
                               href={`/danh-muc/${childCat.id}`}
-                              className={`block px-3 py-1.5 rounded-lg text-[12.5px] font-medium transition-colors relative before:content-[''] before:absolute before:-left-[18px] before:top-1/2 before:w-3 before:border-t-2 before:border-dtl-bg-alt ${
+                              className={`relative block rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-colors before:absolute before:-left-[18px] before:top-1/2 before:w-3 before:border-t-2 before:border-dtl-bg-alt before:content-[''] ${
                                 slug === childCat.id
-                                  ? "text-dtl-red bg-dtl-bg-alt/50 font-bold"
-                                  : "text-dtl-gray hover:text-dtl-red hover:bg-dtl-bg-alt"
+                                  ? "bg-dtl-bg-alt/50 font-bold text-dtl-red"
+                                  : "text-dtl-gray hover:bg-dtl-bg-alt hover:text-dtl-red"
                               }`}
                             >
                               {childCat.title}
@@ -352,7 +377,7 @@ export function CatalogPage({ slug }: { slug: string }) {
                           </li>
                         ))}
                       </ul>
-                    )}
+                    ) : null}
                   </li>
                 );
               })}
@@ -360,11 +385,10 @@ export function CatalogPage({ slug }: { slug: string }) {
           </div>
         </div>
 
-        {/* Services List */}
-        <div className="bg-white border border-dtl-border rounded-xl shadow-sm overflow-hidden">
-          <div className="px-5 py-4 bg-dtl-bg-alt/50 border-b border-dtl-border">
-            <h3 className="text-[14px] font-black uppercase tracking-[0.5px] text-dtl-navy flex items-center gap-2">
-              <Layers className="w-4 h-4 text-dtl-red" /> Dịch Vụ Cung Cấp
+        <div className="overflow-hidden rounded-xl border border-dtl-border bg-white shadow-sm">
+          <div className="border-b border-dtl-border bg-dtl-bg-alt/50 px-5 py-4">
+            <h3 className="flex items-center gap-2 text-[14px] font-black uppercase tracking-[0.5px] text-dtl-navy">
+              <Layers className="h-4 w-4 text-dtl-red" /> Dịch Vụ Cung Cấp
             </h3>
           </div>
           <div className="p-3">
@@ -373,7 +397,7 @@ export function CatalogPage({ slug }: { slug: string }) {
                 <li key={service.id}>
                   <Link
                     href={`/danh-muc/${service.id}`}
-                    className={`block px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
+                    className={`block rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors ${
                       slug === service.id
                         ? "bg-dtl-navy text-white"
                         : "text-dtl-dark hover:bg-dtl-bg-alt hover:text-dtl-red"
@@ -387,188 +411,184 @@ export function CatalogPage({ slug }: { slug: string }) {
           </div>
         </div>
 
-        {categoryDetail.hasFilters && categoryDetail.filterDefs && (
-          <div className="bg-white border border-dtl-border rounded-xl shadow-sm overflow-hidden">
-            <div className="px-5 py-4 bg-dtl-bg-alt/50 border-b border-dtl-border flex justify-between items-center">
-              <h3 className="text-[14px] font-black uppercase tracking-[0.5px] text-dtl-navy flex items-center gap-2">
-                <Filter className="w-4 h-4 text-dtl-red" /> Bộ Lọc Thông Số
+        {categoryDetail.hasFilters && categoryDetail.filterDefs ? (
+          <div className="overflow-hidden rounded-xl border border-dtl-border bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-dtl-border bg-dtl-bg-alt/50 px-5 py-4">
+              <h3 className="flex items-center gap-2 text-[14px] font-black uppercase tracking-[0.5px] text-dtl-navy">
+                <Filter className="h-4 w-4 text-dtl-red" /> Bộ Lọc Thông Số
               </h3>
-              {hasActiveFilters && (
+              {hasActiveFilters ? (
                 <button
                   onClick={clearAllFilters}
-                  className="text-[13px] text-dtl-red underline font-medium hover:text-dtl-red-dark"
+                  className="text-[13px] font-medium text-dtl-red underline hover:text-dtl-red-dark"
                 >
                   Xóa tất cả
                 </button>
-              )}
+              ) : null}
             </div>
 
-            <div className="p-5 divide-y divide-dtl-border/50">
+            <div className="divide-y divide-dtl-border/50 p-5">
               {categoryDetail.filterDefs.map((def) => (
                 <FilterGroup
                   key={def.key}
-                  def={def as any}
+                  def={def as { key: string; label: string; values: string[] }}
                   isFilterActive={isFilterActive}
                   handleFilterClick={handleFilterClick}
                 />
               ))}
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Product Grid */}
-      <div className="flex-1 w-full min-w-0">
-        <div className="flex items-center gap-3 bg-dtl-navy text-white px-5 py-4.5 mb-5 rounded-lg shadow-sm">
-          <div className="w-1.5 self-stretch bg-dtl-red rounded-full"></div>
+      <div className="min-w-0 flex-1 w-full">
+        <div className="mb-5 flex items-center gap-3 rounded-lg bg-dtl-navy px-5 py-4.5 text-white shadow-sm">
+          <div className="w-1.5 self-stretch rounded-full bg-dtl-red" />
           <h1 className="text-lg font-black uppercase tracking-wide">
             {categoryDetail.title}
           </h1>
         </div>
 
-        <div className="flex items-center justify-between mb-4 pb-4 border-b border-dtl-border">
+        <div className="mb-4 flex items-center justify-between border-b border-dtl-border pb-4">
           <div className="text-[13px] text-dtl-gray">
             {hasActiveFilters ? (
               <>
-                Hiển thị <strong className="text-dtl-navy font-bold">{total}</strong> kết quả phù hợp
+                Hiển thị{" "}
+                <strong className="font-bold text-dtl-navy">{total}</strong> kết
+                quả phù hợp
               </>
             ) : (
               <>
-                Tất cả <strong className="text-dtl-dark font-bold text-sm tracking-wide">{total}</strong> sản phẩm hiện có
+                Tất cả{" "}
+                <strong className="text-sm font-bold tracking-wide text-dtl-dark">
+                  {total}
+                </strong>{" "}
+                sản phẩm hiện có
               </>
             )}
           </div>
         </div>
 
-        {allEmpty && (
-          <div className="bg-dtl-bg-alt border border-dashed border-dtl-border rounded-md p-6 text-center mb-6">
-            <p className="text-[14px] text-dtl-gray">
-              <strong className="text-dtl-navy">
-                Đang cập nhật thêm thông tin.
-              </strong>{" "}
-              Vui lòng liên hệ hotline{" "}
-              <a href="tel:0939991551" className="text-dtl-red font-bold">
-                0939.991.551
-              </a>{" "}
-              để được hỗ trợ tức thì.
+        {status === "loading" || status === "idle" ? (
+          <ProductGridSkeleton />
+        ) : status === "error" ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-5 py-8 text-center text-red-700">
+            <p className="text-sm font-semibold">
+              Không thể tải danh sách sản phẩm lúc này.
             </p>
+            {loadError ? <p className="mt-2 text-xs">{loadError}</p> : null}
           </div>
-        )}
-
-        {isPageLoading ? (
-          <div className="py-20 flex flex-col items-center justify-center text-dtl-gray bg-white rounded-lg border border-dtl-border shadow-sm min-h-[300px]">
-            <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-dtl-red animate-spin mb-4"></div>
-            <p className="text-sm font-medium">Đang tải danh sách sản phẩm...</p>
-          </div>
-        ) : visibleItems.length > 0 ? (
+        ) : status === "success" ? (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
-              {visibleItems.map((item, idx) => {
-                return (
-                  <div
-                    key={idx}
-                    className="relative bg-white border border-dtl-border rounded-lg overflow-hidden transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:border-dtl-navy/40 hover:-translate-y-1 flex flex-col group cursor-pointer"
-                  >
-                    {/* Full-card navigation link — z-[1] below button */}
-                    <Link
-                      href={`/san-pham/${item.id}`}
-                      className="absolute inset-0 z-[1] rounded-lg"
-                      aria-label={`Xem chi tiết ${item.name}`}
-                    />
+            <div className="grid grid-cols-2 gap-3 md:gap-5 lg:grid-cols-3">
+              {visibleItems.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="group relative flex flex-col overflow-hidden rounded-lg border border-dtl-border bg-white transition-all hover:-translate-y-1 hover:border-dtl-navy/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
+                >
+                  <Link
+                    href={`/san-pham/${item.id}`}
+                    className="absolute inset-0 z-[1] rounded-lg"
+                    aria-label={`Xem chi tiết ${item.name}`}
+                  />
 
-                    {/* Card content — pointer-events-none so link overlay handles card clicks */}
-                    <div className="pointer-events-none">
-                      <div className="relative w-full aspect-square bg-[#fff] p-4 border-b border-dtl-bg-alt overflow-hidden flex items-center justify-center">
-                        {item.stock !== undefined && (
-                          <div className="absolute top-2 right-2 z-20 font-black uppercase tracking-wide leading-none">
-                            {item.stock === 0 ? (
-                              <span className="bg-red-50 text-red-600 px-1.5 py-1 text-[9px] rounded border border-red-200 shadow-sm block">
-                                Hết hàng
-                              </span>
-                            ) : item.stock <= 15 ? (
-                              <span className="bg-amber-50 text-amber-600 px-1.5 py-1 text-[9px] rounded border border-amber-200 shadow-sm block">
-                                Chỉ còn {item.stock}
-                              </span>
-                            ) : null}
-                          </div>
-                        )}
-                        <ProductImageDisplay
-                          imgs={item.imgs}
-                          img={item.img}
-                          alt={item.name}
-                        />
-                      </div>
-
-                      <div className="p-3 md:p-4 bg-white flex-1 flex flex-col items-center">
-                        <h3 className="text-[13px] md:text-[14.5px] font-bold text-dtl-dark text-center leading-[1.4] transition-colors group-hover:text-dtl-red mb-2.5 h-10 line-clamp-2 overflow-hidden text-ellipsis">
-                          {item.name}
-                        </h3>
-
-                        {item.price && item.price > 0 ? (
-                          <div className="mb-3 text-center">
-                            <div className="text-dtl-red text-[15px] font-extrabold">
-                              {item.price.toLocaleString("vi-VN")}đ
-                            </div>
-                            {item.bulkDiscounts &&
-                              item.bulkDiscounts.length > 0 && (
-                                <div className="text-[10px] text-dtl-gray mt-0.5">
-                                  Sỉ từ{" "}
-                                  {item.bulkDiscounts[
-                                    item.bulkDiscounts.length - 1
-                                  ].pricePerUnit.toLocaleString("vi-VN")}
-                                  đ
-                                </div>
-                              )}
-                          </div>
-                        ) : (
-                          <div className="mb-3 text-dtl-gray text-xs font-semibold">
-                            Báo giá qua hotline
-                          </div>
-                        )}
-
-                        {categoryDetail.filterDefs && (
-                          <div className="flex flex-wrap gap-1.5 justify-center mb-3">
-                            {categoryDetail.filterDefs.map((def) => {
-                              const val = (item as any)[def.key];
-                              if (!val) return null;
-                              return (
-                                <span
-                                  key={def.key}
-                                  className="text-[10px] bg-dtl-bg-alt text-dtl-navy font-semibold px-2 py-0.5 rounded border border-dtl-border/60 uppercase tracking-tight"
-                                >
-                                  {val}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                  <div className="pointer-events-none">
+                    <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b border-dtl-bg-alt bg-[#fff] p-4">
+                      {item.stock !== undefined ? (
+                        <div className="absolute top-2 right-2 z-20 font-black uppercase leading-none tracking-wide">
+                          {item.stock === 0 ? (
+                            <span className="block rounded border border-red-200 bg-red-50 px-1.5 py-1 text-[9px] text-red-600 shadow-sm">
+                              Hết hàng
+                            </span>
+                          ) : item.stock <= 15 ? (
+                            <span className="block rounded border border-amber-200 bg-amber-50 px-1.5 py-1 text-[9px] text-amber-600 shadow-sm">
+                              Chỉ còn {item.stock}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <ProductImageDisplay
+                        imgs={item.imgs}
+                        img={item.img}
+                        alt={item.name}
+                      />
                     </div>
 
-                    {/* Button re-enables pointer events at z-[2] above the link overlay */}
-                    <div className="px-3 md:px-4 pb-3 md:pb-4 relative z-[2] pointer-events-auto">
-                      <button
-                        onClick={() => openProductDetail(item, categoryDetail)}
-                        className="w-full bg-[#f8f9fa] group-hover:bg-dtl-red text-dtl-navy group-hover:text-white font-bold text-[11px] md:text-xs py-[9px] rounded transition-all border border-dtl-border group-hover:border-dtl-red flex items-center justify-center gap-1.5 cursor-pointer shadow-sm duration-300"
-                      >
-                        <Info className="w-3.5 h-3.5" /> Chi Tiết & Báo Giá Sỉ
-                      </button>
+                    <div className="flex flex-1 flex-col items-center bg-white p-3 md:p-4">
+                      <h3 className="mb-2.5 h-10 overflow-hidden text-ellipsis text-center text-[13px] font-bold leading-[1.4] text-dtl-dark transition-colors line-clamp-2 group-hover:text-dtl-red md:text-[14.5px]">
+                        {item.name}
+                      </h3>
+
+                      {item.price && item.price > 0 ? (
+                        <div className="mb-3 text-center">
+                          <div className="text-[15px] font-extrabold text-dtl-red">
+                            {item.price.toLocaleString("vi-VN")}đ
+                          </div>
+                          {item.bulkDiscounts &&
+                          item.bulkDiscounts.length > 0 ? (
+                            <div className="mt-0.5 text-[10px] text-dtl-gray">
+                              Sỉ từ{" "}
+                              {item.bulkDiscounts[
+                                item.bulkDiscounts.length - 1
+                              ].pricePerUnit.toLocaleString("vi-VN")}
+                              đ
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div className="mb-3 text-xs font-semibold text-dtl-gray">
+                          Báo giá qua hotline
+                        </div>
+                      )}
+
+                      {categoryDetail.filterDefs ? (
+                        <div className="mb-3 flex flex-wrap justify-center gap-1.5">
+                          {categoryDetail.filterDefs.map((def) => {
+                            const val = (item as CatalogItem & Record<string, unknown>)[
+                              def.key
+                            ];
+                            if (!val) return null;
+
+                            return (
+                              <span
+                                key={def.key}
+                                className="rounded border border-dtl-border/60 bg-dtl-bg-alt px-2 py-0.5 text-[10px] font-semibold uppercase tracking-tight text-dtl-navy"
+                              >
+                                {String(val)}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                );
-              })}
+
+                  <div className="pointer-events-auto relative z-[2] px-3 pb-3 md:px-4 md:pb-4">
+                    <button
+                      onClick={() =>
+                        openProductDetail(
+                          item,
+                          categoryDetail as CatalogCategory,
+                        )
+                      }
+                      className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded border border-dtl-border bg-[#f8f9fa] py-[9px] text-[11px] font-bold text-dtl-navy shadow-sm transition-all duration-300 group-hover:border-dtl-red group-hover:bg-dtl-red group-hover:text-white md:text-xs"
+                    >
+                      <Info className="h-3.5 w-3.5" /> Chi Tiết & Báo Giá Sỉ
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {/* Pagination controls */}
-            {pageCount > 1 && (
+            {pageCount > 1 ? (
               <div className="mt-8 flex items-center justify-center gap-3 border-t border-dtl-border pt-6">
                 <button
                   disabled={page === 1}
                   onClick={() => {
                     setPage((p) => Math.max(1, p - 1));
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
-                  className="px-4 py-2 border border-dtl-border rounded-lg text-[13px] font-bold text-dtl-navy hover:bg-dtl-bg-alt hover:text-dtl-red transition-all cursor-pointer disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-dtl-navy disabled:cursor-not-allowed"
+                  className="cursor-pointer rounded-lg border border-dtl-border px-4 py-2 text-[13px] font-bold text-dtl-navy transition-all hover:bg-dtl-bg-alt hover:text-dtl-red disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-dtl-navy"
                 >
                   Trang trước
                 </button>
@@ -579,20 +599,20 @@ export function CatalogPage({ slug }: { slug: string }) {
                   disabled={page === pageCount}
                   onClick={() => {
                     setPage((p) => Math.min(pageCount, p + 1));
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
-                  className="px-4 py-2 border border-dtl-border rounded-lg text-[13px] font-bold text-dtl-navy hover:bg-dtl-bg-alt hover:text-dtl-red transition-all cursor-pointer disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-dtl-navy disabled:cursor-not-allowed"
+                  className="cursor-pointer rounded-lg border border-dtl-border px-4 py-2 text-[13px] font-bold text-dtl-navy transition-all hover:bg-dtl-bg-alt hover:text-dtl-red disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-dtl-navy"
                 >
                   Trang sau
                 </button>
               </div>
-            )}
+            ) : null}
           </>
         ) : (
-          <div className="text-center py-16 px-4 text-[15px] bg-dtl-bg-alt rounded-lg text-dtl-gray border border-dashed border-dtl-border">
+          <div className="rounded-lg border border-dashed border-dtl-border bg-dtl-bg-alt px-4 py-16 text-center text-[15px] text-dtl-gray">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-14 h-14 mx-auto mb-4 text-dtl-gray/40"
+              className="mx-auto mb-4 h-14 w-14 text-dtl-gray/40"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

@@ -502,7 +502,9 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
     .is('parent_id', null)
     .eq('is_active', true);
 
-  const activeRootIds = (rootCats ?? []).map((c) => c.id).filter((id) => visibleCategoryIds.has(id));
+  const activeRootCategories = (rootCats ?? []).filter((category) => visibleCategoryIds.has(category.id));
+  const activeRootIds = activeRootCategories.map((category) => category.id);
+  const rootSlugById = new Map(activeRootCategories.map((category) => [category.id, category.slug]));
 
   if (activeRootIds.length === 0) return {};
 
@@ -644,7 +646,10 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
     const rootItems = productIdsForRoot
       .map((id) => itemsMap.get(id))
       .filter((item): item is NonNullable<typeof item> => !!item);
-    result[rootId] = rootItems;
+    const rootSlug = rootSlugById.get(rootId);
+    if (rootSlug) {
+      result[rootSlug] = rootItems;
+    }
   });
 
   return result;
