@@ -4,6 +4,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts, Tables, Updates } from '@/lib/types/database';
 import { buildAuditMetadata, type RequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { ALLOWED_POSITIONS } from '@/lib/services/banners';
 
 export type AdminBanner = Pick<
   Tables<'promotional_banners'>,
@@ -45,11 +46,13 @@ function normalizeNullableText(value: string | null) {
 }
 
 function normalizeBannerPayload(payload: BannerPayload): Inserts<'promotional_banners'> {
+  const position = payload.position.trim();
+  const validPosition = ALLOWED_POSITIONS.includes(position as any) ? position : 'top_bar';
   return {
     name: payload.name.trim(),
     content: payload.content.trim(),
     link_url: normalizeNullableText(payload.link_url),
-    position: payload.position.trim() || 'top_bar',
+    position: validPosition,
     image_desktop_url: normalizeNullableText(payload.image_desktop_url),
     image_mobile_url: normalizeNullableText(payload.image_mobile_url),
     start_at: normalizeNullableText(payload.start_at),
@@ -180,6 +183,10 @@ export async function getAdminBannerStats(): Promise<{ data: AdminBannerStats; e
 }
 
 export async function createAdminBanner(payload: BannerPayload, requestContext?: RequestContext) {
+  if (!ALLOWED_POSITIONS.includes(payload.position as any)) {
+    return { data: null, error: 'Vị trí hiển thị không hợp lệ.' };
+  }
+
   if (payload.start_at && payload.end_at && new Date(payload.start_at) >= new Date(payload.end_at)) {
     return { data: null, error: 'Thời gian kết thúc phải sau thời gian bắt đầu.' };
   }
@@ -214,6 +221,10 @@ export async function createAdminBanner(payload: BannerPayload, requestContext?:
 }
 
 export async function updateAdminBanner(bannerId: string, payload: BannerPayload, requestContext?: RequestContext) {
+  if (!ALLOWED_POSITIONS.includes(payload.position as any)) {
+    return { data: null, error: 'Vị trí hiển thị không hợp lệ.' };
+  }
+
   if (payload.start_at && payload.end_at && new Date(payload.start_at) >= new Date(payload.end_at)) {
     return { data: null, error: 'Thời gian kết thúc phải sau thời gian bắt đầu.' };
   }

@@ -10,6 +10,7 @@ import {
   type BannerPayload,
 } from '@/lib/services/admin/banners';
 import { getRequestContext } from '@/lib/services/admin/audit-metadata';
+import { ALLOWED_POSITIONS } from '@/lib/services/banners';
 
 export type AdminFormState = { ok: boolean; error?: string };
 
@@ -25,9 +26,8 @@ function readBoolean(formData: FormData, key: string) {
 function readBannerPayload(formData: FormData): BannerPayload {
   const name = readString(formData, 'name');
   const content = readString(formData, 'content');
-  const sortOrder = Number(readString(formData, 'sort_order') || 0);
-  const startAt = readString(formData, 'start_at') || null;
-  const endAt = readString(formData, 'end_at') || null;
+  const position = readString(formData, 'position') || 'top_bar';
+  const sortOrderRaw = formData.get('sort_order');
 
   if (!name) {
     throw new Error('Tên banner quảng cáo là bắt buộc.');
@@ -37,6 +37,22 @@ function readBannerPayload(formData: FormData): BannerPayload {
     throw new Error('Nội dung hiển thị là bắt buộc.');
   }
 
+  if (!ALLOWED_POSITIONS.includes(position as any)) {
+    throw new Error('Vị trí hiển thị không hợp lệ.');
+  }
+
+  if (sortOrderRaw === null || sortOrderRaw === undefined || String(sortOrderRaw).trim() === '') {
+    throw new Error('Thứ tự ưu tiên là bắt buộc.');
+  }
+
+  const sortOrder = Number(sortOrderRaw);
+  if (!Number.isInteger(sortOrder)) {
+    throw new Error('Thứ tự ưu tiên phải là một số nguyên.');
+  }
+
+  const startAt = readString(formData, 'start_at') || null;
+  const endAt = readString(formData, 'end_at') || null;
+
   if (startAt && endAt && new Date(startAt) >= new Date(endAt)) {
     throw new Error('Thời gian kết thúc phải sau thời gian bắt đầu.');
   }
@@ -45,12 +61,12 @@ function readBannerPayload(formData: FormData): BannerPayload {
     name,
     content,
     link_url: readString(formData, 'link_url') || null,
-    position: readString(formData, 'position') || 'top_bar',
+    position,
     image_desktop_url: readString(formData, 'image_desktop_url') || null,
     image_mobile_url: readString(formData, 'image_mobile_url') || null,
     start_at: startAt,
     end_at: endAt,
-    sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
+    sort_order: sortOrder,
     is_active: readBoolean(formData, 'is_active'),
   };
 }

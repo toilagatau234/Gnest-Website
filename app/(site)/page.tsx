@@ -7,14 +7,12 @@ import { StaffSection } from '@/components/StaffSection';
 import { WhyUsSection } from '@/components/WhyUsSection';
 import { getPublicSiteContents } from '@/lib/services/site-content';
 import { getHomepageProducts } from '@/lib/services/public-products';
-import { getActiveBannersByPosition } from '@/lib/services/banners';
 import { BannerSlot } from '@/components/BannerSlot';
 
 export default async function Home() {
-  const [siteContents, overviewProducts, homepageBanners] = await Promise.all([
+  const [siteContents, overviewProducts] = await Promise.all([
     getPublicSiteContents(),
     getHomepageProducts(),
-    getActiveBannersByPosition('homepage_slot').catch(() => []),
   ]);
 
   return (
@@ -33,11 +31,7 @@ export default async function Home() {
         <ProductsRender overviewProducts={overviewProducts} />
       </ScrollReveal>
 
-      {homepageBanners && homepageBanners.length > 0 ? (
-        <ScrollReveal direction="up" delay={0.1}>
-          <BannerSlot banners={homepageBanners} />
-        </ScrollReveal>
-      ) : null}
+      <BannerSlot position="homepage_slot" />
 
       <ScrollReveal direction="up" delay={0.1}>
         <StaffSection />

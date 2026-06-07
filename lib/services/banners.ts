@@ -3,6 +3,9 @@ import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import type { Tables } from '@/lib/types/database';
 
+export const ALLOWED_POSITIONS = ['top_bar', 'homepage_slot'] as const;
+export type BannerPosition = typeof ALLOWED_POSITIONS[number];
+
 export type PublicBanner = Pick<
   Tables<'promotional_banners'>,
   | 'id'
@@ -19,6 +22,10 @@ export type PublicBanner = Pick<
  * Evaluates scheduling (start_at & end_at) dynamically.
  */
 export async function getActiveBannersByPosition(position: string): Promise<PublicBanner[]> {
+  if (!ALLOWED_POSITIONS.includes(position as any)) {
+    return [];
+  }
+
   try {
     const supabase = await createClient();
     const { data, error } = await supabase

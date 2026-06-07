@@ -3,18 +3,14 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteOverlays } from '@/components/SiteOverlays';
 import { getPublicSiteContents } from '@/lib/services/site-content';
-import { getActiveBannersByPosition } from '@/lib/services/banners';
 import { PromoBanner } from '@/components/PromoBanner';
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const [siteContents, activeBanners] = await Promise.all([
-    getPublicSiteContents(),
-    getActiveBannersByPosition('top_bar').catch(() => []),
-  ]);
+  const siteContents = await getPublicSiteContents();
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {activeBanners.length > 0 ? <PromoBanner banners={activeBanners} /> : null}
+      <PromoBanner position="top_bar" />
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter
