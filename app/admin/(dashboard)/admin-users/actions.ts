@@ -7,6 +7,7 @@ import {
   updateAdminUserRole,
   setAdminUserActive,
   removeAdminUserAccess,
+  resetAdminUserPassword,
   type CreatedAdminUserPayload,
 } from '@/lib/services/admin/admin-users';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
@@ -149,6 +150,31 @@ export async function removeAdminUserAccessAction(userId: string): Promise<Admin
     return {
       ok: false,
       error: err instanceof Error ? err.message : 'Khong the xoa quyen truy cap.',
+    };
+  }
+}
+
+export async function resetAdminUserPasswordAction(
+  userId: string
+): Promise<AdminFormState & { temporaryPassword?: string }> {
+  if (!userId) {
+    return { ok: false, error: 'Thieu ID nguoi dung.' };
+  }
+
+  try {
+    const actor = await requireAdminAuth(['super_admin']);
+    const { ok, data, error } = await resetAdminUserPassword(userId, actor.id);
+
+    if (!ok || error || !data) {
+      return { ok: false, error: error || 'Khong the reset mat khau.' };
+    }
+
+    revalidateAdminUsers();
+    return { ok: true, temporaryPassword: data.temporaryPassword };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Khong the reset mat khau.',
     };
   }
 }

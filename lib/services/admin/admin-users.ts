@@ -471,3 +471,74 @@ export async function removeAdminUserAccess(
     };
   }
 }
+
+export async function resetAdminUserPassword(
+  userId: string,
+  currentAdminId: string
+): Promise<AdminUserActionResult<{ temporaryPassword: string; user: AdminUserListItem }>> {
+  try {
+    const actor = await requireAdminAuth(['super_admin']);
+    const supabase = createServiceRoleClient();
+
+    if (userId === currentAdminId) {
+      return { ok: false, error: 'Ban khong the tu reset mat khau cua chinh minh.' };
+    }
+
+    const { data: targetUser, error: targetError } = await supabase
+      .from('admin_users')
+      .select(ADMIN_USER_COLUMNS)
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (targetError || !targetUser) {
+      return { ok: false, error: 'Khong tim thay tai khoan de reset mat khau.' };
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.admin.getUserById(userId);
+    if (authError || !authData.user) {
+      return { ok: false, error: 'Khong tim thay thong tin auth cua tai khoan nay.' };
+    }
+
+    const temporaryPassword = generateTemporaryPassword();
+    const currentMetadata = authData.user.user_metadata || {};
+
+    const { error: updateAuthError } = await supabase.auth.admin.updateUserById(userId, {
+      password: temporaryPassword,
+      user_metadata: {
+        ...currentMetadata,
+        force_password_change: true,
+      },
+    });
+
+    if (updateAuthError) {
+      return { ok: false, error: `Khong the reset mat khau: ${updateAuthError.message}` };
+    }
+
+    const enrichedUser = (await enrichAdminUsers(supabase, [targetUser as AdminUserRow]))[0];
+
+    await supabase.from('audit_logs').insert({
+      actor_id: actor.id,
+      action: 'reset_password',
+      entity: 'admin_users',
+      entity_id: userId,
+      metadata: {
+        login_email: enrichedUser.email,
+        username: enrichedUser.username,
+        force_password_change: true,
+      },
+    });
+
+    return {
+      ok: true,
+      data: {
+        temporaryPassword,
+        user: enrichedUser,
+      },
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Khong the reset mat khau.',
+    };
+  }
+}
