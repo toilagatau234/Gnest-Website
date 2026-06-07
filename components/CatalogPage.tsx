@@ -13,9 +13,9 @@ import {
 } from "lucide-react";
 
 import { getPublicProductsPageAction } from "@/app/actions/public-products";
-import { useModal } from "@/lib/context";
 import { useCategories } from "@/lib/categories-context";
-import { CatalogItem, CatalogCategory } from "@/lib/data";
+import { CatalogCategory, CatalogItem } from "@/lib/data";
+import { useModal } from "@/lib/context";
 import { PublicProductCard } from "@/lib/services/public-products";
 
 type ProductLoadStatus = "idle" | "loading" | "success" | "empty" | "error";
@@ -34,6 +34,7 @@ function FilterGroup({
   return (
     <div className="py-4 first:pt-0 last:pb-0">
       <button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex w-full items-center justify-between text-[14px] font-bold tracking-wide text-dtl-dark transition-colors hover:text-dtl-red"
       >
@@ -45,13 +46,14 @@ function FilterGroup({
         )}
       </button>
 
-      {isExpanded && (
+      {isExpanded ? (
         <div className="mt-3 flex flex-wrap gap-2.5">
           {def.values.map((val) => {
             const active = isFilterActive(def.key, val);
             return (
               <button
                 key={val}
+                type="button"
                 onClick={() => handleFilterClick(def.key, val)}
                 className={`inline-flex items-center justify-center rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-all ${
                   active
@@ -64,7 +66,7 @@ function FilterGroup({
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -410,24 +412,34 @@ export function CatalogPage({ slug }: { slug: string }) {
             </ul>
           </div>
         </div>
+      </div>
+
+      <div className="min-w-0 flex-1 w-full">
+        <div className="mb-5 flex items-center gap-3 rounded-lg bg-dtl-navy px-5 py-4.5 text-white shadow-sm">
+          <div className="w-1.5 self-stretch rounded-full bg-dtl-red" />
+          <h1 className="text-lg font-black uppercase tracking-wide">
+            {categoryDetail.title}
+          </h1>
+        </div>
 
         {categoryDetail.hasFilters && categoryDetail.filterDefs ? (
-          <div className="overflow-hidden rounded-xl border border-dtl-border bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-dtl-border bg-dtl-bg-alt/50 px-5 py-4">
+          <div className="mb-5 overflow-hidden rounded-xl border border-dtl-border bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-dtl-border bg-dtl-bg-alt/50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="flex items-center gap-2 text-[14px] font-black uppercase tracking-[0.5px] text-dtl-navy">
                 <Filter className="h-4 w-4 text-dtl-red" /> Bộ Lọc Thông Số
               </h3>
               {hasActiveFilters ? (
                 <button
+                  type="button"
                   onClick={clearAllFilters}
-                  className="text-[13px] font-medium text-dtl-red underline hover:text-dtl-red-dark"
+                  className="self-start text-[13px] font-medium text-dtl-red underline hover:text-dtl-red-dark sm:self-auto"
                 >
                   Xóa tất cả
                 </button>
               ) : null}
             </div>
 
-            <div className="divide-y divide-dtl-border/50 p-5">
+            <div className="grid gap-x-6 divide-y divide-dtl-border/50 p-5 md:grid-cols-2 md:divide-y-0 lg:grid-cols-3">
               {categoryDetail.filterDefs.map((def) => (
                 <FilterGroup
                   key={def.key}
@@ -439,15 +451,6 @@ export function CatalogPage({ slug }: { slug: string }) {
             </div>
           </div>
         ) : null}
-      </div>
-
-      <div className="min-w-0 flex-1 w-full">
-        <div className="mb-5 flex items-center gap-3 rounded-lg bg-dtl-navy px-5 py-4.5 text-white shadow-sm">
-          <div className="w-1.5 self-stretch rounded-full bg-dtl-red" />
-          <h1 className="text-lg font-black uppercase tracking-wide">
-            {categoryDetail.title}
-          </h1>
-        </div>
 
         <div className="mb-4 flex items-center justify-between border-b border-dtl-border pb-4">
           <div className="text-[13px] text-dtl-gray">
@@ -565,6 +568,7 @@ export function CatalogPage({ slug }: { slug: string }) {
 
                   <div className="pointer-events-auto relative z-[2] px-3 pb-3 md:px-4 md:pb-4">
                     <button
+                      type="button"
                       onClick={() =>
                         openProductDetail(
                           item,
@@ -583,6 +587,7 @@ export function CatalogPage({ slug }: { slug: string }) {
             {pageCount > 1 ? (
               <div className="mt-8 flex items-center justify-center gap-3 border-t border-dtl-border pt-6">
                 <button
+                  type="button"
                   disabled={page === 1}
                   onClick={() => {
                     setPage((p) => Math.max(1, p - 1));
@@ -596,6 +601,7 @@ export function CatalogPage({ slug }: { slug: string }) {
                   Trang {page} / {pageCount}
                 </span>
                 <button
+                  type="button"
                   disabled={page === pageCount}
                   onClick={() => {
                     setPage((p) => Math.min(pageCount, p + 1));
