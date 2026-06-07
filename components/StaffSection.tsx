@@ -198,7 +198,7 @@ export function StaffSection() {
     const interval = setInterval(() => {
       const nextIndex = (activeIndex + 1) % staff.length;
       scrollToItem(nextIndex);
-    }, 6000); // Auto-scroll every 6000ms
+    }, 3000); // Auto-scroll every 6000ms
 
     return () => clearInterval(interval);
   }, [staff.length, activeIndex, isPaused]);
