@@ -49,6 +49,9 @@ function readBannerPayload(formData: FormData): BannerPayload {
   if (!Number.isInteger(sortOrder)) {
     throw new Error('Thứ tự ưu tiên phải là một số nguyên.');
   }
+  if (sortOrder < 0) {
+    throw new Error('Thứ tự ưu tiên không được âm.');
+  }
 
   const startAt = readString(formData, 'start_at') || null;
   const endAt = readString(formData, 'end_at') || null;

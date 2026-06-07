@@ -451,7 +451,7 @@ create table if not exists public.promotional_banners (
   name text not null,
   content text not null,
   link_url text,
-  position text not null default 'top_bar',
+  position text not null default 'site_top',
   image_desktop_url text,
   image_mobile_url text,
   start_at timestamptz,
