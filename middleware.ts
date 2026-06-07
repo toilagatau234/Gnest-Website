@@ -1,6 +1,21 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+import {
+  ADMIN_IDLE_COOKIE_NAME,
+  ADMIN_IDLE_TIMEOUT_MS,
+  ADMIN_TIMEOUT_CLEAR_PATH,
+  getAdminActivityCookieOptions,
+} from '@/lib/services/admin/auth-config';
+
+const ADMIN_TIMEOUT_EXCLUDED_PATHS = new Set([
+  '/admin/login',
+  '/admin/account-disabled',
+  '/admin/account-disabled/clear',
+  '/admin/session-timeout',
+  '/admin/session-timeout/clear',
+]);
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -37,7 +52,35 @@ export async function middleware(request: NextRequest) {
   // IMPORTANT: DO NOT remove this. This refreshes the session if it is expired.
   // It reads the refresh token from cookies, communicates with Supabase Auth,
   // and saves the fresh access token back to cookies.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const lastActivityCookie = request.cookies.get(ADMIN_IDLE_COOKIE_NAME)?.value;
+
+  if (!user) {
+    if (lastActivityCookie) {
+      supabaseResponse.cookies.set(ADMIN_IDLE_COOKIE_NAME, '', {
+        ...getAdminActivityCookieOptions(),
+        maxAge: 0,
+      });
+    }
+
+    return supabaseResponse;
+  }
+
+  if (ADMIN_TIMEOUT_EXCLUDED_PATHS.has(request.nextUrl.pathname)) {
+    return supabaseResponse;
+  }
+
+  const lastActivity = lastActivityCookie ? Number(lastActivityCookie) : Number.NaN;
+  const now = Date.now();
+
+  if (Number.isFinite(lastActivity) && now - lastActivity >= ADMIN_IDLE_TIMEOUT_MS) {
+    return NextResponse.redirect(new URL(ADMIN_TIMEOUT_CLEAR_PATH, request.url));
+  }
+
+  supabaseResponse.cookies.set(ADMIN_IDLE_COOKIE_NAME, String(now), getAdminActivityCookieOptions());
 
   return supabaseResponse;
 }

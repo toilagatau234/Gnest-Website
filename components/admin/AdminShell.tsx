@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AdminTopbar } from '@/components/admin/AdminTopbar';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { AdminSessionActivityTracker } from '@/components/admin/AdminSessionActivityTracker';
 import { AdminToastProvider } from '@/components/admin/AdminToast';
 import type { AdminUser } from '@/lib/types/admin';
 
@@ -20,6 +21,7 @@ export function AdminShell({ children, adminUser }: AdminShellProps) {
   return (
     <AdminToastProvider>
       <div className="min-h-screen bg-[#F5F6FA] bg-[radial-gradient(circle_at_top_right,rgba(72,128,255,0.12),transparent_34%),linear-gradient(180deg,#F8FAFF_0%,#F5F6FA_42%,#F7F9FB_100%)] font-sans text-[#202224] antialiased selection:bg-[#4880FF]/10 selection:text-[#3749A6]">
+        <AdminSessionActivityTracker />
         <AdminSidebar isOpen={menuOpen} adminUser={adminUser} onNavigate={closeMenu} />
 
         <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden lg:pl-72">

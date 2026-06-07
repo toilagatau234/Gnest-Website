@@ -4,6 +4,11 @@ import { cache } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 
+import {
+  ADMIN_IDLE_COOKIE_NAME,
+  ADMIN_IDLE_TIMEOUT_MS,
+  ADMIN_TIMEOUT_CLEAR_PATH,
+} from '@/lib/services/admin/auth-config';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { requiresAdminPasswordReset } from '@/lib/services/admin/user-password-reset';
 import type { AdminUser } from '@/lib/types/admin';
@@ -13,6 +18,7 @@ export { ADMIN_ROLE_LABELS } from '@/lib/types/admin';
 
 export const ADMIN_ROLES: readonly AdminRole[] = ['super_admin', 'admin', 'editor', 'viewer'];
 export const ADMIN_DISABLED_CLEAR_PATH = '/admin/account-disabled/clear';
+export { ADMIN_IDLE_COOKIE_NAME, ADMIN_IDLE_TIMEOUT_MS, ADMIN_TIMEOUT_CLEAR_PATH };
 
 const VALID_ADMIN_ROLES = new Set<AdminRole>(ADMIN_ROLES);
 
