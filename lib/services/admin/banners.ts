@@ -47,7 +47,7 @@ function normalizeNullableText(value: string | null) {
 
 function normalizeBannerPayload(payload: BannerPayload): Inserts<'promotional_banners'> {
   const position = payload.position.trim();
-  const validPosition = ALLOWED_POSITIONS.includes(position as any) ? position : 'top_bar';
+  const validPosition = ALLOWED_POSITIONS.includes(position as any) ? position : 'site_top';
   return {
     name: payload.name.trim(),
     content: payload.content.trim(),

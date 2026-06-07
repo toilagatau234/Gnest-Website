@@ -34,7 +34,7 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
   const [name, setName] = useState(banner?.name ?? '');
   const [content, setContent] = useState(banner?.content ?? '');
   const [linkUrl, setLinkUrl] = useState(banner?.link_url ?? '');
-  const [position, setPosition] = useState(banner?.position ?? 'top_bar');
+  const [position, setPosition] = useState(banner?.position ?? 'site_top');
   const [imageDesktopUrl, setImageDesktopUrl] = useState(banner?.image_desktop_url ?? '');
   const [imageMobileUrl, setImageMobileUrl] = useState(banner?.image_mobile_url ?? '');
   const [startAt, setStartAt] = useState(toDatetimeLocal(banner?.start_at));
@@ -78,8 +78,9 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
             onChange={(event) => setPosition(event.target.value)}
             className={fieldClass}
           >
-            <option value="top_bar">Thanh thông báo đầu trang (Announcement Top Bar)</option>
-            <option value="homepage_slot">Vùng banner trang chủ (Homepage Banner Slot)</option>
+            <option value="site_top">Thanh thông báo đầu trang (site_top)</option>
+            <option value="home_after_products">Vùng banner trang chủ (home_after_products)</option>
+            <option value="catalog_top">Vùng banner trang danh mục (catalog_top)</option>
           </select>
           <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
             Khu vực mà banner này sẽ xuất hiện trên giao diện.

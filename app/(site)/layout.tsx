@@ -10,7 +10,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <PromoBanner position="top_bar" />
+      <PromoBanner position="site_top" />
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter

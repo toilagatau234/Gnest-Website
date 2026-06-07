@@ -28,10 +28,18 @@ function StatusBadge({ active }: { active: boolean }) {
 }
 
 function PositionBadge({ position }: { position: string }) {
-  if (position === 'homepage_slot') {
+  if (position === 'home_after_products') {
     return (
       <span className="inline-flex items-center gap-1 rounded-md border border-[#C9D2E6] bg-[#F0F4FC] px-2 py-0.5 text-[10px] font-bold text-[#1B3A6B]">
         Trang chủ (Slot)
+      </span>
+    );
+  }
+
+  if (position === 'catalog_top') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+        Trang danh mục
       </span>
     );
   }

@@ -3,7 +3,7 @@ import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import type { Tables } from '@/lib/types/database';
 
-export const ALLOWED_POSITIONS = ['top_bar', 'homepage_slot'] as const;
+export const ALLOWED_POSITIONS = ['site_top', 'home_after_products', 'catalog_top'] as const;
 export type BannerPosition = typeof ALLOWED_POSITIONS[number];
 
 export type PublicBanner = Pick<
@@ -57,5 +57,5 @@ export async function getActiveBannersByPosition(position: string): Promise<Publ
  * Backward compatible fetcher for the top bar position.
  */
 export async function getActiveBanners(): Promise<PublicBanner[]> {
-  return getActiveBannersByPosition('top_bar');
+  return getActiveBannersByPosition('site_top');
 }

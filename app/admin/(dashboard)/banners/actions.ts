@@ -26,7 +26,7 @@ function readBoolean(formData: FormData, key: string) {
 function readBannerPayload(formData: FormData): BannerPayload {
   const name = readString(formData, 'name');
   const content = readString(formData, 'content');
-  const position = readString(formData, 'position') || 'top_bar';
+  const position = readString(formData, 'position') || 'site_top';
   const sortOrderRaw = formData.get('sort_order');
 
   if (!name) {

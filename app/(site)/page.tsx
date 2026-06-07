@@ -31,7 +31,7 @@ export default async function Home() {
         <ProductsRender overviewProducts={overviewProducts} />
       </ScrollReveal>
 
-      <BannerSlot position="homepage_slot" />
+      <BannerSlot position="home_after_products" />
 
       <ScrollReveal direction="up" delay={0.1}>
         <StaffSection />
