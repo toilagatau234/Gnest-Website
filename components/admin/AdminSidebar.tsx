@@ -14,6 +14,7 @@ import {
   History,
   X,
   Sparkles,
+  Megaphone,
 } from 'lucide-react';
 
 import { ADMIN_ROLE_LABELS, type AdminUser } from '@/lib/types/admin';
@@ -52,6 +53,7 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Tuyển dụng', href: '/admin/jobs', icon: Briefcase },
       { label: 'Nội dung website', href: '/admin/site-content', icon: Globe },
+      { label: 'Banners quảng cáo', href: '/admin/banners', icon: Megaphone },
       { label: 'Người dùng quản trị', href: '/admin/admin-users', icon: Users },
       { label: 'Nhật ký hoạt động', href: '/admin/audit-logs', icon: History },
     ],

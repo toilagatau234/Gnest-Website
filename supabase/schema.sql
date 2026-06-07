@@ -444,3 +444,41 @@ create policy "Admin insert audit logs"
 on public.audit_logs for insert
 to authenticated
 with check (app_private.is_admin());
+
+-- 12. Promotional Banners Table
+create table if not exists public.promotional_banners (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  content text not null,
+  link_url text,
+  is_active boolean not null default true,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Trigger for updated_at
+drop trigger if exists set_promotional_banners_updated_at on public.promotional_banners;
+create trigger set_promotional_banners_updated_at
+before update on public.promotional_banners
+for each row execute function public.set_updated_at();
+
+-- Enable RLS
+alter table public.promotional_banners enable row level security;
+
+-- RLS Policies
+drop policy if exists "Public read active promotional banners" on public.promotional_banners;
+create policy "Public read active promotional banners"
+on public.promotional_banners for select
+using (is_active = true);
+
+drop policy if exists "Admin manage promotional banners" on public.promotional_banners;
+create policy "Admin manage promotional banners"
+on public.promotional_banners for all
+to authenticated
+using (app_private.is_admin())
+with check (app_private.is_admin());
+
+-- Grants
+grant select on public.promotional_banners to anon, authenticated;
+

@@ -1,0 +1,135 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+
+import {
+  createAdminBanner,
+  deleteAdminBanner,
+  setAdminBannerActive,
+  updateAdminBanner,
+  type BannerPayload,
+} from '@/lib/services/admin/banners';
+import { getRequestContext } from '@/lib/services/admin/audit-metadata';
+
+export type AdminFormState = { ok: boolean; error?: string };
+
+function readString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function readBoolean(formData: FormData, key: string) {
+  return formData.get(key) === 'on' || formData.get(key) === 'true';
+}
+
+function readBannerPayload(formData: FormData): BannerPayload {
+  const name = readString(formData, 'name');
+  const content = readString(formData, 'content');
+  const sortOrder = Number(readString(formData, 'sort_order') || 0);
+
+  if (!name) {
+    throw new Error('Tên banner quảng cáo là bắt buộc.');
+  }
+
+  if (!content) {
+    throw new Error('Nội dung hiển thị là bắt buộc.');
+  }
+
+  return {
+    name,
+    content,
+    link_url: readString(formData, 'link_url') || null,
+    sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
+    is_active: readBoolean(formData, 'is_active'),
+  };
+}
+
+function revalidateBanners() {
+  revalidatePath('/admin/banners');
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/');
+}
+
+export async function createBannerAction(
+  _prevState: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  try {
+    const payload = readBannerPayload(formData);
+    const requestContext = await getRequestContext();
+    const { error } = await createAdminBanner(payload, requestContext);
+
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể tạo banner.' };
+  }
+
+  revalidateBanners();
+  return { ok: true };
+}
+
+export async function updateBannerAction(
+  _prevState: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  try {
+    const bannerId = readString(formData, 'id');
+
+    if (!bannerId) {
+      return { ok: false, error: 'Thiếu ID banner quảng cáo.' };
+    }
+
+    const payload = readBannerPayload(formData);
+    const requestContext = await getRequestContext();
+    const { error } = await updateAdminBanner(bannerId, payload, requestContext);
+
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể cập nhật banner.' };
+  }
+
+  revalidateBanners();
+  return { ok: true };
+}
+
+export async function deleteBannerAction(bannerId: string): Promise<AdminFormState> {
+  if (!bannerId) {
+    return { ok: false, error: 'Thiếu ID banner quảng cáo.' };
+  }
+
+  try {
+    const requestContext = await getRequestContext();
+    const { error } = await deleteAdminBanner(bannerId, requestContext);
+
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể xóa banner.' };
+  }
+
+  revalidateBanners();
+  return { ok: true };
+}
+
+export async function toggleBannerActiveAction(formData: FormData) {
+  const bannerId = readString(formData, 'id');
+  const isActive = readString(formData, 'next_is_active') === 'true';
+
+  if (!bannerId) {
+    throw new Error('Thiếu ID banner quảng cáo.');
+  }
+
+  const requestContext = await getRequestContext();
+  const { error } = await setAdminBannerActive(bannerId, isActive, requestContext);
+
+  if (error) {
+    throw new Error(error);
+  }
+
+  revalidateBanners();
+}

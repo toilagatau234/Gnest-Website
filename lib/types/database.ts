@@ -366,7 +366,39 @@ export interface Database {
         };
         Relationships: [];
       };
+      promotional_banners: {
+        Row: {
+          id: string;
+          name: string;
+          content: string;
+          link_url: string | null;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          content: string;
+          link_url?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          content?: string;
+          link_url?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
+
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: {

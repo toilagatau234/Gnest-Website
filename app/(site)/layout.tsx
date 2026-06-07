@@ -3,12 +3,20 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteOverlays } from '@/components/SiteOverlays';
 import { getPublicSiteContents } from '@/lib/services/site-content';
+import { getActiveBanners } from '@/lib/services/banners';
+import { PromoBanner } from '@/components/PromoBanner';
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const siteContents = await getPublicSiteContents();
+  const [siteContents, activeBanners] = await Promise.all([
+    getPublicSiteContents(),
+    getActiveBanners().catch(() => []),
+  ]);
+
+  const topBanner = activeBanners?.[0] || null;
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
+      {topBanner ? <PromoBanner banner={topBanner} /> : null}
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter
@@ -22,3 +30,4 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     </div>
   );
 }
+
