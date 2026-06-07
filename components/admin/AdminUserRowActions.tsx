@@ -244,7 +244,7 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
                 
                 <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Mật khẩu tạm mới</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Mật khẩu mặc định mới</p>
                     <p className="mt-1 break-all font-mono text-sm font-bold text-amber-950">{temporaryPassword}</p>
                   </div>
                   <button
@@ -279,7 +279,7 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
               </div>
 
               <p className="text-xs text-slate-500 leading-relaxed">
-                Sau khi đặt lại, mật khẩu hiện tại sẽ bị vô hiệu hóa ngay lập tức. Người dùng sẽ nhận mật khẩu tạm mới và buộc phải đổi mật khẩu khi đăng nhập lần đầu.
+                Sau khi đặt lại, mật khẩu hiện tại sẽ bị vô hiệu hóa ngay lập tức. Mật khẩu mới sẽ được đặt thành mật khẩu mặc định là <strong className="text-amber-700 font-bold">abc@123</strong> và người dùng buộc phải đổi mật khẩu khi đăng nhập lần đầu.
               </p>
 
               {resetError ? (

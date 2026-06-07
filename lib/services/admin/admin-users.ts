@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { randomBytes } from 'crypto';
+
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { AdminRole, Tables } from '@/lib/types/database';
@@ -81,8 +81,7 @@ function buildInternalLoginEmail(username: string) {
 }
 
 function generateTemporaryPassword() {
-  const seed = randomBytes(9).toString('base64url');
-  return `Gnest!${seed}`;
+  return 'abc@123';
 }
 
 function readAuthMetadata(value: unknown) {

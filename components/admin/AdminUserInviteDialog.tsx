@@ -73,7 +73,7 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
           </p>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">Mật khẩu tạm</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">Mật khẩu mặc định</p>
           <p className="mt-1 break-all font-mono text-sm font-bold text-amber-950">
             {state.createdUser.temporaryPassword}
           </p>
@@ -180,7 +180,7 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
         </p>
         <p className="mt-1 break-all text-sm font-semibold text-slate-900">{previewLoginEmail}</p>
         <p className="mt-1 text-[10px] font-medium text-slate-500">
-          Hệ thống sẽ tạo mật khẩu tạm và yêu cầu đổi mật khẩu sau khi đăng nhập lần đầu.
+          Mật khẩu mặc định là <strong className="text-amber-700">abc@123</strong> và hệ thống yêu cầu đổi mật khẩu sau khi đăng nhập lần đầu.
         </p>
       </div>
 
@@ -227,7 +227,7 @@ export function AdminUserInviteDialog() {
         open={open}
         onClose={closeDialog}
         title="Tạo tài khoản quản trị nội bộ"
-        description="Cấp tài khoản đăng nhập nội bộ cho nhân sự. Hệ thống sẽ tạo email đăng nhập nội bộ, mật khẩu tạm và bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên."
+        description="Cấp tài khoản đăng nhập nội bộ cho nhân sự. Hệ thống sẽ tạo email đăng nhập nội bộ, mật khẩu mặc định là abc@123 và bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên."
         size="lg"
         footer={null}
       >
