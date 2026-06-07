@@ -18,8 +18,11 @@ import {
 import { CategoryRowActions } from '@/components/admin/CategoryRowActions';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 
+import type { CategoryType } from '@/lib/types/database';
+
 interface CategoriesTableProps {
   categories: AdminCategory[];
+  fixedType?: CategoryType;
 }
 
 type ViewMode = 'tree' | 'table';
@@ -33,6 +36,7 @@ interface CategoryFilterBarProps {
   onQueryChange: (value: string) => void;
   onTypeFilterChange: (value: TypeFilter) => void;
   onStatusFilterChange: (value: StatusFilter) => void;
+  fixedType?: CategoryType;
 }
 
 interface CategoryViewToggleProps {
@@ -46,12 +50,14 @@ interface CategoryTreeViewProps {
   childrenByParentId: Map<string, AdminCategory[]>;
   expandedParents: Record<string, boolean>;
   onToggleExpand: (id: string) => void;
+  fixedType?: CategoryType;
 }
 
 interface CategoryTableViewProps {
   categories: AdminCategory[];
   allCategories: AdminCategory[];
   categoryById: Map<string, AdminCategory>;
+  fixedType?: CategoryType;
 }
 
 function CategoryTypeBadge({ type }: { type: AdminCategory['type'] }) {
@@ -109,6 +115,7 @@ function CategoryFilterBar({
   onQueryChange,
   onTypeFilterChange,
   onStatusFilterChange,
+  fixedType,
 }: CategoryFilterBarProps) {
   return (
     <div className="admin-soft-panel flex flex-col gap-3 p-4 text-xs xl:flex-row xl:items-center xl:justify-between">
@@ -118,15 +125,17 @@ function CategoryFilterBar({
           Bộ lọc
         </span>
 
-        <select
-          value={typeFilter}
-          onChange={(event) => onTypeFilterChange(event.target.value as TypeFilter)}
-          className="admin-select h-9 w-auto min-w-36 text-xs"
-        >
-          <option value="all">Tất cả loại</option>
-          <option value="product">Sản phẩm</option>
-          <option value="service">Dịch vụ</option>
-        </select>
+        {!fixedType && (
+          <select
+            value={typeFilter}
+            onChange={(event) => onTypeFilterChange(event.target.value as TypeFilter)}
+            className="admin-select h-9 w-auto min-w-36 text-xs"
+          >
+            <option value="all">Tất cả loại</option>
+            <option value="product">Sản phẩm</option>
+            <option value="service">Dịch vụ</option>
+          </select>
+        )}
 
         <select
           value={statusFilter}
@@ -142,7 +151,7 @@ function CategoryFilterBar({
       <div className="relative w-full sm:w-64">
         <input
           type="search"
-          placeholder="Tìm danh mục..."
+          placeholder={fixedType === 'service' ? "Tìm dịch vụ..." : "Tìm danh mục..."}
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           className="admin-input h-9 pl-9 text-xs"
@@ -159,6 +168,7 @@ function CategoryTreeView({
   childrenByParentId,
   expandedParents,
   onToggleExpand,
+  fixedType,
 }: CategoryTreeViewProps) {
   return (
     <div className="space-y-3">
@@ -203,7 +213,7 @@ function CategoryTreeView({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                <CategoryTypeBadge type={parent.type} />
+                {!fixedType && <CategoryTypeBadge type={parent.type} />}
                 <span className="admin-badge border-[#E5E7EF] bg-white text-[#646464]">
                   #{parent.sort_order}
                 </span>
@@ -211,7 +221,7 @@ function CategoryTreeView({
                   {children.length} mục con
                 </span>
                 <CategoryStatusBadge active={parent.is_active} />
-                <CategoryRowActions categories={categories} category={parent} />
+                <CategoryRowActions categories={categories} category={parent} fixedType={fixedType} />
               </div>
             </div>
 
@@ -239,12 +249,12 @@ function CategoryTreeView({
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                        <CategoryTypeBadge type={child.type} />
+                        {!fixedType && <CategoryTypeBadge type={child.type} />}
                         <span className="admin-badge border-[#E5E7EF] bg-[#F7F9FB] text-[#646464]">
                           #{child.sort_order}
                         </span>
                         <CategoryStatusBadge active={child.is_active} />
-                        <CategoryRowActions categories={categories} category={child} compact />
+                        <CategoryRowActions categories={categories} category={child} compact fixedType={fixedType} />
                       </div>
                     </div>
                   ))
@@ -262,16 +272,16 @@ function CategoryTreeView({
   );
 }
 
-function CategoryTableView({ categories, allCategories, categoryById }: CategoryTableViewProps) {
+function CategoryTableView({ categories, allCategories, categoryById, fixedType }: CategoryTableViewProps) {
   return (
     <div className="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
       <table className="w-full min-w-[860px] text-left text-xs">
         <thead>
           <tr className="border-b border-[#E5E7EF] bg-[#F7F9FB] text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#646464]">
-            <th className="p-3.5">Tên danh mục</th>
+            <th className="p-3.5">{fixedType === 'service' ? 'Tên dịch vụ' : 'Tên danh mục'}</th>
             <th className="p-3.5">Slug</th>
-            <th className="p-3.5">Loại</th>
-            <th className="p-3.5">Danh mục cha</th>
+            {!fixedType && <th className="p-3.5">Loại</th>}
+            <th className="p-3.5">{fixedType === 'service' ? 'Dịch vụ cha' : 'Danh mục cha'}</th>
             <th className="p-3.5">Display Priority</th>
             <th className="p-3.5">Trạng thái</th>
             <th className="p-3.5 text-right">Thao tác</th>
@@ -292,9 +302,11 @@ function CategoryTableView({ categories, allCategories, categoryById }: Category
                   </div>
                 </td>
                 <td className="p-3.5 font-mono font-semibold text-[#646464]">/{category.slug}</td>
-                <td className="p-3.5">
-                  <CategoryTypeBadge type={category.type} />
-                </td>
+                {!fixedType && (
+                  <td className="p-3.5">
+                    <CategoryTypeBadge type={category.type} />
+                  </td>
+                )}
                 <td className="p-3.5 text-[#646464]">{parent ? parent.name : '—'}</td>
                 <td className="p-3.5 font-mono font-semibold text-[#646464]">
                   {category.sort_order}
@@ -304,7 +316,7 @@ function CategoryTableView({ categories, allCategories, categoryById }: Category
                 </td>
                 <td className="p-3.5 text-right">
                   <div className="flex justify-end">
-                    <CategoryRowActions categories={allCategories} category={category} />
+                    <CategoryRowActions categories={allCategories} category={category} fixedType={fixedType} />
                   </div>
                 </td>
               </tr>
@@ -316,10 +328,10 @@ function CategoryTableView({ categories, allCategories, categoryById }: Category
   );
 }
 
-export function CategoriesTable({ categories }: CategoriesTableProps) {
+export function CategoriesTable({ categories, fixedType }: CategoriesTableProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const [query, setQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>(fixedType ?? 'all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
   const deferredQuery = useDeferredValue(query);
@@ -391,9 +403,13 @@ export function CategoriesTable({ categories }: CategoriesTableProps) {
       <div className="admin-card space-y-5 p-4 sm:p-6">
         <div className="flex flex-col justify-between gap-4 border-b border-[#EEF2F6] pb-4 lg:flex-row lg:items-center">
           <div className="min-w-0">
-            <h2 className="text-base font-extrabold text-[#202224]">Cấu trúc danh mục website</h2>
+            <h2 className="text-base font-extrabold text-[#202224]">
+              {fixedType === 'service' ? 'Danh sách dịch vụ chuyên nghiệp' : 'Cấu trúc danh mục sản phẩm'}
+            </h2>
             <p className="mt-1 max-w-3xl text-xs font-medium leading-relaxed text-[#646464]">
-              Quản lý cây danh mục sản phẩm / dịch vụ đang hiển thị trong catalog và menu website.
+              {fixedType === 'service'
+                ? 'Quản lý các dịch vụ chuyên nghiệp hiển thị giới thiệu trên trang chủ.'
+                : 'Quản lý cây danh mục sản phẩm đang hiển thị trong catalog và menu website.'}
             </p>
           </div>
 
@@ -407,16 +423,17 @@ export function CategoriesTable({ categories }: CategoriesTableProps) {
           onQueryChange={setQuery}
           onTypeFilterChange={setTypeFilter}
           onStatusFilterChange={setStatusFilter}
+          fixedType={fixedType}
         />
 
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#D8DEEC] bg-[#F7F9FB] px-6 py-16 text-center">
             <FolderTree className="mx-auto mb-3 h-12 w-12 text-slate-300" />
             <p className="text-sm font-extrabold text-[#202224]">
-              Không tìm thấy danh mục nào khớp bộ lọc
+              {fixedType === 'service' ? 'Không tìm thấy dịch vụ nào khớp bộ lọc' : 'Không tìm thấy danh mục nào khớp bộ lọc'}
             </p>
             <p className="mt-1 text-xs font-medium text-[#646464]">
-              Thử đổi từ khóa, loại danh mục hoặc trạng thái hiển thị.
+              Thử đổi từ khóa hoặc trạng thái hiển thị.
             </p>
           </div>
         ) : viewMode === 'tree' ? (
@@ -426,23 +443,27 @@ export function CategoriesTable({ categories }: CategoriesTableProps) {
             childrenByParentId={childrenByParentId}
             expandedParents={expandedParents}
             onToggleExpand={toggleExpand}
+            fixedType={fixedType}
           />
         ) : (
           <CategoryTableView
             categories={filtered}
             allCategories={categories}
             categoryById={categoryById}
+            fixedType={fixedType}
           />
         )}
 
         <div className="flex flex-col gap-2 rounded-2xl border border-[#E5E7EF] bg-[#F7F9FB] p-3.5 text-[11px] font-medium text-[#646464] sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-center gap-1.5">
             <Check className="h-3.5 w-3.5 text-emerald-600" />
-            Cấu trúc cây danh mục được đồng bộ an toàn với Supabase PostgreSQL.
+            {fixedType === 'service'
+              ? 'Danh sách dịch vụ được đồng bộ an toàn với Supabase PostgreSQL.'
+              : 'Cấu trúc cây danh mục được đồng bộ an toàn với Supabase PostgreSQL.'}
           </p>
           <span className="inline-flex items-center gap-1.5 font-bold uppercase tracking-[0.12em] text-[#3749A6]">
             <Layers3 className="h-3.5 w-3.5" />
-            Menu tree mapping
+            {fixedType === 'service' ? 'Services mapping' : 'Menu tree mapping'}
           </span>
         </div>
       </div>

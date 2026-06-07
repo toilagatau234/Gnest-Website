@@ -14,16 +14,17 @@ import {
   updateCategoryAction,
   type AdminFormState,
 } from '@/app/admin/(dashboard)/categories/actions';
-
+import type { CategoryType } from '@/lib/types/database';
 interface CategoryFormDialogProps {
   categories: AdminCategory[];
   /** When provided the dialog edits this category; otherwise it creates a new one. */
   category?: AdminCategory;
+  fixedType?: CategoryType;
 }
 
 const INITIAL_STATE: AdminFormState = { ok: false };
 
-export function CategoryFormDialog({ categories, category }: CategoryFormDialogProps) {
+export function CategoryFormDialog({ categories, category, fixedType }: CategoryFormDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
   const formId = useId();
@@ -37,11 +38,12 @@ export function CategoryFormDialog({ categories, category }: CategoryFormDialogP
   useEffect(() => {
     if (open && state.ok && !handledOk.current) {
       handledOk.current = true;
-      toast(isEdit ? 'Đã lưu thay đổi danh mục.' : 'Đã tạo danh mục mới.', 'success');
+      const term = fixedType === 'service' ? 'dịch vụ' : 'danh mục';
+      toast(isEdit ? `Đã lưu thay đổi ${term}.` : `Đã tạo ${term} mới.`, 'success');
       setOpen(false);
       router.refresh();
     }
-  }, [open, state.ok, isEdit, router, toast]);
+  }, [open, state.ok, isEdit, router, toast, fixedType]);
 
   const openDialog = () => {
     handledOk.current = false;
@@ -61,15 +63,21 @@ export function CategoryFormDialog({ categories, category }: CategoryFormDialogP
         </AdminActionButton>
       ) : (
         <AdminActionButton icon={<Plus className="h-4 w-4" />} onClick={openDialog}>
-          Thêm danh mục
+          {fixedType === 'service' ? 'Thêm dịch vụ' : 'Thêm danh mục'}
         </AdminActionButton>
       )}
 
       <AdminModal
         open={open}
         onClose={closeDialog}
-        title={isEdit ? 'Cập nhật danh mục' : 'Thêm danh mục'}
-        description="Quản lý danh mục cha/con hiển thị trên catalog."
+        title={isEdit 
+          ? (fixedType === 'service' ? 'Cập nhật dịch vụ' : 'Cập nhật danh mục') 
+          : (fixedType === 'service' ? 'Thêm dịch vụ' : 'Thêm danh mục')
+        }
+        description={fixedType === 'service' 
+          ? 'Quản lý thông tin dịch vụ chuyên nghiệp hiển thị trên trang chủ.' 
+          : 'Quản lý danh mục cha/con hiển thị trên catalog.'
+        }
         size="lg"
         dismissible={!isPending}
         footer={
@@ -89,7 +97,7 @@ export function CategoryFormDialog({ categories, category }: CategoryFormDialogP
               className="admin-button-primary px-6 text-xs"
             >
               {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {isPending ? 'Đang lưu…' : isEdit ? 'Lưu thay đổi' : 'Tạo danh mục'}
+              {isPending ? 'Đang lưu…' : isEdit ? 'Lưu thay đổi' : (fixedType === 'service' ? 'Tạo dịch vụ' : 'Tạo danh mục')}
             </button>
           </>
         }
@@ -100,6 +108,7 @@ export function CategoryFormDialog({ categories, category }: CategoryFormDialogP
           state={state}
           categories={categories}
           category={category}
+          fixedType={fixedType}
         />
       </AdminModal>
     </>

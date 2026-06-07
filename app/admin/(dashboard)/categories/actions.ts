@@ -83,8 +83,10 @@ export async function createCategoryAction(
   }
 
   revalidatePath('/admin/categories');
+  revalidatePath('/admin/services');
   revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
+  revalidatePath('/');
   return { ok: true };
 }
 
@@ -111,8 +113,10 @@ export async function updateCategoryAction(
   }
 
   revalidatePath('/admin/categories');
+  revalidatePath('/admin/services');
   revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
+  revalidatePath('/');
   return { ok: true };
 }
 
@@ -133,8 +137,10 @@ export async function deleteCategoryAction(categoryId: string): Promise<AdminFor
   }
 
   revalidatePath('/admin/categories');
+  revalidatePath('/admin/services');
   revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
+  revalidatePath('/');
   return { ok: true };
 }
 
@@ -154,6 +160,8 @@ export async function toggleCategoryActiveAction(formData: FormData) {
   }
 
   revalidatePath('/admin/categories');
+  revalidatePath('/admin/services');
   revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
+  revalidatePath('/');
 }

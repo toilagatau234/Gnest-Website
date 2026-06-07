@@ -13,6 +13,7 @@ import {
   Users,
   History,
   X,
+  Sparkles,
 } from 'lucide-react';
 
 import { ADMIN_ROLE_LABELS, type AdminUser } from '@/lib/types/admin';
@@ -40,7 +41,8 @@ const navSections: NavSection[] = [
   {
     title: 'CATALOG SẢN PHẨM',
     items: [
-      { label: 'Danh mục', href: '/admin/categories', icon: FolderTree },
+      { label: 'Danh mục sản phẩm', href: '/admin/categories', icon: FolderTree },
+      { label: 'Dịch vụ chuyên nghiệp', href: '/admin/services', icon: Sparkles },
       { label: 'Sản phẩm', href: '/admin/products', icon: Package },
       { label: 'Liên hệ bán hàng', href: '/admin/sales-contacts', icon: PhoneCall },
     ],

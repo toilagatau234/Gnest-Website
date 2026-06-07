@@ -13,14 +13,17 @@ import {
   toggleCategoryActiveAction,
 } from '@/app/admin/(dashboard)/categories/actions';
 
+import type { CategoryType } from '@/lib/types/database';
+
 interface CategoryRowActionsProps {
   categories: AdminCategory[];
   category: AdminCategory;
   /** Slightly smaller buttons for nested child rows. */
   compact?: boolean;
+  fixedType?: CategoryType;
 }
 
-export function CategoryRowActions({ categories, category, compact = false }: CategoryRowActionsProps) {
+export function CategoryRowActions({ categories, category, compact = false, fixedType }: CategoryRowActionsProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isToggling, startToggle] = useTransition();
@@ -33,7 +36,8 @@ export function CategoryRowActions({ categories, category, compact = false }: Ca
       formData.set('next_is_active', String(!category.is_active));
       try {
         await toggleCategoryActiveAction(formData);
-        toast(category.is_active ? 'Đã ẩn danh mục.' : 'Đã hiển thị danh mục.', 'success');
+        const term = fixedType === 'service' ? 'dịch vụ' : 'danh mục';
+        toast(category.is_active ? `Đã ẩn ${term}.` : `Đã hiển thị ${term}.`, 'success');
         router.refresh();
       } catch (err) {
         toast(err instanceof Error ? err.message : 'Không thể đổi trạng thái.', 'error');
@@ -45,7 +49,7 @@ export function CategoryRowActions({ categories, category, compact = false }: Ca
 
   return (
     <div className="flex items-center gap-1.5">
-      <CategoryFormDialog categories={categories} category={category} />
+      <CategoryFormDialog categories={categories} category={category} fixedType={fixedType} />
 
       <button
         type="button"
@@ -66,8 +70,8 @@ export function CategoryRowActions({ categories, category, compact = false }: Ca
       <button
         type="button"
         onClick={() => setConfirmOpen(true)}
-        aria-label="Xóa danh mục"
-        title="Xóa danh mục"
+        aria-label={fixedType === 'service' ? "Xóa dịch vụ" : "Xóa danh mục"}
+        title={fixedType === 'service' ? "Xóa dịch vụ" : "Xóa danh mục"}
         className={`admin-focus inline-flex items-center justify-center rounded-lg border border-[#E5E7EF] bg-white text-slate-500 transition-[transform,border-color,background-color,color] hover:-translate-y-0.5 hover:border-[#E31E24] hover:bg-[#E31E24]/5 hover:text-[#E31E24] active:translate-y-0 active:scale-[0.98] ${
           compact ? 'h-8 w-8' : 'h-8 w-8'
         }`}
@@ -78,13 +82,17 @@ export function CategoryRowActions({ categories, category, compact = false }: Ca
       <AdminConfirmDialog
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        title="Xóa danh mục"
-        description="Hành động này sẽ xóa vĩnh viễn danh mục khỏi hệ thống. Nếu danh mục còn sản phẩm hoặc danh mục con, hãy ẩn thay vì xóa."
+        title={fixedType === 'service' ? "Xóa dịch vụ" : "Xóa danh mục"}
+        description={
+          fixedType === 'service'
+            ? "Hành động này sẽ xóa vĩnh viễn dịch vụ khỏi hệ thống. Nếu còn dữ liệu liên quan, hãy ẩn thay vì xóa."
+            : "Hành động này sẽ xóa vĩnh viễn danh mục khỏi hệ thống. Nếu danh mục còn sản phẩm hoặc danh mục con, hãy ẩn thay vì xóa."
+        }
         itemName={category.name}
-        confirmLabel="Xóa danh mục"
+        confirmLabel={fixedType === 'service' ? "Xóa dịch vụ" : "Xóa danh mục"}
         onConfirm={() => deleteCategoryAction(category.id)}
         onSuccess={() => {
-          toast('Đã xóa danh mục.', 'success');
+          toast(fixedType === 'service' ? 'Đã xóa dịch vụ.' : 'Đã xóa danh mục.', 'success');
           router.refresh();
         }}
       />

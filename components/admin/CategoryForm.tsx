@@ -14,6 +14,7 @@ interface CategoryFormProps {
   state: AdminFormState;
   categories: AdminCategory[];
   category?: AdminCategory;
+  fixedType?: CategoryType;
 }
 
 const fieldClass = 'admin-input text-xs';
@@ -32,9 +33,13 @@ function slugify(value: string) {
     .replace(/-+/g, '-');
 }
 
-export function CategoryForm({ formId, formAction, state, categories, category }: CategoryFormProps) {
-  const availableParents = categories.filter((item) => item.id !== category?.id);
-  const defaultType: CategoryType = category?.type ?? 'product';
+export function CategoryForm({ formId, formAction, state, categories, category, fixedType }: CategoryFormProps) {
+  const availableParents = categories.filter((item) => {
+    if (item.id === category?.id) return false;
+    if (fixedType && item.type !== fixedType) return false;
+    return true;
+  });
+  const defaultType: CategoryType = fixedType ?? category?.type ?? 'product';
 
   const [name, setName] = useState(category?.name ?? '');
   const [slug, setSlug] = useState(category?.slug ?? '');
@@ -70,7 +75,7 @@ export function CategoryForm({ formId, formAction, state, categories, category }
             value={name}
             onChange={(event) => handleNameChange(event.target.value)}
             className={fieldClass}
-            placeholder="VD: Hũ thủy tinh"
+            placeholder={fixedType === 'service' ? "VD: In chai lọ thủy tinh" : "VD: Hũ thủy tinh"}
           />
         </label>
 
@@ -91,16 +96,20 @@ export function CategoryForm({ formId, formAction, state, categories, category }
           />
         </label>
 
-        <label className="block">
-          <span className={labelClass}>Loại danh mục</span>
-          <select name="type" defaultValue={defaultType} className={selectClass}>
-            <option value="product">Sản phẩm</option>
-            <option value="service">Dịch vụ</option>
-          </select>
-        </label>
+        {fixedType ? (
+          <input type="hidden" name="type" value={fixedType} />
+        ) : (
+          <label className="block">
+            <span className={labelClass}>Loại danh mục</span>
+            <select name="type" defaultValue={defaultType} className={selectClass}>
+              <option value="product">Sản phẩm</option>
+              <option value="service">Dịch vụ</option>
+            </select>
+          </label>
+        )}
 
         <label className="block">
-          <span className={labelClass}>Danh mục cha</span>
+          <span className={labelClass}>{fixedType === 'service' ? 'Dịch vụ cha' : 'Danh mục cha'}</span>
           <select name="parent_id" defaultValue={category?.parent_id ?? ''} className={selectClass}>
             <option value="">Không có (danh mục gốc)</option>
             {availableParents.map((item) => (
