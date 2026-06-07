@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserCheck, UserX, Trash2, Loader2, Key, RefreshCw, KeyRound, AlertTriangle, Check, Copy, ShieldCheck } from 'lucide-react';
+import { UserCheck, UserX, Trash2, Loader2, Key, RefreshCw, AlertTriangle, Check, Copy, ShieldCheck } from 'lucide-react';
 
 import { AdminConfirmDialog } from '@/components/admin/AdminConfirmDialog';
 import { AdminUserRoleDialog } from '@/components/admin/AdminUserRoleDialog';
@@ -69,13 +69,12 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
     if (!temporaryPassword) return;
     navigator.clipboard.writeText(temporaryPassword);
     setCopied(true);
-    toast('Đã sao chép mật khẩu tạm vào bộ nhớ tạm.', 'success');
+    toast('Đã sao chép mật khẩu mặc định vào bộ nhớ tạm.', 'success');
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Non-super_admin accounts are completely restricted from modifying users
   if (currentUserRole !== 'super_admin') {
-    return <span className="text-[10px] text-slate-400 font-medium font-mono select-none">READ ONLY</span>;
+    return <span className="select-none font-mono text-[10px] font-medium text-slate-400">READ ONLY</span>;
   }
 
   const isSelf = user.id === currentAdminId;
@@ -103,7 +102,6 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-1.5">
-      {/* 1. Change Role Action */}
       <button
         type="button"
         disabled={isSelf}
@@ -115,7 +113,6 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
         Sửa vai trò
       </button>
 
-      {/* 2. Toggle Active/Locked Status */}
       <button
         type="button"
         onClick={handleToggleActive}
@@ -133,7 +130,6 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
         {user.is_active ? 'Khóa' : 'Mở khóa'}
       </button>
 
-      {/* 2.5. Reset Password Action */}
       <button
         type="button"
         onClick={handleResetOpen}
@@ -145,7 +141,6 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
         Reset mật khẩu
       </button>
 
-      {/* 3. Delete Access Action */}
       <button
         type="button"
         disabled={isSelf}
@@ -157,7 +152,6 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
         <Trash2 className="h-3.5 w-3.5" />
       </button>
 
-      {/* Role Dialog */}
       {roleDialogOpen && (
         <AdminUserRoleDialog
           user={user}
@@ -166,7 +160,6 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
         />
       )}
 
-      {/* Access Removal Confirmation */}
       <AdminConfirmDialog
         open={confirmDeleteOpen}
         onClose={() => setConfirmDeleteOpen(false)}
@@ -181,12 +174,11 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
         }}
       />
 
-      {/* Reset Password Modal */}
       {resetDialogOpen && (
         <AdminModal
           open={resetDialogOpen}
           onClose={handleCloseResetDialog}
-          title={temporaryPassword ? "Cấp lại mật khẩu thành công" : "Đặt lại mật khẩu quản trị viên"}
+          title={temporaryPassword ? 'Cấp lại mật khẩu thành công' : 'Đặt lại mật khẩu quản trị viên'}
           size="sm"
           dismissible={!resetPending}
           footer={
@@ -213,10 +205,10 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
                     type="button"
                     onClick={handleResetConfirm}
                     disabled={resetPending}
-                    className="admin-focus inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-amber-600 hover:bg-amber-700 px-5 text-xs font-extrabold text-white shadow-sm transition-[transform,background-color] duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="admin-focus inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-amber-600 px-5 text-xs font-extrabold text-white shadow-sm transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-amber-700 active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {resetPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    {resetPending ? 'Đang đặt lại…' : 'Xác nhận Đặt lại'}
+                    {resetPending ? 'Đang đặt lại...' : 'Xác nhận đặt lại'}
                   </button>
                 </>
               )}
@@ -241,25 +233,28 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
                   <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Tài khoản</p>
                   <p className="mt-1 break-all text-xs font-semibold text-slate-900">{user.email}</p>
                 </div>
-                
-                <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 flex items-center justify-between gap-3">
+
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3">
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Mật khẩu mặc định mới</p>
                     <p className="mt-1 break-all font-mono text-sm font-bold text-amber-950">{temporaryPassword}</p>
+                    <p className="mt-1 text-[10px] font-medium text-amber-800">
+                      Đây là mật khẩu mặc định mới cần gửi cho người dùng.
+                    </p>
                   </div>
                   <button
                     type="button"
                     onClick={handleCopy}
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-white text-amber-700 transition hover:bg-amber-50 hover:text-amber-800 active:scale-95"
-                    title="Sao chép mật khẩu"
+                    title="Sao chép mật khẩu mặc định"
                   >
                     {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-500 italic">
-                * Lưu ý: Chia sẻ mật khẩu này an toàn. Hệ thống sẽ bắt buộc người dùng thay đổi mật khẩu ngay ở lần đăng nhập tiếp theo.
+              <p className="text-[11px] italic text-slate-500">
+                * Lưu ý: Chia sẻ mật khẩu mặc định này an toàn. Hệ thống sẽ bắt buộc người dùng thay đổi mật khẩu ngay ở lần đăng nhập tiếp theo.
               </p>
             </div>
           ) : (
@@ -278,8 +273,8 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
                 </div>
               </div>
 
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Sau khi đặt lại, mật khẩu hiện tại sẽ bị vô hiệu hóa ngay lập tức. Mật khẩu mới sẽ được đặt thành mật khẩu mặc định là <strong className="text-amber-700 font-bold">abc@123</strong> và người dùng buộc phải đổi mật khẩu khi đăng nhập lần đầu.
+              <p className="text-xs leading-relaxed text-slate-500">
+                Sau khi đặt lại, mật khẩu hiện tại sẽ bị vô hiệu hóa ngay lập tức. Mật khẩu mới sẽ được đặt về mật khẩu mặc định <strong className="font-bold text-amber-700">abc@123</strong> và người dùng buộc phải đổi mật khẩu khi đăng nhập lần đầu.
               </p>
 
               {resetError ? (

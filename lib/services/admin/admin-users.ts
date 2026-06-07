@@ -57,6 +57,7 @@ export interface AdminUserActionResult<T = unknown> {
 const ADMIN_USER_COLUMNS = 'id, email, role, is_active, created_at, updated_at';
 const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,30}[a-z0-9])?$/;
 const INTERNAL_EMAIL_DOMAIN = 'internal.admin.gnest.local';
+const DEFAULT_ADMIN_PASSWORD = 'abc@123';
 
 function normalizeNullableText(value: string | null | undefined) {
   const trimmed = value?.trim() ?? '';
@@ -80,8 +81,8 @@ function buildInternalLoginEmail(username: string) {
   return `${username}@${INTERNAL_EMAIL_DOMAIN}`;
 }
 
-function generateTemporaryPassword() {
-  return 'abc@123';
+function getDefaultAdminPassword() {
+  return DEFAULT_ADMIN_PASSWORD;
 }
 
 function readAuthMetadata(value: unknown) {
@@ -177,7 +178,7 @@ export async function inviteAdminUser(
       return { ok: false, error: 'Ten dang nhap nay da ton tai trong he thong.' };
     }
 
-    const temporaryPassword = generateTemporaryPassword();
+    const temporaryPassword = getDefaultAdminPassword();
     const { data: createdAuthUser, error: createAuthError } = await supabase.auth.admin.createUser({
       email: loginEmail,
       password: temporaryPassword,
@@ -498,7 +499,7 @@ export async function resetAdminUserPassword(
       return { ok: false, error: 'Khong tim thay thong tin auth cua tai khoan nay.' };
     }
 
-    const temporaryPassword = generateTemporaryPassword();
+    const temporaryPassword = getDefaultAdminPassword();
     const currentMetadata = authData.user.user_metadata || {};
 
     const { error: updateAuthError } = await supabase.auth.admin.updateUserById(userId, {
