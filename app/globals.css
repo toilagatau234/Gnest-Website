@@ -37,6 +37,11 @@
   --animate-slide-in-right: slideInRight 0.3s cubic-bezier(0.16,1,0.3,1) both;
   --animate-slide-up: slideUp 0.25s cubic-bezier(0.16,1,0.3,1) both;
   --animate-scale-in: scaleIn 0.2s cubic-bezier(0.16,1,0.3,1) both;
+  --animate-shimmer: shimmer 1.8s infinite;
+
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
+  }
 
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(6px); }
