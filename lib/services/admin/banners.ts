@@ -7,19 +7,37 @@ import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 export type AdminBanner = Pick<
   Tables<'promotional_banners'>,
-  'id' | 'name' | 'content' | 'link_url' | 'sort_order' | 'is_active' | 'created_at' | 'updated_at'
+  | 'id'
+  | 'name'
+  | 'content'
+  | 'link_url'
+  | 'position'
+  | 'image_desktop_url'
+  | 'image_mobile_url'
+  | 'start_at'
+  | 'end_at'
+  | 'sort_order'
+  | 'is_active'
+  | 'created_at'
+  | 'updated_at'
 >;
 
 export interface BannerPayload {
   name: string;
   content: string;
   link_url: string | null;
+  position: string;
+  image_desktop_url: string | null;
+  image_mobile_url: string | null;
+  start_at: string | null;
+  end_at: string | null;
   sort_order: number;
   is_active: boolean;
 }
 
 const BANNER_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
-const ADMIN_BANNER_SELECT = 'id, name, content, link_url, sort_order, is_active, created_at, updated_at';
+const ADMIN_BANNER_SELECT =
+  'id, name, content, link_url, position, image_desktop_url, image_mobile_url, start_at, end_at, sort_order, is_active, created_at, updated_at';
 
 function normalizeNullableText(value: string | null) {
   const trimmed = value?.trim() ?? '';
@@ -31,6 +49,11 @@ function normalizeBannerPayload(payload: BannerPayload): Inserts<'promotional_ba
     name: payload.name.trim(),
     content: payload.content.trim(),
     link_url: normalizeNullableText(payload.link_url),
+    position: payload.position.trim() || 'top_bar',
+    image_desktop_url: normalizeNullableText(payload.image_desktop_url),
+    image_mobile_url: normalizeNullableText(payload.image_mobile_url),
+    start_at: normalizeNullableText(payload.start_at),
+    end_at: normalizeNullableText(payload.end_at),
     sort_order: payload.sort_order,
     is_active: payload.is_active,
   };
@@ -41,6 +64,11 @@ function toBannerAuditSnapshot(banner: AdminBanner) {
     name: banner.name,
     content: banner.content,
     link_url: banner.link_url,
+    position: banner.position,
+    image_desktop_url: banner.image_desktop_url,
+    image_mobile_url: banner.image_mobile_url,
+    start_at: banner.start_at,
+    end_at: banner.end_at,
     sort_order: banner.sort_order,
     is_active: banner.is_active,
   };
@@ -152,6 +180,10 @@ export async function getAdminBannerStats(): Promise<{ data: AdminBannerStats; e
 }
 
 export async function createAdminBanner(payload: BannerPayload, requestContext?: RequestContext) {
+  if (payload.start_at && payload.end_at && new Date(payload.start_at) >= new Date(payload.end_at)) {
+    return { data: null, error: 'Thời gian kết thúc phải sau thời gian bắt đầu.' };
+  }
+
   const adminUser = await requireAdminAuth(BANNER_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   const insertPayload = normalizeBannerPayload(payload);
@@ -182,6 +214,10 @@ export async function createAdminBanner(payload: BannerPayload, requestContext?:
 }
 
 export async function updateAdminBanner(bannerId: string, payload: BannerPayload, requestContext?: RequestContext) {
+  if (payload.start_at && payload.end_at && new Date(payload.start_at) >= new Date(payload.end_at)) {
+    return { data: null, error: 'Thời gian kết thúc phải sau thời gian bắt đầu.' };
+  }
+
   const adminUser = await requireAdminAuth(BANNER_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
   const { data: before } = await supabase

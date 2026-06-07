@@ -26,6 +26,8 @@ function readBannerPayload(formData: FormData): BannerPayload {
   const name = readString(formData, 'name');
   const content = readString(formData, 'content');
   const sortOrder = Number(readString(formData, 'sort_order') || 0);
+  const startAt = readString(formData, 'start_at') || null;
+  const endAt = readString(formData, 'end_at') || null;
 
   if (!name) {
     throw new Error('Tên banner quảng cáo là bắt buộc.');
@@ -35,10 +37,19 @@ function readBannerPayload(formData: FormData): BannerPayload {
     throw new Error('Nội dung hiển thị là bắt buộc.');
   }
 
+  if (startAt && endAt && new Date(startAt) >= new Date(endAt)) {
+    throw new Error('Thời gian kết thúc phải sau thời gian bắt đầu.');
+  }
+
   return {
     name,
     content,
     link_url: readString(formData, 'link_url') || null,
+    position: readString(formData, 'position') || 'top_bar',
+    image_desktop_url: readString(formData, 'image_desktop_url') || null,
+    image_mobile_url: readString(formData, 'image_mobile_url') || null,
+    start_at: startAt,
+    end_at: endAt,
     sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
     is_active: readBoolean(formData, 'is_active'),
   };

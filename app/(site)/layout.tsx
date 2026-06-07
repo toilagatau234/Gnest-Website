@@ -3,13 +3,13 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteOverlays } from '@/components/SiteOverlays';
 import { getPublicSiteContents } from '@/lib/services/site-content';
-import { getActiveBanners } from '@/lib/services/banners';
+import { getActiveBannersByPosition } from '@/lib/services/banners';
 import { PromoBanner } from '@/components/PromoBanner';
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const [siteContents, activeBanners] = await Promise.all([
     getPublicSiteContents(),
-    getActiveBanners().catch(() => []),
+    getActiveBannersByPosition('top_bar').catch(() => []),
   ]);
 
   const topBanner = activeBanners?.[0] || null;

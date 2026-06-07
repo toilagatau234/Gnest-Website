@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Globe, LayoutGrid } from 'lucide-react';
 
 import { AdminToggle } from '@/components/admin/AdminToggle';
 import type { AdminBanner } from '@/lib/services/admin/banners';
@@ -17,10 +17,28 @@ interface BannerFormProps {
 const fieldClass = 'admin-input text-xs';
 const labelClass = 'mb-1.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#646464]';
 
+function toDatetimeLocal(isoString?: string | null) {
+  if (!isoString) return '';
+  try {
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return '';
+    const tzoffset = date.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(date.getTime() - tzoffset).toISOString().slice(0, 16);
+    return localISOTime;
+  } catch {
+    return '';
+  }
+}
+
 export function BannerForm({ formId, formAction, state, banner }: BannerFormProps) {
   const [name, setName] = useState(banner?.name ?? '');
   const [content, setContent] = useState(banner?.content ?? '');
   const [linkUrl, setLinkUrl] = useState(banner?.link_url ?? '');
+  const [position, setPosition] = useState(banner?.position ?? 'top_bar');
+  const [imageDesktopUrl, setImageDesktopUrl] = useState(banner?.image_desktop_url ?? '');
+  const [imageMobileUrl, setImageMobileUrl] = useState(banner?.image_mobile_url ?? '');
+  const [startAt, setStartAt] = useState(toDatetimeLocal(banner?.start_at));
+  const [endAt, setEndAt] = useState(toDatetimeLocal(banner?.end_at));
 
   return (
     <form id={formId} action={formAction} className="space-y-5">
@@ -52,36 +70,19 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
           </span>
         </label>
 
-        <label className="block sm:col-span-2">
-          <span className={labelClass}>
-            Nội dung hiển thị <span className="text-[#E31E24]">*</span>
-          </span>
-          <textarea
-            name="content"
-            required
-            rows={3}
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            className={`${fieldClass} resize-y min-h-[72px]`}
-            placeholder="VD: Giảm ngay 10% cho tất cả đơn hàng hũ yến thủy tinh đặt trong hôm nay!"
-          />
-          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Nội dung chữ sẽ xuất hiện trên thanh banner quảng cáo ở đầu website.
-          </span>
-        </label>
-
         <label className="block">
-          <span className={labelClass}>Đường dẫn liên kết (Link URL)</span>
-          <input
-            name="link_url"
-            type="text"
-            value={linkUrl}
-            onChange={(event) => setLinkUrl(event.target.value)}
+          <span className={labelClass}>Vị trí hiển thị</span>
+          <select
+            name="position"
+            value={position}
+            onChange={(event) => setPosition(event.target.value)}
             className={fieldClass}
-            placeholder="VD: /danh-muc/hu-yen-chung hoặc https://..."
-          />
+          >
+            <option value="top_bar">Thanh thông báo đầu trang (Announcement Top Bar)</option>
+            <option value="homepage_slot">Vùng banner trang chủ (Homepage Banner Slot)</option>
+          </select>
           <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Khách click vào banner sẽ chuyển tới trang này. Để trống nếu không cần dẫn link.
+            Khu vực mà banner này sẽ xuất hiện trên giao diện.
           </span>
         </label>
 
@@ -97,6 +98,113 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
             Số nhỏ hơn sẽ hiển thị trước. Nếu bằng nhau, banner tạo sau hiển thị trước.
           </span>
         </label>
+
+        <label className="block sm:col-span-2">
+          <span className={labelClass}>
+            Nội dung hiển thị / Headline mô tả <span className="text-[#E31E24]">*</span>
+          </span>
+          <textarea
+            name="content"
+            required
+            rows={2}
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            className={`${fieldClass} resize-y min-h-[56px]`}
+            placeholder="VD: Giảm ngay 10% cho tất cả đơn hàng hũ yến thủy tinh đặt trong hôm nay!"
+          />
+          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
+            Nội dung văn bản hiển thị. Đối với banner hình ảnh, phần này đóng vai trò như thẻ ALT mô tả ảnh.
+          </span>
+        </label>
+
+        <label className="block sm:col-span-2">
+          <span className={labelClass}>Đường dẫn liên kết (Link URL)</span>
+          <input
+            name="link_url"
+            type="text"
+            value={linkUrl}
+            onChange={(event) => setLinkUrl(event.target.value)}
+            className={fieldClass}
+            placeholder="VD: /danh-muc/hu-yen-chung hoặc https://..."
+          />
+          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
+            Đường dẫn chuyển tiếp khi người dùng click vào banner. Để trống nếu không cần dẫn link.
+          </span>
+        </label>
+
+        <div className="border-t border-[#EEF2F6] sm:col-span-2 my-2" />
+
+        {/* Image configurations (primarily used for homepage banner slots) */}
+        <div className="sm:col-span-2 space-y-4">
+          <h3 className="text-xs font-extrabold text-[#1B3A6B] flex items-center gap-1.5 uppercase tracking-wider">
+            <LayoutGrid className="w-4 h-4 text-slate-400" /> Cấu hình hình ảnh (Tùy chọn cho Vùng banner trang chủ)
+          </h3>
+          <p className="text-[11px] text-slate-400">
+            Các đường dẫn hình ảnh này sẽ được ưu tiên hiển thị ở Vùng banner trang chủ. Nếu không nhập, hệ thống sẽ tự động vẽ một card thông tin dạng văn bản nền màu tương ứng.
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className={labelClass}>Desktop Image URL</span>
+              <input
+                name="image_desktop_url"
+                type="url"
+                value={imageDesktopUrl}
+                onChange={(event) => setImageDesktopUrl(event.target.value)}
+                className={`${fieldClass} font-mono`}
+                placeholder="https://..."
+              />
+            </label>
+
+            <label className="block">
+              <span className={labelClass}>Mobile Image URL</span>
+              <input
+                name="image_mobile_url"
+                type="url"
+                value={imageMobileUrl}
+                onChange={(event) => setImageMobileUrl(event.target.value)}
+                className={`${fieldClass} font-mono`}
+                placeholder="https://..."
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="border-t border-[#EEF2F6] sm:col-span-2 my-2" />
+
+        {/* Schedule settings */}
+        <div className="sm:col-span-2 space-y-4">
+          <h3 className="text-xs font-extrabold text-[#1B3A6B] flex items-center gap-1.5 uppercase tracking-wider">
+            <Globe className="w-4 h-4 text-slate-400" /> Cấu hình lịch trình phát sóng (Tùy chọn)
+          </h3>
+          <p className="text-[11px] text-slate-400">
+            Để trống nếu bạn muốn banner hiển thị ngay lập tức và không giới hạn thời gian (chỉ phụ thuộc vào trạng thái Kích hoạt bên dưới).
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className={labelClass}>Ngày bắt đầu (Start Time)</span>
+              <input
+                name="start_at"
+                type="datetime-local"
+                value={startAt}
+                onChange={(event) => setStartAt(event.target.value)}
+                className={fieldClass}
+              />
+            </label>
+
+            <label className="block">
+              <span className={labelClass}>Ngày kết thúc (End Time)</span>
+              <input
+                name="end_at"
+                type="datetime-local"
+                value={endAt}
+                onChange={(event) => setEndAt(event.target.value)}
+                className={fieldClass}
+              />
+            </label>
+          </div>
+        </div>
       </div>
 
       <div className="admin-soft-panel px-4 py-3">
@@ -104,7 +212,7 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
           name="is_active"
           defaultChecked={banner?.is_active ?? true}
           label="Kích hoạt hiển thị công khai"
-          description="Bật để cho phép banner này xuất hiện trên website."
+          description="Tắt để tạm thời ẩn banner này khỏi website bất kể lịch trình."
         />
       </div>
     </form>

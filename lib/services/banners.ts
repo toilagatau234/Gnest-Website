@@ -5,20 +5,27 @@ import type { Tables } from '@/lib/types/database';
 
 export type PublicBanner = Pick<
   Tables<'promotional_banners'>,
-  'id' | 'content' | 'link_url' | 'sort_order'
+  | 'id'
+  | 'content'
+  | 'link_url'
+  | 'position'
+  | 'image_desktop_url'
+  | 'image_mobile_url'
+  | 'sort_order'
 >;
 
 /**
- * Fetch active promotional banners for public pages.
- * Covered by RLS (only active rows are accessible publically).
+ * Fetch active promotional banners for a specific position (e.g. 'top_bar', 'homepage_slot').
+ * Evaluates scheduling (start_at & end_at) dynamically.
  */
-export async function getActiveBanners(): Promise<PublicBanner[]> {
+export async function getActiveBannersByPosition(position: string): Promise<PublicBanner[]> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('promotional_banners')
-      .select('id, content, link_url, sort_order')
+      .select('id, content, link_url, position, image_desktop_url, image_mobile_url, sort_order, start_at, end_at')
       .eq('is_active', true)
+      .eq('position', position)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
 
@@ -26,8 +33,22 @@ export async function getActiveBanners(): Promise<PublicBanner[]> {
       return [];
     }
 
-    return (data ?? []) as PublicBanner[];
+    const now = new Date();
+    const filtered = (data ?? []).filter((banner) => {
+      if (banner.start_at && new Date(banner.start_at) > now) return false;
+      if (banner.end_at && new Date(banner.end_at) < now) return false;
+      return true;
+    });
+
+    return filtered as PublicBanner[];
   } catch {
     return [];
   }
+}
+
+/**
+ * Backward compatible fetcher for the top bar position.
+ */
+export async function getActiveBanners(): Promise<PublicBanner[]> {
+  return getActiveBannersByPosition('top_bar');
 }

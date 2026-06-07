@@ -372,6 +372,11 @@ export interface Database {
           name: string;
           content: string;
           link_url: string | null;
+          position: string;
+          image_desktop_url: string | null;
+          image_mobile_url: string | null;
+          start_at: string | null;
+          end_at: string | null;
           is_active: boolean;
           sort_order: number;
           created_at: string;
@@ -382,6 +387,11 @@ export interface Database {
           name: string;
           content: string;
           link_url?: string | null;
+          position?: string;
+          image_desktop_url?: string | null;
+          image_mobile_url?: string | null;
+          start_at?: string | null;
+          end_at?: string | null;
           is_active?: boolean;
           sort_order?: number;
           created_at?: string;
@@ -391,6 +401,11 @@ export interface Database {
           name?: string;
           content?: string;
           link_url?: string | null;
+          position?: string;
+          image_desktop_url?: string | null;
+          image_mobile_url?: string | null;
+          start_at?: string | null;
+          end_at?: string | null;
           is_active?: boolean;
           sort_order?: number;
           updated_at?: string;
