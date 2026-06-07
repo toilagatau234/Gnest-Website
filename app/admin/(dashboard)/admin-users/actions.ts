@@ -4,10 +4,10 @@ import { revalidatePath } from 'next/cache';
 
 import {
   inviteAdminUser,
-  updateAdminUserRole,
-  setAdminUserActive,
   removeAdminUserAccess,
   resetAdminUserPassword,
+  setAdminUserActive,
+  updateAdminUserRole,
   type CreatedAdminUserPayload,
 } from '@/lib/services/admin/admin-users';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
@@ -40,22 +40,22 @@ export async function inviteAdminUserAction(
     const role = readString(formData, 'role') as AdminRole;
 
     if (!displayName) {
-      return { ok: false, error: 'Ten hien thi la bat buoc.' };
+      return { ok: false, error: 'Tên hiển thị là bắt buộc.' };
     }
 
     if (!username) {
-      return { ok: false, error: 'Ten dang nhap la bat buoc.' };
+      return { ok: false, error: 'Tên email là bắt buộc.' };
     }
 
     if (contactEmail) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(contactEmail)) {
-        return { ok: false, error: 'Email lien he khong dung dinh dang.' };
+        return { ok: false, error: 'Email liên hệ không đúng định dạng.' };
       }
     }
 
     if (!role) {
-      return { ok: false, error: 'Vai tro la bat buoc.' };
+      return { ok: false, error: 'Vai trò là bắt buộc.' };
     }
 
     const { ok, data, error } = await inviteAdminUser({
@@ -66,7 +66,7 @@ export async function inviteAdminUserAction(
     });
 
     if (!ok || error || !data) {
-      return { ok: false, error: error || 'Khong the tao tai khoan quan tri noi bo.' };
+      return { ok: false, error: error || 'Không thể tạo tài khoản quản trị.' };
     }
 
     revalidateAdminUsers();
@@ -74,7 +74,7 @@ export async function inviteAdminUserAction(
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : 'Khong the tao tai khoan quan tri noi bo.',
+      error: err instanceof Error ? err.message : 'Không thể tạo tài khoản quản trị.',
     };
   }
 }
@@ -88,11 +88,11 @@ export async function updateAdminUserRoleAction(
     const role = readString(formData, 'role') as AdminRole;
 
     if (!userId) {
-      return { ok: false, error: 'Thieu ID nguoi dung.' };
+      return { ok: false, error: 'Thiếu ID người dùng.' };
     }
 
     if (!role) {
-      return { ok: false, error: 'Vai tro la bat buoc.' };
+      return { ok: false, error: 'Vai trò là bắt buộc.' };
     }
 
     const actor = await requireAdminAuth(['super_admin']);
@@ -103,13 +103,13 @@ export async function updateAdminUserRoleAction(
     });
 
     if (!ok || error) {
-      return { ok: false, error: error || 'Khong the cap nhat vai tro.' };
+      return { ok: false, error: error || 'Không thể cập nhật vai trò.' };
     }
 
     revalidateAdminUsers();
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Khong the cap nhat vai tro.' };
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể cập nhật vai trò.' };
   }
 }
 
@@ -118,14 +118,14 @@ export async function toggleAdminUserActiveAction(formData: FormData): Promise<v
   const isActive = readString(formData, 'next_is_active') === 'true';
 
   if (!userId) {
-    throw new Error('Thieu ID nguoi dung.');
+    throw new Error('Thiếu ID người dùng.');
   }
 
   const actor = await requireAdminAuth(['super_admin']);
   const { ok, error } = await setAdminUserActive(userId, isActive, actor.id);
 
   if (!ok || error) {
-    throw new Error(error || 'Khong the doi trang thai tai khoan.');
+    throw new Error(error || 'Không thể đổi trạng thái tài khoản.');
   }
 
   revalidateAdminUsers();
@@ -133,7 +133,7 @@ export async function toggleAdminUserActiveAction(formData: FormData): Promise<v
 
 export async function removeAdminUserAccessAction(userId: string): Promise<AdminFormState> {
   if (!userId) {
-    return { ok: false, error: 'Thieu ID nguoi dung.' };
+    return { ok: false, error: 'Thiếu ID người dùng.' };
   }
 
   try {
@@ -141,7 +141,7 @@ export async function removeAdminUserAccessAction(userId: string): Promise<Admin
     const { ok, error } = await removeAdminUserAccess(userId, actor.id);
 
     if (!ok || error) {
-      return { ok: false, error: error || 'Khong the xoa quyen truy cap.' };
+      return { ok: false, error: error || 'Không thể xóa quyền truy cập.' };
     }
 
     revalidateAdminUsers();
@@ -149,7 +149,7 @@ export async function removeAdminUserAccessAction(userId: string): Promise<Admin
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : 'Khong the xoa quyen truy cap.',
+      error: err instanceof Error ? err.message : 'Không thể xóa quyền truy cập.',
     };
   }
 }
@@ -158,7 +158,7 @@ export async function resetAdminUserPasswordAction(
   userId: string
 ): Promise<AdminFormState & { temporaryPassword?: string }> {
   if (!userId) {
-    return { ok: false, error: 'Thieu ID nguoi dung.' };
+    return { ok: false, error: 'Thiếu ID người dùng.' };
   }
 
   try {
@@ -166,7 +166,7 @@ export async function resetAdminUserPasswordAction(
     const { ok, data, error } = await resetAdminUserPassword(userId, actor.id);
 
     if (!ok || error || !data) {
-      return { ok: false, error: error || 'Khong the reset mat khau.' };
+      return { ok: false, error: error || 'Không thể đặt lại mật khẩu.' };
     }
 
     revalidateAdminUsers();
@@ -174,7 +174,7 @@ export async function resetAdminUserPasswordAction(
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : 'Khong the reset mat khau.',
+      error: err instanceof Error ? err.message : 'Không thể đặt lại mật khẩu.',
     };
   }
 }
