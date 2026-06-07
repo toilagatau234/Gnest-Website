@@ -93,6 +93,13 @@
 }
 
 @layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
   .admin-focus {
     @apply outline-none focus-visible:ring-2 focus-visible:ring-[#4880ff]/35 focus-visible:ring-offset-1 focus-visible:ring-offset-white;
   }
