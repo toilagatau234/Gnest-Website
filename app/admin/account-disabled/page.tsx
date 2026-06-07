@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-export default function AccessDeniedPage() {
+export default function AdminAccountDisabledPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC] p-4">
       <div className="w-full max-w-md">
@@ -23,10 +23,10 @@ export default function AccessDeniedPage() {
             </div>
           </div>
 
-          <h1 className="mb-3 text-2xl font-bold text-[#1B3A6B]">Truy cập bị từ chối</h1>
+          <h1 className="mb-3 text-2xl font-bold text-[#1B3A6B]">Tài khoản quản trị đã bị vô hiệu hóa</h1>
           <p className="mb-6 text-slate-600">
-            Tài khoản của bạn chưa có quyền truy cập vào khu vực quản trị này. Vui lòng liên hệ Super
-            Admin để được cấp vai trò phù hợp trong bảng admin_users.
+            Phiên đăng nhập đã được kết thúc để bảo vệ hệ thống. Vui lòng liên hệ Super Admin nếu bạn cần
+            được hỗ trợ.
           </p>
 
           <Link

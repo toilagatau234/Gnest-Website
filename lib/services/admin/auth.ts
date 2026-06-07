@@ -5,13 +5,23 @@ import type { User } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import { requiresAdminPasswordReset } from '@/lib/services/admin/user-password-reset';
 import type { AdminUser } from '@/lib/types/admin';
 import type { AdminRole } from '@/lib/types/database';
-import { requiresAdminPasswordReset } from '@/lib/services/admin/user-password-reset';
+
 export { ADMIN_ROLE_LABELS } from '@/lib/types/admin';
 
 export const ADMIN_ROLES: readonly AdminRole[] = ['super_admin', 'admin', 'editor', 'viewer'];
+export const ADMIN_DISABLED_CLEAR_PATH = '/admin/account-disabled/clear';
+
 const VALID_ADMIN_ROLES = new Set<AdminRole>(ADMIN_ROLES);
+
+type AdminDirectoryRow = {
+  id: string;
+  email: string;
+  role: unknown;
+  is_active: boolean;
+};
 
 type AdminSessionState =
   | {
@@ -23,6 +33,11 @@ type AdminSessionState =
       status: 'unauthorized';
       user: User;
       adminUser: null;
+    }
+  | {
+      status: 'disabled';
+      user: User;
+      adminUser: AdminUser;
     }
   | {
       status: 'authorized';
@@ -55,7 +70,7 @@ async function readCurrentAuthUser() {
   return user;
 }
 
-const getAdminUserById = cache(async (userId: string): Promise<AdminUser | null> => {
+const getAdminUserRowById = cache(async (userId: string): Promise<AdminDirectoryRow | null> => {
   const adminClient = createServiceRoleClient();
   const { data: adminUser, error } = await adminClient
     .from('admin_users')
@@ -63,7 +78,15 @@ const getAdminUserById = cache(async (userId: string): Promise<AdminUser | null>
     .eq('id', userId)
     .maybeSingle();
 
-  if (error || !adminUser || !isAdminRole(adminUser.role) || !adminUser.is_active) {
+  if (error || !adminUser) {
+    return null;
+  }
+
+  return adminUser;
+});
+
+function normalizeAdminUser(adminUser: AdminDirectoryRow): AdminUser | null {
+  if (!isAdminRole(adminUser.role)) {
     return null;
   }
 
@@ -73,7 +96,7 @@ const getAdminUserById = cache(async (userId: string): Promise<AdminUser | null>
     role: adminUser.role,
     is_active: adminUser.is_active,
   };
-});
+}
 
 export const getAdminSessionState = cache(async (): Promise<AdminSessionState> => {
   const user = await readCurrentAuthUser();
@@ -86,13 +109,22 @@ export const getAdminSessionState = cache(async (): Promise<AdminSessionState> =
     };
   }
 
-  const adminUser = await getAdminUserById(user.id);
+  const adminUserRow = await getAdminUserRowById(user.id);
+  const adminUser = adminUserRow ? normalizeAdminUser(adminUserRow) : null;
 
-  if (!adminUser) {
+  if (!adminUserRow || !adminUser) {
     return {
       status: 'unauthorized',
       user,
       adminUser: null,
+    };
+  }
+
+  if (!adminUser.is_active) {
+    return {
+      status: 'disabled',
+      user,
+      adminUser,
     };
   }
 
@@ -108,6 +140,10 @@ export async function getAdminEntryPath() {
 
   if (sessionState.status === 'unauthenticated') {
     return '/admin/login';
+  }
+
+  if (sessionState.status === 'disabled') {
+    return ADMIN_DISABLED_CLEAR_PATH;
   }
 
   if (sessionState.status === 'unauthorized') {
@@ -128,6 +164,10 @@ export async function requireAdminAuth(
 
   if (sessionState.status === 'unauthenticated') {
     redirect('/admin/login');
+  }
+
+  if (sessionState.status === 'disabled') {
+    redirect(ADMIN_DISABLED_CLEAR_PATH);
   }
 
   if (sessionState.status !== 'authorized') {
