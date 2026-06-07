@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithPassword = async ({ email, password }: SignInWithPasswordInput) => {
     if (!supabase) {
-      throw new Error('Thieu cau hinh Supabase tren trinh duyet.');
+      throw new Error('Thiếu cấu hình Supabase trên trình duyệt.');
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!data.user) {
-      throw new Error('Khong the doc thong tin tai khoan sau dang nhap.');
+      throw new Error('Không thể đọc thông tin tài khoản sau khi đăng nhập.');
     }
 
     return data.user;
@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updatePassword = async (nextPassword: string) => {
     if (!supabase) {
-      throw new Error('Thieu cau hinh Supabase tren trinh duyet.');
+      throw new Error('Thiếu cấu hình Supabase trên trình duyệt.');
     }
 
     const { data, error } = await supabase.auth.updateUser({
@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!data.user) {
-      throw new Error('Khong the cap nhat mat khau tai khoan.');
+      throw new Error('Không thể cập nhật mật khẩu tài khoản.');
     }
 
     return data.user;
@@ -139,14 +139,18 @@ function mapSupabaseAuthError(error: AuthError) {
   const message = error.message.toLowerCase();
 
   if (message.includes('invalid login credentials')) {
-    return new Error('Email hoac mat khau khong dung.');
+    return new Error('Email hoặc mật khẩu không đúng.');
   }
 
-  if (message.includes('password should be')) {
-    return new Error('Mat khau moi chua dat yeu cau toi thieu cua Supabase.');
+  if (
+    message.includes('password should be') ||
+    message.includes('weak password') ||
+    message.includes('password is too weak')
+  ) {
+    return new Error('Mật khẩu mới chưa đạt yêu cầu bảo mật tối thiểu.');
   }
 
-  return new Error(error.message);
+  return new Error('Đã xảy ra lỗi xác thực. Vui lòng thử lại sau.');
 }
 
 export function useAuth() {

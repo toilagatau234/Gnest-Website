@@ -20,12 +20,12 @@ export function AdminPasswordResetForm() {
     event.preventDefault();
 
     if (password.length < 8) {
-      setError('Mat khau moi can toi thieu 8 ky tu.');
+      setError('Mật khẩu mới cần tối thiểu 8 ký tự.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Mat khau xac nhan khong trung khop.');
+      setError('Mật khẩu xác nhận không trùng khớp.');
       return;
     }
 
@@ -36,7 +36,7 @@ export function AdminPasswordResetForm() {
       router.replace('/admin/dashboard');
       router.refresh();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Khong the doi mat khau.');
+      setError(submitError instanceof Error ? submitError.message : 'Không thể đổi mật khẩu. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }
@@ -48,17 +48,17 @@ export function AdminPasswordResetForm() {
         <div className="bg-[#1B3A6B] px-8 py-7 text-white">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tracking-wide">
             <ShieldCheck className="h-3.5 w-3.5" />
-            Bao mat tai khoan
+            Bảo mật tài khoản
           </div>
-          <h1 className="mt-4 text-3xl font-bold">Doi mat khau lan dau</h1>
+          <h1 className="mt-4 text-3xl font-bold">Đổi mật khẩu lần đầu</h1>
           <p className="mt-2 text-sm text-white/80">
-            Tai khoan noi bo nay dang dung mat khau tam. Ban can dat mat khau moi truoc khi vao dashboard.
+            Tài khoản này đang sử dụng mật khẩu tạm. Bạn cần đặt mật khẩu mới trước khi vào trang quản trị.
           </p>
         </div>
 
         <div className="space-y-6 px-8 py-8">
           <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
-            Mat khau moi nen dai toi thieu 8 ky tu va khac hoan toan voi mat khau tam da duoc cap.
+            Mật khẩu mới nên dài tối thiểu 8 ký tự và khác với mật khẩu tạm đã được cấp.
           </div>
 
           {error ? (
@@ -69,7 +69,7 @@ export function AdminPasswordResetForm() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-[#1B3A6B]">Mat khau moi</span>
+              <span className="mb-2 block text-sm font-semibold text-[#1B3A6B]">Mật khẩu mới</span>
               <div className="flex items-center rounded-xl border border-[#D7E0EC] bg-white px-4 focus-within:border-[#1B3A6B]">
                 <KeyRound className="h-4 w-4 text-[#1B3A6B]" />
                 <input
@@ -78,14 +78,14 @@ export function AdminPasswordResetForm() {
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="new-password"
                   className="w-full bg-transparent px-3 py-3.5 text-sm text-slate-900 outline-none"
-                  placeholder="Nhap mat khau moi"
+                  placeholder="Nhập mật khẩu mới"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((current) => !current)}
                   className="text-slate-500 transition-colors hover:text-[#1B3A6B]"
-                  aria-label={showPassword ? 'An mat khau' : 'Hien mat khau'}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -93,7 +93,7 @@ export function AdminPasswordResetForm() {
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-[#1B3A6B]">Xac nhan mat khau moi</span>
+              <span className="mb-2 block text-sm font-semibold text-[#1B3A6B]">Xác nhận mật khẩu mới</span>
               <div className="flex items-center rounded-xl border border-[#D7E0EC] bg-white px-4 focus-within:border-[#1B3A6B]">
                 <KeyRound className="h-4 w-4 text-[#1B3A6B]" />
                 <input
@@ -102,14 +102,14 @@ export function AdminPasswordResetForm() {
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   autoComplete="new-password"
                   className="w-full bg-transparent px-3 py-3.5 text-sm text-slate-900 outline-none"
-                  placeholder="Nhap lai mat khau moi"
+                  placeholder="Nhập lại mật khẩu mới"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword((current) => !current)}
                   className="text-slate-500 transition-colors hover:text-[#1B3A6B]"
-                  aria-label={showConfirmPassword ? 'An mat khau' : 'Hien mat khau'}
+                  aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -127,7 +127,7 @@ export function AdminPasswordResetForm() {
                 disabled={isSubmitting}
                 className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
               >
-                Dang xuat
+                Đăng xuất
               </button>
               <button
                 type="submit"
@@ -137,10 +137,10 @@ export function AdminPasswordResetForm() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Dang cap nhat
+                    Đang cập nhật...
                   </>
                 ) : (
-                  'Cap nhat mat khau'
+                  'Cập nhật mật khẩu'
                 )}
               </button>
             </div>
