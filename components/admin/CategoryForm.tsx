@@ -116,6 +116,9 @@ export function CategoryForm({ formId, formAction, state, categories, category }
           <input
             name="sort_order"
             type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
             defaultValue={category?.sort_order ?? 0}
             className={fieldClass}
           />

@@ -23,13 +23,29 @@ function readBoolean(formData: FormData, key: string) {
   return formData.get(key) === 'on' || formData.get(key) === 'true';
 }
 
+function readSortOrder(formData: FormData) {
+  const rawValue = readString(formData, 'sort_order');
+
+  if (!rawValue) {
+    return 0;
+  }
+
+  const value = Number(rawValue);
+
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0 || !Number.isSafeInteger(value)) {
+    throw new Error('Độ ưu tiên hiển thị phải là số nguyên không âm.');
+  }
+
+  return value;
+}
+
 function readCategoryPayload(formData: FormData): CategoryPayload {
   const name = readString(formData, 'name');
   const slug = readString(formData, 'slug');
   const rawType = readString(formData, 'type');
   const type: CategoryType = rawType === 'service' ? 'service' : 'product';
   const parentId = readString(formData, 'parent_id');
-  const sortOrder = Number(readString(formData, 'sort_order') || 0);
+  const sortOrder = readSortOrder(formData);
 
   if (!name) {
     throw new Error('Tên danh mục là bắt buộc.');
@@ -44,7 +60,7 @@ function readCategoryPayload(formData: FormData): CategoryPayload {
     slug,
     type,
     parent_id: parentId || null,
-    sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
+    sort_order: sortOrder,
     has_filters: readBoolean(formData, 'has_filters'),
     is_active: readBoolean(formData, 'is_active'),
   };
