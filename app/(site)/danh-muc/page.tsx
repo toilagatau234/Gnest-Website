@@ -1,5 +1,10 @@
-import { CatalogPage } from '@/components/CatalogPage';
+import { Suspense } from "react";
+import { CatalogPage } from "@/components/CatalogPage";
 
 export default function DanhMucIndex() {
-  return <CatalogPage slug="all" />;
+  return (
+    <Suspense>
+      <CatalogPage slug="all" />
+    </Suspense>
+  );
 }
