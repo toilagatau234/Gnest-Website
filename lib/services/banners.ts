@@ -23,13 +23,11 @@ export async function getActiveBanners(): Promise<PublicBanner[]> {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching active banners:', error.message);
       return [];
     }
 
     return (data ?? []) as PublicBanner[];
-  } catch (err) {
-    console.error('Error in getActiveBanners:', err);
+  } catch {
     return [];
   }
 }
