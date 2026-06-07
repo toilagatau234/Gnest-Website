@@ -12,11 +12,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     getActiveBannersByPosition('top_bar').catch(() => []),
   ]);
 
-  const topBanner = activeBanners?.[0] || null;
-
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {topBanner ? <PromoBanner banner={topBanner} /> : null}
+      {activeBanners.length > 0 ? <PromoBanner banners={activeBanners} /> : null}
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter

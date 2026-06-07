@@ -17,8 +17,6 @@ export default async function Home() {
     getActiveBannersByPosition('homepage_slot').catch(() => []),
   ]);
 
-  const promoBanner = homepageBanners?.[0] || null;
-
   return (
     <>
       <HeroSection content={siteContents.hero} />
@@ -35,9 +33,9 @@ export default async function Home() {
         <ProductsRender overviewProducts={overviewProducts} />
       </ScrollReveal>
 
-      {promoBanner ? (
+      {homepageBanners && homepageBanners.length > 0 ? (
         <ScrollReveal direction="up" delay={0.1}>
-          <BannerSlot banner={promoBanner} />
+          <BannerSlot banners={homepageBanners} />
         </ScrollReveal>
       ) : null}
 
