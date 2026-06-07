@@ -69,6 +69,35 @@ function toCategoryAuditSnapshot(category: CategoryAuditRow) {
   };
 }
 
+async function findDuplicateSortOrder(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  payload: { parent_id: string | null; sort_order: number },
+  excludeCategoryId?: string,
+) {
+  let query = supabase
+    .from('categories')
+    .select('id, name')
+    .eq('sort_order', payload.sort_order);
+
+  query = payload.parent_id ? query.eq('parent_id', payload.parent_id) : query.is('parent_id', null);
+
+  if (excludeCategoryId) {
+    query = query.neq('id', excludeCategoryId);
+  }
+
+  const { data, error } = await query.limit(1).maybeSingle<Pick<Tables<'categories'>, 'id' | 'name'>>();
+
+  if (error) {
+    return { duplicate: null, error: error.message };
+  }
+
+  return { duplicate: data, error: null };
+}
+
+function getDuplicateSortOrderError(sortOrder: number, categoryName: string) {
+  return `Độ ưu tiên hiển thị ${sortOrder} đang được dùng bởi danh mục "${categoryName}" trong cùng cấp. Vui lòng chọn số khác.`;
+}
+
 async function cascadeCategoryVisibility(
   supabase: ReturnType<typeof createServiceRoleClient>,
   categoryId: string,
@@ -169,6 +198,20 @@ export async function createAdminCategory(payload: CategoryPayload, requestConte
     }
   }
 
+  const duplicateResult = await findDuplicateSortOrder(supabase, {
+    parent_id: insertPayload.parent_id ?? null,
+    sort_order: payload.sort_order,
+  });
+  if (duplicateResult.error) {
+    return { data: null, error: duplicateResult.error };
+  }
+  if (duplicateResult.duplicate) {
+    return {
+      data: null,
+      error: getDuplicateSortOrderError(payload.sort_order, duplicateResult.duplicate.name),
+    };
+  }
+
   const { data, error } = await supabase
     .from('categories')
     .insert(insertPayload)
@@ -215,6 +258,24 @@ export async function updateAdminCategory(categoryId: string, payload: CategoryP
     if (parentCategory && !parentCategory.is_active) {
       updatePayload = { ...updatePayload, is_active: false };
     }
+  }
+
+  const duplicateResult = await findDuplicateSortOrder(
+    supabase,
+    {
+      parent_id: updatePayload.parent_id ?? null,
+      sort_order: payload.sort_order,
+    },
+    categoryId,
+  );
+  if (duplicateResult.error) {
+    return { data: null, error: duplicateResult.error };
+  }
+  if (duplicateResult.duplicate) {
+    return {
+      data: null,
+      error: getDuplicateSortOrderError(payload.sort_order, duplicateResult.duplicate.name),
+    };
   }
 
   const { data, error } = await supabase
