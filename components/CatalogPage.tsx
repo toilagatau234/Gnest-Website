@@ -216,7 +216,11 @@ export function CatalogPage({ slug }: { slug: string }) {
     );
   }
 
-  let categoryDetail = catalog[slug];
+  let categoryDetail: CatalogCategory | undefined = catalog[slug];
+
+  if (categoryDetail && categoryDetail.type !== "product") {
+    categoryDetail = undefined;
+  }
 
   if (slug === "all") {
     const allDefs = Object.values(catalog)
@@ -333,7 +337,7 @@ export function CatalogPage({ slug }: { slug: string }) {
     });
 
   const childCategories = categories
-    .filter((c) => !!c.parentId)
+    .filter((c) => c.type === "product" && !!c.parentId)
     .sort((a, b) => {
       const orderA = a.sortOrder ?? 0;
       const orderB = b.sortOrder ?? 0;

@@ -179,9 +179,7 @@ export function ProductsRender({ overviewProducts }: ProductsRenderProps = {}) {
                       <div className="w-10 h-10 bg-slate-100 text-dtl-red rounded-lg flex items-center justify-center mb-4.5 font-black shrink-0">
                         <Quote className="w-5 h-5 opacity-80" />
                       </div>
-                      <Link href={`/danh-muc/${srv.id}`}>
-                        <h3 className="text-[16px] font-bold text-dtl-navy hover:text-dtl-red transition-colors mb-2">{srv.title}</h3>
-                      </Link>
+                      <h3 className="text-[16px] font-bold text-dtl-navy mb-2">{srv.title}</h3>
                       <p className="text-[13px] text-slate-500 leading-relaxed mb-5">
                         Cam kết quy trình chất lượng cao bậc nhất, giao nhận nhanh chóng tận xưởng, giá xuất xưởng tốt nhất cho các đại lý kinh doanh toàn quốc.
                       </p>
@@ -197,18 +195,12 @@ export function ProductsRender({ overviewProducts }: ProductsRenderProps = {}) {
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Link 
-                        href={`/danh-muc/${srv.id}`}
-                        className="flex-1 bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors py-2.5 rounded font-bold text-xs text-center"
-                      >
-                        Xem Dự Án
-                      </Link>
+                    <div className="mt-auto w-full pt-1">
                       <button 
                         onClick={openContactModal}
-                        className="flex-1 bg-dtl-red text-white hover:bg-dtl-red-dark transition-colors py-2.5 rounded font-bold text-xs"
+                        className="w-full bg-[#f8f9fa] group-hover:bg-dtl-red font-bold text-xs py-2.5 rounded text-dtl-navy group-hover:text-white transition-all border border-dtl-border group-hover:border-dtl-red flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                       >
-                        Nhận Báo Giá
+                        Liên Hệ Tư Vấn
                       </button>
                     </div>
                   </div>

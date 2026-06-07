@@ -10,13 +10,11 @@ import { useCategories } from '@/lib/categories-context';
 export function SiteHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProductHovered, setIsProductHovered] = useState(false);
-  const [isServiceHovered, setIsServiceHovered] = useState(false);
   const [activeSection, setActiveSection] = useState('trang-chu');
   const { categories } = useCategories();
   const pathname = usePathname();
 
   const productTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const serviceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleProductEnter = () => {
     if (productTimeoutRef.current) clearTimeout(productTimeoutRef.current);
@@ -29,21 +27,9 @@ export function SiteHeader() {
     }, 150); // 150ms grace period to cross the gap
   };
 
-  const handleServiceEnter = () => {
-    if (serviceTimeoutRef.current) clearTimeout(serviceTimeoutRef.current);
-    setIsServiceHovered(true);
-  };
-
-  const handleServiceLeave = () => {
-    serviceTimeoutRef.current = setTimeout(() => {
-      setIsServiceHovered(false);
-    }, 150); // 150ms grace period to cross the gap
-  };
-
   useEffect(() => {
     return () => {
       if (productTimeoutRef.current) clearTimeout(productTimeoutRef.current);
-      if (serviceTimeoutRef.current) clearTimeout(serviceTimeoutRef.current);
     };
   }, []);
 
@@ -179,37 +165,16 @@ export function SiteHeader() {
                 )}
               </li>
 
-              {/* Dịch vụ - DROPDOWN */}
-              <li 
-                className="relative"
-                onMouseEnter={handleServiceEnter}
-                onMouseLeave={handleServiceLeave}
-              >
-                <span 
-                  className={`px-3 py-2 rounded font-bold cursor-pointer text-sm tracking-wide inline-flex items-center gap-1 transition-colors ${
-                    serviceRoots.some(srv => pathname.includes(srv.id)) ? 'text-dtl-red' : 'text-dtl-dark hover:text-dtl-red'
+              {/* Dịch vụ */}
+              <li>
+                <Link 
+                  href="/#dich-vu"
+                  className={`px-3 py-2 rounded font-bold text-sm tracking-wide transition-colors ${
+                    isActive('/#dich-vu') ? 'text-dtl-red' : 'text-dtl-dark hover:text-dtl-red'
                   }`}
                 >
-                  Dịch vụ <ChevronDown className="w-3.5 h-3.5" />
-                </span>
-
-                {isServiceHovered && (
-                  <div className="absolute top-full left-0 bg-white shadow-[0_12px_36px_rgba(0,0,0,0.12)] w-[320px] border border-slate-100 rounded-lg p-3.5 z-50 text-left border-t-4 border-t-dtl-red mt-2 animate-[slideUp_0.15s_ease-out]">
-                    <ul className="space-y-1">
-                      {serviceRoots.map(srv => (
-                        <li key={srv.id}>
-                          <Link 
-                            href={`/danh-muc/${srv.id}`}
-                            className="flex items-center gap-2 px-3 py-2.5 rounded-md text-[13px] font-semibold text-slate-700 hover:bg-slate-50 hover:text-dtl-red transition-colors"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-dtl-red/75 shrink-0" />
-                            {srv.title}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                  Dịch vụ
+                </Link>
               </li>
 
               {/* Tuyển dụng */}
@@ -314,23 +279,13 @@ export function SiteHeader() {
               </div>
             </div>
 
-            {/* Mobile Dịch vụ section */}
-            <div className="space-y-2">
-              <div className="font-extrabold text-xs text-dtl-navy uppercase tracking-wider pb-1">Dịch vụ Đại Tài Lợi</div>
-              <div className="grid grid-cols-1 gap-2.5 pl-3.5 border-l border-slate-100">
-                {serviceRoots.map(srv => (
-                  <Link 
-                    key={srv.id}
-                    href={`/danh-muc/${srv.id}`}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="text-[13px] font-semibold text-slate-700 hover:text-dtl-red flex items-center gap-1.5"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-dtl-red" />
-                    {srv.title}
-                  </Link>
-                ))}
-              </div>
-            </div>
+            <Link 
+              href="/#dich-vu" 
+              onClick={() => setIsMenuOpen(false)}
+              className="font-bold text-sm text-slate-800 hover:text-dtl-red border-b border-dashed border-slate-100 pb-2"
+            >
+              Dịch vụ
+            </Link>
 
             <Link 
               href="/tuyen-dung" 

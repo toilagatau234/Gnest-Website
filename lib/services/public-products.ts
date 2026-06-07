@@ -221,19 +221,20 @@ export async function getPublicProductsPage({
   if (categorySlug !== 'all') {
     const { data: category } = await supabase
       .from('categories')
-      .select('id')
+      .select('id, type')
       .eq('slug', categorySlug)
       .eq('is_active', true)
       .maybeSingle();
 
-    if (!category || !visibleCategoryIds.has(category.id)) {
+    if (!category || category.type !== 'product' || !visibleCategoryIds.has(category.id)) {
       return { items: [], page: safePage, pageSize: safePageSize, total: 0, pageCount: 0, hasNextPage: false };
     }
 
     // Include child categories if the category is a parent
     const { data: allCats } = await supabase
       .from('categories')
-      .select('id, parent_id');
+      .select('id, parent_id, type')
+      .eq('type', 'product');
     const descendants = [category.id];
     const findChildren = (parentId: string) => {
       const children = (allCats ?? []).filter((c) => c.parent_id === parentId);
@@ -246,7 +247,13 @@ export async function getPublicProductsPage({
 
     targetCategoryIds = descendants.filter((id) => visibleCategoryIds.has(id));
   } else {
-    targetCategoryIds = Array.from(visibleCategoryIds);
+    const { data: productCats } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('type', 'product')
+      .eq('is_active', true);
+    const productCatIds = new Set((productCats ?? []).map((c) => c.id));
+    targetCategoryIds = Array.from(visibleCategoryIds).filter((id) => productCatIds.has(id));
   }
 
   // If no visible categories are in target, return empty
