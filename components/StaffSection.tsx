@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
-import { Phone, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Phone, ChevronLeft, ChevronRight, Headset, MessageCircle } from 'lucide-react';
 
 import { SALE_CONTACTS } from '@/lib/data';
 import { getSalesContacts } from '@/lib/services/sales-contacts';
@@ -32,15 +32,23 @@ function normalizeZaloHref(zalo: string | null | undefined, cleanPhone: string) 
   return digits ? `https://zalo.me/${digits}` : undefined;
 }
 
-function getInitials(name: string) {
+function StaffAvatarFallback({ name }: { name: string }) {
   return (
-    name
-      .trim()
-      .split(/\s+/)
-      .map((part) => part[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase() || 'NV'
+    <div
+      className="relative w-[54px] h-[54px] sm:w-[62px] sm:h-[62px] mx-auto mb-3 shrink-0 overflow-hidden rounded-full border border-[#DDE5F8] bg-gradient-to-br from-[#EEF4FF] via-white to-[#FFECEC] shadow-sm"
+      aria-label={`Avatar mặc định của ${name}`}
+      role="img"
+    >
+      <div className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-dtl-red/15" />
+      <div className="absolute -bottom-4 -left-3 h-10 w-10 rounded-full bg-dtl-navy/10" />
+      <div className="absolute inset-[7px] rounded-full bg-white/88 shadow-inner" />
+      <div className="absolute inset-0 flex items-center justify-center text-dtl-navy">
+        <Headset className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={2.2} />
+      </div>
+      <div className="absolute bottom-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#0068FF] text-white ring-2 ring-white">
+        <MessageCircle className="h-2.5 w-2.5" strokeWidth={2.4} />
+      </div>
+    </div>
   );
 }
 
@@ -61,9 +69,7 @@ function StaffCard({ person }: { person: StaffContact }) {
           />
         </div>
       ) : (
-        <div className="w-[54px] h-[54px] sm:w-[62px] sm:h-[62px] bg-dtl-navy rounded-full mx-auto mb-3 flex items-center justify-center text-[18px] sm:text-[22px] font-extrabold text-white shrink-0">
-          {getInitials(person.name)}
-        </div>
+        <StaffAvatarFallback name={person.name} />
       )}
       <h4 className="text-[14px] sm:text-[15px] font-bold text-dtl-navy mb-1 line-clamp-1">{person.name}</h4>
       <div className="text-[11px] sm:text-[12px] text-dtl-gray mb-3 pb-3 border-b border-dtl-border w-full truncate">
