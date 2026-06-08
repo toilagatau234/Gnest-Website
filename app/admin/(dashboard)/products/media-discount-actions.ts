@@ -40,6 +40,12 @@ function fileExtension(filename: string): string {
   return parts.length > 1 ? (parts.pop() ?? '').toLowerCase() : '';
 }
 
+function parseDiscountPrice(value: string | null): number {
+  if (!value) return 0;
+  const clean = value.replace(/\D/g, '');
+  return Number(clean || '0');
+}
+
 // -------------------------------------------------------------
 // PRODUCT IMAGES ACTIONS
 // -------------------------------------------------------------
@@ -248,7 +254,7 @@ export async function addProductDiscountAction(
 ): Promise<ActionState> {
   const productId = formData.get('product_id') as string;
   const minQuantity = Number(formData.get('min_quantity') || '0');
-  const pricePerUnit = Number((formData.get('price_per_unit') as string)?.replace(/,/g, '') || '0');
+  const pricePerUnit = parseDiscountPrice(formData.get('price_per_unit') as string | null);
   const isActive = formData.get('is_active') === 'true' || formData.get('is_active') === 'on';
 
   if (!productId) {
@@ -282,7 +288,7 @@ export async function updateProductDiscountAction(
 ): Promise<ActionState> {
   const discountId = formData.get('id') as string;
   const minQuantity = Number(formData.get('min_quantity') || '0');
-  const pricePerUnit = Number((formData.get('price_per_unit') as string)?.replace(/,/g, '') || '0');
+  const pricePerUnit = parseDiscountPrice(formData.get('price_per_unit') as string | null);
   const isActive = formData.get('is_active') === 'true' || formData.get('is_active') === 'on';
 
   if (!discountId) {
