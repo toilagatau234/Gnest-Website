@@ -80,6 +80,10 @@ function toCategoryAuditSnapshot(category: CategoryAuditRow) {
   };
 }
 
+function isSameCategoryScope(a: CategoryReorderScope, b: CategoryReorderScope) {
+  return a.type === b.type && a.parent_id === b.parent_id;
+}
+
 async function getCategoriesInScope(
   supabase: ReturnType<typeof createServiceRoleClient>,
   scope: CategoryReorderScope,
@@ -307,9 +311,27 @@ export async function updateAdminCategory(categoryId: string, payload: CategoryP
     return { data: null, error: 'Không tìm thấy danh mục cần cập nhật.' };
   }
 
+  const normalizedPayload = normalizeCategoryPayload(payload);
+  const oldScope: CategoryReorderScope = {
+    type: before.type,
+    parent_id: before.parent_id ?? null,
+  };
+  const newScope: CategoryReorderScope = {
+    type: normalizedPayload.type,
+    parent_id: normalizedPayload.parent_id ?? null,
+  };
+  const isSameScope = isSameCategoryScope(oldScope, newScope);
+
+  if (!isSameScope) {
+    const shiftError = await shiftCategoryScopeForNewestFirst(supabase, newScope);
+    if (shiftError) {
+      return { data: null, error: shiftError };
+    }
+  }
+
   let updatePayload: Updates<'categories'> = {
-    ...normalizeCategoryPayload(payload),
-    sort_order: before.sort_order,
+    ...normalizedPayload,
+    sort_order: isSameScope ? before.sort_order : 0,
   };
 
   if (updatePayload.parent_id) {
