@@ -94,6 +94,7 @@ export default async function SalesContactsPage({
           contacts={safeContacts}
           allContacts={allContacts}
           page={page}
+          pageSize={pageSize}
           pageCount={pageCount}
           total={total}
         />

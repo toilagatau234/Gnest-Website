@@ -10,6 +10,7 @@ import type { AdminBanner } from '@/lib/services/admin/banners';
 interface BannersTableProps {
   banners: AdminBanner[];
   page: number;
+  pageSize: number;
   pageCount: number;
   total: number;
 }
@@ -110,7 +111,7 @@ function ScheduleStatus({ banner }: { banner: AdminBanner }) {
   );
 }
 
-export function BannersTable({ banners, page, pageCount, total }: BannersTableProps) {
+export function BannersTable({ banners, page, pageSize, pageCount, total }: BannersTableProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -175,7 +176,7 @@ export function BannersTable({ banners, page, pageCount, total }: BannersTablePr
             <tbody className="divide-y divide-slate-100/80">
               {filteredBanners.map((banner, index) => {
                 const isEven = index % 2 === 0;
-                const displayIndex = (page - 1) * 20 + index + 1;
+                const displayIndex = (page - 1) * pageSize + index + 1;
 
                 return (
                   <tr

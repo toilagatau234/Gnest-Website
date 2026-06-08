@@ -13,6 +13,7 @@ interface SalesContactsTableProps {
   contacts: AdminSalesContact[];
   allContacts: AdminSalesContact[];
   page: number;
+  pageSize: number;
   pageCount: number;
   total: number;
 }
@@ -39,7 +40,7 @@ function getZaloLink(contact: AdminSalesContact) {
   return digits ? `https://zalo.me/${digits}` : '#';
 }
 
-export function SalesContactsTable({ contacts, allContacts, page, pageCount, total }: SalesContactsTableProps) {
+export function SalesContactsTable({ contacts, allContacts, page, pageSize, pageCount, total }: SalesContactsTableProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -131,7 +132,7 @@ export function SalesContactsTable({ contacts, allContacts, page, pageCount, tot
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {filteredContacts.map((contact, index) => {
-            const displayIndex = (page - 1) * 20 + index + 1;
+            const displayIndex = (page - 1) * pageSize + index + 1;
             return (
             <article key={contact.id} className="rounded-2xl border border-[#E5E7EF] bg-white p-4 shadow-sm transition hover:border-[#D8DEEC] hover:shadow-admin">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

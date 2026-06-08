@@ -13,6 +13,7 @@ interface JobsTableProps {
   jobs: AdminJobVacancy[];
   allJobs: AdminJobVacancy[];
   page: number;
+  pageSize: number;
   pageCount: number;
   total: number;
 }
@@ -46,7 +47,7 @@ function StatusBadge({ active }: { active: boolean }) {
   );
 }
 
-export function JobsTable({ jobs, allJobs, page, pageCount, total }: JobsTableProps) {
+export function JobsTable({ jobs, allJobs, page, pageSize, pageCount, total }: JobsTableProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -138,7 +139,7 @@ export function JobsTable({ jobs, allJobs, page, pageCount, total }: JobsTablePr
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {filteredJobs.map((job, index) => {
-            const displayIndex = (page - 1) * 20 + index + 1;
+            const displayIndex = (page - 1) * pageSize + index + 1;
             return (
             <article key={job.id} className="flex flex-col justify-between rounded-2xl border border-[#E5E7EF] bg-white p-5 shadow-sm transition hover:border-[#D8DEEC] hover:shadow-admin">
               <div>

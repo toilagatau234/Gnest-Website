@@ -29,6 +29,25 @@ function revalidateAdminUsers() {
   revalidatePath('/admin/dashboard');
 }
 
+function validateUsername(username: string): string | null {
+  if (username.length < 3 || username.length > 32) {
+    return 'Tên đăng nhập phải có độ dài từ 3 đến 32 ký tự.';
+  }
+  if (!/^[a-z0-9._-]+$/.test(username)) {
+    return 'Tên đăng nhập chỉ được chứa chữ cái thường (a-z), chữ số (0-9), dấu chấm (.), dấu gạch ngang (-) và dấu gạch dưới (_).';
+  }
+  if (/^[._-]/.test(username)) {
+    return 'Tên đăng nhập không được bắt đầu bằng dấu chấm, dấu gạch ngang hoặc dấu gạch dưới.';
+  }
+  if (/[._-]$/.test(username)) {
+    return 'Tên đăng nhập không được kết thúc bằng dấu chấm, dấu gạch ngang hoặc dấu gạch dưới.';
+  }
+  if (/\.{2,}/.test(username)) {
+    return 'Tên đăng nhập không được chứa các dấu chấm liên tiếp.';
+  }
+  return null;
+}
+
 export async function inviteAdminUserAction(
   _prevState: AdminFormState,
   formData: FormData,
@@ -45,6 +64,11 @@ export async function inviteAdminUserAction(
 
     if (!username) {
       return { ok: false, error: 'Tên email là bắt buộc.' };
+    }
+
+    const usernameError = validateUsername(username);
+    if (usernameError) {
+      return { ok: false, error: usernameError };
     }
 
     if (contactEmail) {
