@@ -275,6 +275,11 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
                           <p className="line-clamp-2 text-[13px] font-bold text-slate-800" title={item.name}>{item.name}</p>
                           <p className="max-w-[210px] truncate font-mono text-[10px] text-slate-400" title={`/${item.slug}`}>/{item.slug}</p>
                           <div className="flex flex-wrap gap-1.5 pt-1">
+                            {item.is_featured ? (
+                              <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-700">
+                                Nổi bật
+                              </span>
+                            ) : null}
                             {imageCount === 0 ? (
                               <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-700">
                                 Thiếu ảnh

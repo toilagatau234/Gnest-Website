@@ -114,6 +114,7 @@ export interface Database {
           stock: number;
           specs: Json;
           is_active: boolean;
+          is_featured: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -127,6 +128,7 @@ export interface Database {
           stock?: number;
           specs?: Json;
           is_active?: boolean;
+          is_featured?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -139,6 +141,7 @@ export interface Database {
           stock?: number;
           specs?: Json;
           is_active?: boolean;
+          is_featured?: boolean;
           updated_at?: string;
         };
         Relationships: [];

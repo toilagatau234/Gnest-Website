@@ -199,6 +199,24 @@ export type PublicProductListResult = {
   hasNextPage: boolean;
 };
 
+type PublicProductQueryRow = {
+  id: string;
+  name: string;
+  slug: string;
+  price: number | null;
+  stock: number;
+  category_id: string | null;
+  specs: unknown;
+  is_featured: boolean;
+  created_at: string;
+  categories: {
+    id: string;
+    name: string;
+    slug: string;
+    rank_key: string;
+  } | null;
+};
+
 export async function getPublicProductsPage({
   categorySlug,
   page,
@@ -264,7 +282,7 @@ export async function getPublicProductsPage({
   // Start building query on products table
   let query = supabase
     .from('products')
-    .select('id, name, slug, price, stock, category_id, specs', { count: 'exact' })
+    .select('id, name, slug, price, stock, category_id, specs, is_featured, created_at, categories!products_category_id_fkey (id, name, slug, rank_key)', { count: 'exact' })
     .eq('is_active', true)
     .in('category_id', targetCategoryIds);
 
@@ -280,29 +298,49 @@ export async function getPublicProductsPage({
     });
   }
 
-  // Order stably: created_at DESC, id DESC
-  query = query
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false });
-
-  // Calculate range
-  const from = (safePage - 1) * safePageSize;
-  const to = from + safePageSize - 1;
-  query = query.range(from, to);
-
   const { data, count, error } = await query;
 
   if (error) {
     throw new Error(`Failed to query public products: ${error.message}`);
   }
 
-  const products = data ?? [];
-  const total = count ?? 0;
+  const rawProducts = (data ?? []) as unknown as PublicProductQueryRow[];
+  
+  // Sort in memory by: category rank_key asc, is_featured desc, created_at desc, name asc
+  const sortedProducts = [...rawProducts].sort((a, b) => {
+    const catA = a.categories as any;
+    const catB = b.categories as any;
+    const rankA = catA?.rank_key ?? '';
+    const rankB = catB?.rank_key ?? '';
+    if (rankA !== rankB) {
+      return rankA.localeCompare(rankB);
+    }
+    
+    const featA = a.is_featured ? 1 : 0;
+    const featB = b.is_featured ? 1 : 0;
+    if (featA !== featB) {
+      return featB - featA;
+    }
+    
+    const timeA = new Date(a.created_at).getTime();
+    const timeB = new Date(b.created_at).getTime();
+    if (timeA !== timeB) {
+      return timeB - timeA;
+    }
+    
+    return a.name.localeCompare(b.name);
+  });
+
+  const total = count ?? sortedProducts.length;
   const pageCount = Math.max(1, Math.ceil(total / safePageSize));
-  const hasNextPage = safePage < pageCount;
+  const clampedPage = safePage > pageCount ? pageCount : safePage;
+  const from = (clampedPage - 1) * safePageSize;
+  const to = from + safePageSize - 1;
+  const products = sortedProducts.slice(from, to + 1);
+  const hasNextPage = clampedPage < pageCount;
 
   if (products.length === 0) {
-    return { items: [], page: safePage, pageSize: safePageSize, total, pageCount, hasNextPage };
+    return { items: [], page: clampedPage, pageSize: safePageSize, total, pageCount, hasNextPage };
   }
 
   const productIds = products.map((p) => p.id);
@@ -536,7 +574,7 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
 
   // Query products per root category with limit of 4 in parallel
   const rootIdToProductIds = new Map<string, string[]>();
-  const allProductsMap = new Map<string, { id: string; name: string; slug: string; price: number | null; stock: number; category_id: string | null; specs: any }>();
+  const allProductsMap = new Map<string, { id: string; name: string; slug: string; price: number | null; stock: number; category_id: string | null; specs: any; is_featured?: boolean; created_at?: string }>();
 
   const queries = activeRootIds.map(async (rootId) => {
     const descendants = rootDescendantsMap.get(rootId) ?? [];
@@ -544,20 +582,44 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
 
     const { data: rootProducts, error: rootError } = await supabase
       .from('products')
-      .select('id, name, slug, price, stock, category_id, specs')
+      .select('id, name, slug, price, stock, category_id, specs, is_featured, created_at, categories!products_category_id_fkey (id, name, slug, rank_key)')
       .eq('is_active', true)
-      .in('category_id', descendants)
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(4);
+      .in('category_id', descendants);
 
     if (rootError) {
       throw new Error(`Failed to load homepage products for root category "${rootId}": ${rootError.message}`);
     }
 
-    const ids = (rootProducts ?? []).map((p) => p.id);
+    const rawRootProducts = (rootProducts ?? []) as unknown as PublicProductQueryRow[];
+
+    const sorted = [...rawRootProducts].sort((a, b) => {
+      const catA = a.categories as any;
+      const catB = b.categories as any;
+      const rankA = catA?.rank_key ?? '';
+      const rankB = catB?.rank_key ?? '';
+      if (rankA !== rankB) {
+        return rankA.localeCompare(rankB);
+      }
+      
+      const featA = a.is_featured ? 1 : 0;
+      const featB = b.is_featured ? 1 : 0;
+      if (featA !== featB) {
+        return featB - featA;
+      }
+      
+      const timeA = new Date(a.created_at).getTime();
+      const timeB = new Date(b.created_at).getTime();
+      if (timeA !== timeB) {
+        return timeB - timeA;
+      }
+      
+      return a.name.localeCompare(b.name);
+    });
+
+    const limited = sorted.slice(0, 4);
+    const ids = limited.map((p) => p.id);
     rootIdToProductIds.set(rootId, ids);
-    (rootProducts ?? []).forEach((p) => {
+    limited.forEach((p) => {
       allProductsMap.set(p.id, p);
     });
   });

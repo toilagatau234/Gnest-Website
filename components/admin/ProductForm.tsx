@@ -242,6 +242,15 @@ export function ProductForm({
             description="Tắt để ẩn sản phẩm khỏi website."
           />
         </div>
+
+        <div className="admin-soft-panel px-4 py-3">
+          <AdminToggle
+            name="is_featured"
+            defaultChecked={product?.is_featured ?? false}
+            label="Sản phẩm nổi bật"
+            description="Ưu tiên hiển thị sản phẩm này trước các sản phẩm thường trong cùng danh mục."
+          />
+        </div>
       </div>
 
       {/* ── Pricing ────────────────────────────────────────────────────────── */}

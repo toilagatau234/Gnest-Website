@@ -16,7 +16,7 @@ export type AdminProduct = Tables<'products'> & {
 // Minimal scalar fields needed by the product edit form
 export type ProductFormData = Pick<
   Tables<'products'>,
-  'id' | 'name' | 'slug' | 'category_id' | 'price' | 'stock' | 'is_active' | 'description' | 'specs'
+  'id' | 'name' | 'slug' | 'category_id' | 'price' | 'stock' | 'is_active' | 'is_featured' | 'description' | 'specs'
 >;
 
 // Slim row for the paginated list — no description, specs, or nested arrays.
@@ -30,6 +30,7 @@ export type ProductListItem = {
   price: number | null;
   stock: number;
   is_active: boolean;
+  is_featured: boolean;
   updated_at: string;
   created_at: string;
   categories: Pick<Tables<'categories'>, 'id' | 'name' | 'slug'> | null;
@@ -79,6 +80,7 @@ export interface ProductPayload {
   stock: number;
   specs: Json;
   is_active: boolean;
+  is_featured: boolean;
 }
 
 // Base row shape returned by the slim list query (Phase 1)
@@ -90,6 +92,7 @@ type ProductBaseRow = {
   price: number | null;
   stock: number;
   is_active: boolean;
+  is_featured: boolean;
   updated_at: string;
   created_at: string;
   categories: Pick<Tables<'categories'>, 'id' | 'name' | 'slug'> | null;
@@ -106,6 +109,7 @@ function toProductAuditSnapshot(product: {
   price?: number | null;
   stock?: number;
   is_active: boolean;
+  is_featured?: boolean;
 }) {
   return {
     name: product.name,
@@ -114,6 +118,7 @@ function toProductAuditSnapshot(product: {
     price: product.price ?? null,
     stock: product.stock ?? 0,
     is_active: product.is_active,
+    is_featured: product.is_featured ?? false,
   };
 }
 
@@ -127,6 +132,7 @@ function normalizeProductPayload(payload: ProductPayload): Inserts<'products'> {
     stock: payload.stock,
     specs: payload.specs,
     is_active: payload.is_active,
+    is_featured: payload.is_featured,
   };
 }
 
@@ -172,8 +178,9 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
     let query = supabase
       .from('products')
       .select(
-        'id, name, slug, category_id, price, stock, is_active, updated_at, created_at, categories(id, name, slug)',
+        'id, name, slug, category_id, price, stock, is_active, is_featured, updated_at, created_at, categories(id, name, slug)',
       )
+      .order('is_featured', { ascending: false })
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -258,6 +265,7 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
         price: row.price,
         stock: row.stock,
         is_active: row.is_active,
+        is_featured: row.is_featured,
         updated_at: row.updated_at,
         created_at: row.created_at,
         categories: row.categories,

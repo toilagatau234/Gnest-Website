@@ -63,6 +63,7 @@ function readProductPayload(formData: FormData): ProductPayload {
   const categoryId = readString(formData, 'category_id');
   const price = parseNumber(readString(formData, 'price'));
   const stock = Number(readString(formData, 'stock') || 0);
+  const isFeatured = readBoolean(formData, 'is_featured');
 
   if (!name) {
     throw new Error('Tên sản phẩm là bắt buộc.');
@@ -85,6 +86,7 @@ function readProductPayload(formData: FormData): ProductPayload {
     stock,
     specs: parseSpecs(readString(formData, 'specs')),
     is_active: readBoolean(formData, 'is_active'),
+    is_featured: isFeatured,
   };
 }
 
@@ -229,6 +231,7 @@ export async function bulkCreateProductsAction(rows: BulkRowPayload[]): Promise<
         stock: Math.max(0, Math.floor(row.stock ?? 0)),
         specs: {} as Json,
         is_active: row.is_active,
+        is_featured: false,
       };
 
       const { data, error } = await createAdminProduct(payload, requestContext);

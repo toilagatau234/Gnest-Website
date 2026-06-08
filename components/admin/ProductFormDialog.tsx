@@ -176,6 +176,7 @@ function ProductFormDialogSession({ categories, product, onClose }: ProductFormD
           price: d.price,
           stock: d.stock,
           is_active: d.is_active,
+          is_featured: d.is_featured,
           description: d.description,
           specs: d.specs,
         });
