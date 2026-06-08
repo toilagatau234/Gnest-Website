@@ -158,24 +158,6 @@ http://localhost:3000
 
 ---
 
-## Deploy Vercel
-
-1. Tạo hoặc liên kết Vercel project với repository `toilagatau234/Gnest-Website`.
-2. Framework preset: Next.js.
-3. Build command: `npm run build`.
-4. Thêm đầy đủ environment variables cho Preview và Production:
-
-```bash
-NEXT_PUBLIC_SITE_URL=https://your-production-domain.com
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-or-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
-```
-
-Sau khi có domain thật, cập nhật `NEXT_PUBLIC_SITE_URL` để metadata/canonical URL không trỏ về localhost.
-
----
-
 ## Ghi chú bảo mật
 
 - Không commit `.env.local` hoặc khóa thật.
