@@ -29,8 +29,12 @@ function parseNumber(value: string) {
     return null;
   }
 
-  const normalized = value.replace(/,/g, '');
-  const parsed = Number(normalized);
+  const clean = value.replace(/\D/g, '');
+  if (!clean) {
+    return null;
+  }
+
+  const parsed = Number(clean);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
