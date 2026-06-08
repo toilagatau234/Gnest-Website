@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -15,6 +16,8 @@ import {
   X,
   Sparkles,
   Megaphone,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 import { ADMIN_ROLE_LABELS, type AdminUser } from '@/lib/types/admin';
@@ -64,15 +67,26 @@ interface AdminSidebarProps {
   isOpen: boolean;
   adminUser: AdminUser;
   onNavigate: () => void;
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
 }
 
-export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProps) {
+export function AdminSidebar({
+  isOpen,
+  adminUser,
+  onNavigate,
+  collapsed,
+  onCollapsedChange,
+}: AdminSidebarProps) {
   const pathname = usePathname();
+  const [isHovering, setIsHovering] = useState(false);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
   const emailInitial = adminUser.email ? adminUser.email.charAt(0).toUpperCase() : 'A';
   const emailShort = adminUser.email ? adminUser.email.split('@')[0] : 'Admin';
+
+  const isExpanded = !collapsed || isHovering;
 
   return (
     <>
@@ -86,16 +100,19 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
       <aside
         id="admin-sidebar"
         aria-label="Điều hướng quản trị"
+        onMouseEnter={() => collapsed && setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
         className={`
-          fixed inset-y-0 left-0 z-50 flex w-72 flex-col
+          fixed inset-y-0 left-0 z-50 flex flex-col
           border-r border-white/10 bg-[#152D5B] text-white shadow-2xl shadow-slate-950/15
-          transition-transform duration-300 ease-out
+          transition-all duration-300 ease-in-out
           before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_left,rgba(72,128,255,0.34),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_44%)]
           lg:translate-x-0
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${isOpen ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0'}
+          ${isExpanded ? 'lg:w-72' : 'lg:w-20'}
         `}
       >
-        <div className="relative flex h-20 shrink-0 items-center border-b border-white/10 px-5">
+        <div className={`relative flex h-20 shrink-0 items-center border-b border-white/10 transition-all duration-300 ${isExpanded ? 'px-5' : 'justify-center px-0'}`}>
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-11 w-16 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-lg shadow-black/10 transition-transform hover:scale-105">
               <svg viewBox="0 0 264 174" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-full w-auto">
@@ -105,17 +122,21 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
                 <text x="132" y="58" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="66" fontFamily="Arial Black,Arial" fontWeight="900">T</text>
                 <rect x="186" y="0" width="78" height="108" rx="8" fill="#E31E24"/>
                 <text x="225" y="58" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="66" fontFamily="Arial Black,Arial" fontWeight="900">L</text>
-                <text x="132" y="156" textAnchor="middle" fill="#E31E24" fontSize="24" fontFamily="Arial" fontWeight="800" letterSpacing="1">Đại Tài Lợi</text>
+                {isExpanded && (
+                  <text x="132" y="156" textAnchor="middle" fill="#E31E24" fontSize="24" fontFamily="Arial" fontWeight="800" letterSpacing="1">Đại Tài Lợi</text>
+                )}
               </svg>
             </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-sm font-black tracking-[0.06em] text-white uppercase">
-                Admin CMS
-              </h1>
-              <p className="mt-0.5 truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-white/50">
-                Đại Tài Lợi
-              </p>
-            </div>
+            {isExpanded && (
+              <div className="min-w-0">
+                <h1 className="truncate text-sm font-black tracking-[0.06em] text-white uppercase">
+                  Admin CMS
+                </h1>
+                <p className="mt-0.5 truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-white/50">
+                  Đại Tài Lợi
+                </p>
+              </div>
+            )}
           </div>
 
           <button
@@ -131,9 +152,13 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
         <nav className="admin-scrollbar relative min-h-0 flex-1 space-y-7 overflow-y-auto px-3 py-5">
           {navSections.map((section) => (
             <div key={section.title}>
-              <p className="mb-2.5 px-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40">
-                {section.title}
-              </p>
+              {isExpanded ? (
+                <p className="mb-2.5 px-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 transition-opacity duration-200">
+                  {section.title}
+                </p>
+              ) : (
+                <div className="mb-2.5 border-t border-white/10 my-2" />
+              )}
               <ul className="space-y-1">
                 {section.items.map((item) => {
                   const Icon = item.icon;
@@ -144,15 +169,17 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
                       <Link
                         href={item.href}
                         onClick={onNavigate}
+                        title={!isExpanded ? item.label : undefined}
                         aria-current={active ? 'page' : undefined}
                         className={`
                           group flex h-[46px] min-w-0 items-center justify-between gap-3 rounded-[10px] px-3.5 text-sm
-                          transition-[transform,background-color,color,box-shadow] duration-200
+                          transition-[transform,background-color,color,box-shadow,padding-left,padding-right] duration-200
                           ${
                             active
                               ? 'bg-[#4C61CC] font-bold text-white shadow-lg shadow-[#0B1534]/20'
                               : 'text-white/70 hover:translate-x-1 hover:bg-white/10 hover:text-white'
                           }
+                          ${!isExpanded ? 'justify-center px-0' : ''}
                         `}
                       >
                         <span className="flex min-w-0 items-center gap-3">
@@ -163,10 +190,10 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
                           >
                             <Icon className="h-4 w-4" />
                           </span>
-                          <span className="truncate">{item.label}</span>
+                          {isExpanded && <span className="truncate">{item.label}</span>}
                         </span>
 
-                        {item.badge ? (
+                        {isExpanded && item.badge ? (
                           <span className="ml-2 shrink-0 rounded-full border border-white/20 bg-white/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white">
                             {item.badge}
                           </span>
@@ -180,19 +207,55 @@ export function AdminSidebar({ isOpen, adminUser, onNavigate }: AdminSidebarProp
           ))}
         </nav>
 
-        <div className="relative shrink-0 border-t border-white/10 p-4">
-          <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/10 p-3 shadow-inner shadow-white/5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4880FF] text-sm font-extrabold uppercase text-white shadow-sm">
-              {emailInitial}
+        {/* Collapse Toggle Button */}
+        <div className="hidden lg:block border-t border-white/10 px-3 py-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              onCollapsedChange(!collapsed);
+              setIsHovering(false);
+            }}
+            title={collapsed ? 'Ghim/mở rộng sidebar' : 'Thu gọn sidebar'}
+            className={`
+              flex w-full items-center gap-3 rounded-[10px] px-3.5 py-2 text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer
+              ${!isExpanded ? 'justify-center px-0' : ''}
+            `}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronLeft className="h-4 w-4 shrink-0" />
+            )}
+            {isExpanded && (
+              <span className="text-xs font-bold uppercase tracking-wider">
+                {collapsed ? 'Ghim sidebar' : 'Thu gọn'}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <div className={`relative shrink-0 border-t border-white/10 transition-all duration-300 ${isExpanded ? 'p-4' : 'p-3'}`}>
+          {isExpanded ? (
+            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/10 p-3 shadow-inner shadow-white/5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4880FF] text-sm font-extrabold uppercase text-white shadow-sm">
+                {emailInitial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-white">{emailShort}</p>
+                <p className="truncate text-[11px] font-semibold text-white/50">
+                  {adminUser.role ? ADMIN_ROLE_LABELS[adminUser.role] : 'Admin'}
+                </p>
+              </div>
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.16)]" />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-white">{emailShort}</p>
-              <p className="truncate text-[11px] font-semibold text-white/50">
-                {adminUser.role ? ADMIN_ROLE_LABELS[adminUser.role] : 'Admin'}
-              </p>
+          ) : (
+            <div className="flex justify-center">
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4880FF] text-sm font-extrabold uppercase text-white shadow-sm" title={emailShort}>
+                {emailInitial}
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 border-2 border-[#152D5B]" />
+              </div>
             </div>
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.16)]" />
-          </div>
+          )}
         </div>
       </aside>
     </>
