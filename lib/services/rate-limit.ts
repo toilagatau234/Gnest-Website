@@ -11,6 +11,9 @@ const rules: Record<string, RateLimitRule> = {
 };
 
 // Simple in-memory cache to store timestamps of hits
+// NOTE: This in-memory limiter is a best-effort approach. Timestamps reset on server restart
+// and are not shared across serverless instances or multi-instance deployments.
+// For production scale, it can be migrated to Redis, Supabase-backed logs, or Cloudflare WAF.
 // Key structure: `rl:${ruleName}:${identifier}`
 const cache = new Map<string, number[]>();
 

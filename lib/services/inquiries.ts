@@ -10,18 +10,20 @@ export async function createInquiry(input: CreateInquiryInput) {
   const supabase = await createClient();
 
   // Find active sale/admin to assign the inquiry (round-robin / least active new inquiry strategy)
+  // NOTE: We use the server-only service role client here to safely bypass RLS restrictions 
+  // during public submissions. No admin user details or personal data are exposed or returned to the client.
   let assignedTo: string | null = null;
   try {
     const adminSupabase = createServiceRoleClient();
-    const { data: adminUsers } = await adminSupabase
+    const { data: adminUsers, error: adminErr } = await adminSupabase
       .from('admin_users')
       .select('id')
       .eq('is_active', true)
       .in('role', ['super_admin', 'admin', 'editor']);
 
-    if (adminUsers && adminUsers.length > 0) {
+    if (!adminErr && adminUsers && adminUsers.length > 0) {
       // Find count of new/active inquiries assigned to each active admin
-      const { data: counts } = await adminSupabase
+      const { data: counts, error: countErr } = await adminSupabase
         .from('inquiries')
         .select('assigned_to')
         .in('status', ['new', 'contacted', 'quoted'])
@@ -32,7 +34,7 @@ export async function createInquiry(input: CreateInquiryInput) {
         countMap[u.id] = 0;
       });
 
-      if (counts) {
+      if (!countErr && counts) {
         counts.forEach((c) => {
           if (c.assigned_to && countMap[c.assigned_to] !== undefined) {
             countMap[c.assigned_to]++;
@@ -53,7 +55,9 @@ export async function createInquiry(input: CreateInquiryInput) {
       assignedTo = minAdminId;
     }
   } catch (err) {
+    // Graceful fallback: assignment lookup failure must never block inquiry creation
     console.error('[createInquiry] failed to assign agent', err);
+    assignedTo = null;
   }
 
   const { data, error } = await supabase

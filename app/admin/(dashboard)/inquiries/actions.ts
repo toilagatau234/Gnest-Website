@@ -278,17 +278,21 @@ export async function updateInquiryWorkflowAction(formData: FormData): Promise<I
       return { ok: false, error: updateErr.message };
     }
 
-    // Write audit log
-    await supabase.from('audit_logs').insert({
-      actor_id: actor.id,
-      action: 'update_workflow',
-      entity: 'inquiries',
-      entity_id: inquiryId,
-      metadata: {
-        changes,
-        customer_name: current.customer_name,
-      },
-    });
+    // Write audit log (best-effort)
+    try {
+      await supabase.from('audit_logs').insert({
+        actor_id: actor.id,
+        action: 'update_workflow',
+        entity: 'inquiries',
+        entity_id: inquiryId,
+        metadata: {
+          changes,
+          customer_name: current.customer_name,
+        },
+      });
+    } catch (auditErr) {
+      console.error('[updateInquiryWorkflowAction] best-effort audit log failed', auditErr);
+    }
 
     revalidateInquiries();
     return { ok: true };

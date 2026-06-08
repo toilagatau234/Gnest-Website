@@ -7,7 +7,6 @@ import {
   Clock,
   Eye,
   Mail,
-  MessageCircle,
   Phone,
   Send,
   UserCheck,
@@ -99,10 +98,6 @@ function formatDateTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-function zaloLink(phone: string) {
-  return `https://zalo.me/${phone.replace(/\D/g, '')}`;
 }
 
 function statusMeta(status: string) {
@@ -545,8 +540,14 @@ function InquiryWorkflowPanel({
 - Sản phẩm quan tâm: ${productName}
 - Nội dung: ${messageContent}`;
 
-    navigator.clipboard.writeText(textToCopy);
-    toast('Đã copy nội dung gửi Zalo.', 'success');
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        toast('Đã copy nội dung gửi Zalo.', 'success');
+      })
+      .catch((err) => {
+        console.error('Failed to copy to clipboard', err);
+        toast('Không thể copy nội dung vào clipboard.', 'error');
+      });
   };
 
   return (
