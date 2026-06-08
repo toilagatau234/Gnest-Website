@@ -14,6 +14,7 @@ interface AdminShellProps {
 
 export function AdminShell({ children, adminUser }: AdminShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const toggleMenu = () => setMenuOpen((open) => !open);
   const closeMenu = () => setMenuOpen(false);
@@ -22,9 +23,15 @@ export function AdminShell({ children, adminUser }: AdminShellProps) {
     <AdminToastProvider>
       <div className="min-h-screen bg-[#F5F6FA] bg-[radial-gradient(circle_at_top_right,rgba(72,128,255,0.12),transparent_34%),linear-gradient(180deg,#F8FAFF_0%,#F5F6FA_42%,#F7F9FB_100%)] font-sans text-[#202224] antialiased selection:bg-[#4880FF]/10 selection:text-[#3749A6]">
         <AdminSessionActivityTracker />
-        <AdminSidebar isOpen={menuOpen} adminUser={adminUser} onNavigate={closeMenu} />
+        <AdminSidebar
+          isOpen={menuOpen}
+          adminUser={adminUser}
+          onNavigate={closeMenu}
+          collapsed={sidebarCollapsed}
+          onCollapsedChange={setSidebarCollapsed}
+        />
 
-        <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden lg:pl-72">
+        <div className={`flex min-h-screen min-w-0 flex-col overflow-x-hidden transition-[padding] duration-300 ease-in-out ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'}`}>
           <AdminTopbar adminUser={adminUser} onMenuToggle={toggleMenu} isMenuOpen={menuOpen} />
 
           <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
