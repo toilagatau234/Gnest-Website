@@ -1,8 +1,8 @@
 -- Migration: Replace sort_order with fractional rank_key ordering
 -- Add rank_key columns
-ALTER TABLE public.categories ADD COLUMN rank_key text;
-ALTER TABLE public.job_vacancies ADD COLUMN rank_key text;
-ALTER TABLE public.sales_contacts ADD COLUMN rank_key text;
+ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS rank_key text;
+ALTER TABLE public.job_vacancies ADD COLUMN IF NOT EXISTS rank_key text;
+ALTER TABLE public.sales_contacts ADD COLUMN IF NOT EXISTS rank_key text;
 
 -- PL/pgSQL function to generate canonical base62 fractional keys
 CREATE OR REPLACE FUNCTION public.get_fractional_rank(idx integer)
@@ -35,7 +35,7 @@ WITH ordered_categories AS (
 UPDATE public.categories c
 SET rank_key = oc.calculated_rank
 FROM ordered_categories oc
-WHERE c.id = oc.id;
+WHERE c.id = oc.id AND c.rank_key IS NULL;
 
 -- Backfill job_vacancies (global order by sort_order, created_at desc)
 WITH ordered_jobs AS (
@@ -46,7 +46,7 @@ WITH ordered_jobs AS (
 UPDATE public.job_vacancies j
 SET rank_key = oj.calculated_rank
 FROM ordered_jobs oj
-WHERE j.id = oj.id;
+WHERE j.id = oj.id AND j.rank_key IS NULL;
 
 -- Backfill sales_contacts (global order by sort_order, name)
 WITH ordered_contacts AS (
@@ -57,7 +57,7 @@ WITH ordered_contacts AS (
 UPDATE public.sales_contacts s
 SET rank_key = oc.calculated_rank
 FROM ordered_contacts oc
-WHERE s.id = oc.id;
+WHERE s.id = oc.id AND s.rank_key IS NULL;
 
 -- Clean up helper function
 DROP FUNCTION IF EXISTS public.get_fractional_rank(integer);
