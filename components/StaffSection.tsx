@@ -20,16 +20,16 @@ type StaffContact = {
 function normalizeZaloHref(zalo: string | null | undefined, cleanPhone: string) {
   const trimmed = zalo?.trim() ?? '';
 
-  if (trimmed) {
-    if (/^https?:\/\//i.test(trimmed)) {
-      return trimmed;
-    }
-
-    const digits = trimmed.replace(/\D/g, '');
-    return digits ? `https://zalo.me/${digits}` : trimmed;
+  if (!trimmed) {
+    return cleanPhone ? `https://zalo.me/${cleanPhone}` : undefined;
   }
 
-  return cleanPhone ? `https://zalo.me/${cleanPhone}` : undefined;
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  const digits = trimmed.replace(/\D/g, '');
+  return digits ? `https://zalo.me/${digits}` : undefined;
 }
 
 function getInitials(name: string) {
