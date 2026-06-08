@@ -89,7 +89,7 @@ export function JobsTable({ jobs, allJobs, page, pageCount, total }: JobsTablePr
         <div className="min-w-0">
           <h2 className="text-base font-extrabold text-[#202224]">Danh sách tin tuyển dụng</h2>
           <p className="mt-1 max-w-3xl text-xs font-medium leading-relaxed text-[#646464]">
-            Xem trước, sửa đổi hoặc xóa các vị trí đang cần chiêu mộ nhân sự tại Đại Tài Lợi.
+            Xem trước, sửa đổi hoặc xóa các vị trí đang cần chiêu mộ nhân sự tại Đại Tài Lợi. {"Sắp xếp thứ tự bằng cách bấm nút 'Tùy chỉnh sắp xếp' ở góc trên."}
           </p>
         </div>
 
@@ -137,7 +137,9 @@ export function JobsTable({ jobs, allJobs, page, pageCount, total }: JobsTablePr
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {filteredJobs.map((job) => (
+          {filteredJobs.map((job, index) => {
+            const displayIndex = (page - 1) * 20 + index + 1;
+            return (
             <article key={job.id} className="flex flex-col justify-between rounded-2xl border border-[#E5E7EF] bg-white p-5 shadow-sm transition hover:border-[#D8DEEC] hover:shadow-admin">
               <div>
                 <div className="mb-3 flex items-start justify-between gap-4">
@@ -178,7 +180,7 @@ export function JobsTable({ jobs, allJobs, page, pageCount, total }: JobsTablePr
                 <div className="flex items-center gap-2">
                   <StatusBadge active={job.is_active} />
                   <span className="admin-badge border-[#E5E7EF] bg-[#F7F9FB] text-[#646464]">
-                    Thứ tự #{job.sort_order}
+                    STT #{displayIndex}
                   </span>
                 </div>
                 <span className="inline-flex items-center gap-1.5 font-bold uppercase tracking-[0.12em] text-[#3749A6]">
@@ -186,7 +188,8 @@ export function JobsTable({ jobs, allJobs, page, pageCount, total }: JobsTablePr
                 </span>
               </div>
             </article>
-          ))}
+          );
+        })}
         </div>
       )}
 

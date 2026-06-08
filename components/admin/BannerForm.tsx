@@ -129,6 +129,7 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
   const [imageMobileUrl, setImageMobileUrl] = useState(banner?.image_mobile_url ?? '');
   const [startAt, setStartAt] = useState(toDatetimeLocal(banner?.start_at));
   const [endAt, setEndAt] = useState(toDatetimeLocal(banner?.end_at));
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const selectedPosition = POSITION_OPTIONS.find((option) => option.value === position) ?? POSITION_OPTIONS[0];
 
   return (
@@ -230,20 +231,47 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
               <span className={helperClass}>{selectedPosition.description}</span>
             </label>
 
-            <label className="block">
-              <span className={labelClass}>
-                <ListOrdered className="h-3.5 w-3.5" /> Thứ tự hiển thị
-              </span>
-              <input
-                name="sort_order"
-                type="number"
-                min={0}
-                step={1}
-                defaultValue={banner?.sort_order ?? 0}
-                className={fieldClass}
-              />
-              <span className={helperClass}>Số nhỏ hơn sẽ được ưu tiên hiển thị trước. Nếu chưa chắc, hãy để mặc định là 0.</span>
-            </label>
+            {!showAdvanced ? (
+              <div className="flex items-center justify-between rounded-xl border border-dashed border-[#E5E7EF] bg-[#F7F9FB] px-4 py-2.5">
+                <input type="hidden" name="sort_order" value={banner?.sort_order ?? 0} />
+                <span className="text-xs text-slate-500 font-medium">
+                  Thứ tự hiển thị mặc định: <span className="font-bold text-slate-700">#{banner?.sort_order ?? 0}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(true)}
+                  className="text-xs font-bold text-[#4880FF] hover:underline cursor-pointer"
+                >
+                  Tùy chỉnh thứ tự nâng cao
+                </button>
+              </div>
+            ) : (
+              <label className="block space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className={labelClass}>
+                    <ListOrdered className="h-3.5 w-3.5" /> Thứ tự hiển thị
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(false)}
+                    className="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    Thu gọn
+                  </button>
+                </div>
+                <input
+                  name="sort_order"
+                  type="number"
+                  min={0}
+                  step={1}
+                  defaultValue={banner?.sort_order ?? 0}
+                  className={fieldClass}
+                />
+                <span className={helperClass}>
+                  Thứ tự hiển thị của banner. Banner có số nhỏ hơn sẽ xuất hiện trước. Có thể để mặc định là 0.
+                </span>
+              </label>
+            )}
           </section>
 
           <section className="space-y-4 rounded-2xl border border-[#EEF2F6] bg-white p-4">

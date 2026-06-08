@@ -36,6 +36,17 @@ export function SalesContactForm({ formId, formAction, state, contact }: SalesCo
   const [zalo, setZalo] = useState(contact?.zalo ?? '');
   const [avatarUrl, setAvatarUrl] = useState(contact?.avatar_url ?? '');
 
+  const phoneDigits = useMemo(() => phone.replace(/\D/g, ''), [phone]);
+  const hasCustomZalo = useMemo(() => {
+    return !!(
+      contact?.zalo &&
+      contact.zalo !== phoneDigits &&
+      contact.zalo !== `https://zalo.me/${phoneDigits}`
+    );
+  }, [contact, phoneDigits]);
+
+  const [showZaloOverride, setShowZaloOverride] = useState(hasCustomZalo);
+
   const resolvedZalo = useMemo(() => {
     if (zalo.trim()) {
       return zalo.trim();
@@ -100,25 +111,58 @@ export function SalesContactForm({ formId, formAction, state, contact }: SalesCo
           />
         </label>
 
-        <label className="block">
-          <span className={labelClass}>Zalo URL hoặc số Zalo</span>
-          <input
-            name="zalo"
-            type="text"
-            value={zalo}
-            onChange={(event) => setZalo(event.target.value)}
-            className={fieldClass}
-            placeholder="Để trống để tự tạo từ số điện thoại"
-          />
-          <span className="mt-1.5 block text-[10px] font-medium text-slate-400">
-            Có thể nhập link Zalo đầy đủ hoặc chỉ nhập số điện thoại.
-          </span>
-          {resolvedZalo ? (
-            <span className="mt-1.5 block break-all text-[10px] font-semibold text-[#3749A6]">
-              Link sẽ dùng: {resolvedZalo}
+        {!showZaloOverride ? (
+          <div className="sm:col-span-2 flex items-center justify-between rounded-xl border border-dashed border-[#E5E7EF] bg-[#F7F9FB] px-4 py-3">
+            <input type="hidden" name="zalo" value="" />
+            <div className="text-xs text-[#646464] font-medium">
+              <span className="font-bold text-[#202224]">Zalo:</span> Link Zalo sẽ tự tạo từ số điện thoại.
+              {resolvedZalo ? (
+                <span className="ml-1.5 font-bold text-[#3749A6] break-all">
+                  ({resolvedZalo})
+                </span>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowZaloOverride(true)}
+              className="text-xs font-bold text-[#4880FF] hover:text-[#3749A6] transition-colors"
+            >
+              Tùy chỉnh Zalo khác
+            </button>
+          </div>
+        ) : (
+          <div className="block sm:col-span-2 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className={labelClass}>Zalo URL hoặc số Zalo</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowZaloOverride(false);
+                  setZalo('');
+                }}
+                className="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                Dùng mặc định theo SĐT
+              </button>
+            </div>
+            <input
+              name="zalo"
+              type="text"
+              value={zalo}
+              onChange={(event) => setZalo(event.target.value)}
+              className={fieldClass}
+              placeholder="VD: https://zalo.me/0908123456"
+            />
+            <span className="mt-1.5 block text-[10px] font-medium text-slate-400">
+              Có thể nhập link Zalo đầy đủ hoặc chỉ nhập số điện thoại.
             </span>
-          ) : null}
-        </label>
+            {resolvedZalo ? (
+              <span className="mt-1.5 block break-all text-[10px] font-semibold text-[#3749A6]">
+                Link sẽ dùng: {resolvedZalo}
+              </span>
+            ) : null}
+          </div>
+        )}
 
         <label className="block sm:col-span-2">
           <span className={labelClass}>Avatar URL</span>

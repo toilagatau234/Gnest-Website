@@ -25,6 +25,16 @@ function normalizeUsername(value: string) {
     .replace(/^[._-]+|[._-]+$/g, '');
 }
 
+function cleanUsernameInput(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/\s+/g, '.')
+    .replace(/[^a-z0-9._-]/g, '');
+}
+
 interface DialogContentProps {
   formId: string;
   onClose: () => void;
@@ -34,7 +44,6 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
   const { toast } = useToast();
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
   const [usernameTouched, setUsernameTouched] = useState(false);
   const [state, formAction, isPending] = useActionState(inviteAdminUserAction, INITIAL_STATE);
 
@@ -128,9 +137,9 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
           />
         </label>
 
-        <label className="block">
+        <label className="block sm:col-span-2">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            Tên email <span className="text-[#E31E24]">*</span>
+            Tên email (tên đăng nhập) <span className="text-[#E31E24]">*</span>
           </span>
           <input
             name="username"
@@ -139,28 +148,14 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
             value={username}
             onChange={(event) => {
               setUsernameTouched(true);
-              setUsername(normalizeUsername(event.target.value));
+              setUsername(cleanUsernameInput(event.target.value));
             }}
+            onBlur={() => setUsername((curr) => normalizeUsername(curr))}
             placeholder="dev.it"
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
           />
           <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
             Không nhập @{ADMIN_EMAIL_DOMAIN}. Hệ thống sẽ tự thêm phần đuôi email.
-          </span>
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-xs font-bold text-slate-600">Email liên hệ</span>
-          <input
-            name="contact_email"
-            type="email"
-            value={contactEmail}
-            onChange={(event) => setContactEmail(event.target.value)}
-            placeholder="nhansu@gnest.vn"
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
-          />
-          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Dùng để liên hệ nội bộ, không phải email đăng nhập.
           </span>
         </label>
 

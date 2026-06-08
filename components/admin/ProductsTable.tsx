@@ -352,7 +352,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
                               : 'border-slate-200 bg-slate-100 text-slate-400'
                           }`}
                         >
-                          {item.is_active ? 'Hiển thị' : 'Đang ẩn'}
+                          {item.is_active ? 'Hiển thị công khai' : 'Ẩn khỏi website'}
                         </span>
                       </td>
 

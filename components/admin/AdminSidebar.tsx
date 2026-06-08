@@ -149,7 +149,7 @@ export function AdminSidebar({
           </button>
         </div>
 
-        <nav className="admin-scrollbar relative min-h-0 flex-1 space-y-7 overflow-y-auto px-3 py-5">
+        <nav className="admin-scrollbar-dark relative min-h-0 flex-1 space-y-7 overflow-y-auto px-3 py-5">
           {navSections.map((section) => (
             <div key={section.title}>
               {isExpanded ? (

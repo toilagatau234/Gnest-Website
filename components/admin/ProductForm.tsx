@@ -238,8 +238,8 @@ export function ProductForm({
           <AdminToggle
             name="is_active"
             defaultChecked={product?.is_active ?? true}
-            label="Kích hoạt hiển thị công khai"
-            description="Tắt để ẩn sản phẩm khỏi website."
+            label="Hiển thị công khai"
+            description="Bật để hiển thị công khai trên website, tắt để ẩn khỏi website."
           />
         </div>
 
