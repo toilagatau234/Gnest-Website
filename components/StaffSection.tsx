@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
-import { Phone, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Phone, ChevronLeft, ChevronRight, Headset, MessageCircle } from 'lucide-react';
 
 import { SALE_CONTACTS } from '@/lib/data';
 import { getSalesContacts } from '@/lib/services/sales-contacts';
@@ -12,28 +12,64 @@ type StaffContact = {
   name: string;
   role?: string;
   phone: string;
+  zalo?: string;
   avatar?: string;
   cleanPhone: string;
 };
 
+function normalizeZaloHref(zalo: string | null | undefined, cleanPhone: string) {
+  const trimmed = zalo?.trim() ?? '';
+
+  if (!trimmed) {
+    return cleanPhone ? `https://zalo.me/${cleanPhone}` : undefined;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  const digits = trimmed.replace(/\D/g, '');
+  return digits ? `https://zalo.me/${digits}` : undefined;
+}
+
+function StaffAvatarFallback({ name }: { name: string }) {
+  return (
+    <div
+      className="relative w-[54px] h-[54px] sm:w-[62px] sm:h-[62px] mx-auto mb-3 shrink-0 overflow-hidden rounded-full border border-[#DDE5F8] bg-gradient-to-br from-[#EEF4FF] via-white to-[#FFECEC] shadow-sm"
+      aria-label={`Avatar mặc định của ${name}`}
+      role="img"
+    >
+      <div className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-dtl-red/15" />
+      <div className="absolute -bottom-4 -left-3 h-10 w-10 rounded-full bg-dtl-navy/10" />
+      <div className="absolute inset-[7px] rounded-full bg-white/88 shadow-inner" />
+      <div className="absolute inset-0 flex items-center justify-center text-dtl-navy">
+        <Headset className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={2.2} />
+      </div>
+      <div className="absolute bottom-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#0068FF] text-white ring-2 ring-white">
+        <MessageCircle className="h-2.5 w-2.5" strokeWidth={2.4} />
+      </div>
+    </div>
+  );
+}
+
 function StaffCard({ person }: { person: StaffContact }) {
+  const zaloHref = normalizeZaloHref(person.zalo, person.cleanPhone);
+
   return (
     <div className="bg-white border border-dtl-border rounded-lg py-5 px-3 sm:py-6 sm:px-5 text-center flex flex-col items-center h-full shadow-sm hover:shadow-md transition-shadow duration-200">
       {person.avatar ? (
-        <div className="relative w-[54px] h-[54px] sm:w-[62px] sm:h-[62px] mx-auto mb-3 shrink-0 overflow-hidden rounded-full border border-dtl-border">
+        <div className="relative w-[54px] h-[54px] sm:w-[62px] sm:h-[62px] mx-auto mb-3 shrink-0 overflow-hidden rounded-full border border-dtl-border bg-slate-100">
           <Image
             src={person.avatar}
             alt={person.name.includes('CSKH') ? 'CSKH' : person.name}
             fill
             sizes="62px"
             className="object-cover"
-            unoptimized={person.avatar.startsWith('http')}
+            unoptimized={person.avatar.startsWith('http') || person.avatar.startsWith('data:')}
           />
         </div>
       ) : (
-        <div className="w-[54px] h-[54px] sm:w-[62px] sm:h-[62px] bg-dtl-navy rounded-full mx-auto mb-3 flex items-center justify-center text-[18px] sm:text-[22px] font-extrabold text-white shrink-0">
-          {person.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}
-        </div>
+        <StaffAvatarFallback name={person.name} />
       )}
       <h4 className="text-[14px] sm:text-[15px] font-bold text-dtl-navy mb-1 line-clamp-1">{person.name}</h4>
       <div className="text-[11px] sm:text-[12px] text-dtl-gray mb-3 pb-3 border-b border-dtl-border w-full truncate">
@@ -49,31 +85,37 @@ function StaffCard({ person }: { person: StaffContact }) {
           {person.phone}
         </span>
       </a>
-      <a
-        href={`https://zalo.me/${person.cleanPhone}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-2 flex w-full items-center justify-center gap-1.5 sm:gap-2 bg-[#0068FF] text-white py-2 px-2 rounded transition-colors hover:bg-[#0057d9]"
-        aria-label={`Nhắn tin Zalo: ${person.phone}`}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="shrink-0">
-          <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.52 3.66 1.42 5.18L2 22l4.94-1.39A9.96 9.96 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm4.93 13.57c-.2.56-1.18 1.07-1.63 1.14-.42.06-.96.09-1.55-.1-.36-.11-.82-.27-1.41-.53-2.46-1.06-4.07-3.52-4.2-3.68-.12-.17-.98-1.3-.98-2.48 0-1.18.62-1.76.84-2 .22-.24.48-.3.64-.3h.46c.15 0 .35-.06.55.42.2.48.68 1.66.74 1.78.06.12.1.26.02.42-.08.16-.12.26-.24.4-.12.14-.25.3-.36.4-.12.12-.24.25-.1.49.14.24.62.98 1.33 1.59.92.8 1.7 1.05 1.94 1.17.24.12.38.1.52-.06.14-.16.6-.7.76-.94.16-.24.32-.2.54-.12.22.08 1.4.66 1.64.78.24.12.4.18.46.28.06.1.06.58-.14 1.14z"/>
-        </svg>
-        <span className="font-bold text-[11px] sm:text-[13px] truncate">Chat Zalo</span>
-      </a>
+      {zaloHref ? (
+        <a
+          href={zaloHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 flex w-full items-center justify-center gap-1.5 sm:gap-2 bg-[#0068FF] text-white py-2 px-2 rounded transition-colors hover:bg-[#0057d9]"
+          aria-label={`Nhắn tin Zalo: ${person.phone}`}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="shrink-0">
+            <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.52 3.66 1.42 5.18L2 22l4.94-1.39A9.96 9.96 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm4.93 13.57c-.2.56-1.18 1.07-1.63 1.14-.42.06-.96.09-1.55-.1-.36-.11-.82-.27-1.41-.53-2.46-1.06-4.07-3.52-4.2-3.68-.12-.17-.98-1.3-.98-2.48 0-1.18.62-1.76.84-2 .22-.24.48-.3.64-.3h.46c.15 0 .35-.06.55.42.2.48.68 1.66.74 1.78.06.12.1.26.02.42-.08.16-.12.26-.24.4-.12.14-.25.3-.36.4-.12.12-.24.25-.1.49.14.24.62.98 1.33 1.59.92.8 1.7 1.05 1.94 1.17.24.12.38.1.52-.06.14-.16.6-.7.76-.94.16-.24.32-.2.54-.12.22.08 1.4.66 1.64.78.24.12.4.18.46.28.06.1.06.58-.14 1.14z"/>
+          </svg>
+          <span className="font-bold text-[11px] sm:text-[13px] truncate">Chat Zalo</span>
+        </a>
+      ) : null}
     </div>
   );
 }
 
 export function StaffSection() {
   const [staff, setStaff] = useState<StaffContact[]>(
-    SALE_CONTACTS.map((person) => ({
-      name: person.name,
-      role: person.role,
-      phone: person.phone,
-      avatar: person.avatar,
-      cleanPhone: person.phone.replace(/\D/g, ''),
-    }))
+    SALE_CONTACTS.map((person) => {
+      const cleanPhone = person.phone.replace(/\D/g, '');
+      return {
+        name: person.name,
+        role: person.role,
+        phone: person.phone,
+        zalo: normalizeZaloHref(person.zalo, cleanPhone),
+        avatar: person.avatar,
+        cleanPhone,
+      };
+    })
   );
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -114,7 +156,6 @@ export function StaffSection() {
     if (el) {
       el.addEventListener('scroll', checkScroll, { passive: true });
       window.addEventListener('resize', checkScroll);
-      // Run once initially
       checkScroll();
     }
     return () => {
@@ -131,7 +172,7 @@ export function StaffSection() {
       const card = container.firstElementChild as HTMLElement;
       if (card) {
         const cardWidth = card.getBoundingClientRect().width;
-        const gap = 24; // matches gap-6 (24px)
+        const gap = 24;
         const scrollAmount = direction === 'left' ? -(cardWidth + gap) : (cardWidth + gap);
         container.scrollBy({
           left: scrollAmount,
@@ -169,13 +210,18 @@ export function StaffSection() {
         setStaff(
           contacts
             .filter((person) => Boolean(person.phone))
-            .map((person) => ({
-              name: person.name,
-              role: person.role ?? 'Nhân viên kinh doanh',
-              phone: person.phone!,
-              avatar: person.avatar_url ?? undefined,
-              cleanPhone: person.phone!.replace(/\D/g, ''),
-            }))
+            .map((person) => {
+              const phone = person.phone!;
+              const cleanPhone = phone.replace(/\D/g, '');
+              return {
+                name: person.name,
+                role: person.role ?? 'Nhân viên kinh doanh',
+                phone,
+                zalo: normalizeZaloHref(person.zalo, cleanPhone),
+                avatar: person.avatar_url ?? undefined,
+                cleanPhone,
+              };
+            })
         );
       } catch {
         if (!isMounted) {
@@ -191,14 +237,13 @@ export function StaffSection() {
     };
   }, []);
 
-  // Autoplay effect for carousel only (when staff.length >= 5)
   useEffect(() => {
     if (staff.length < 5 || isPaused) return;
 
     const interval = setInterval(() => {
       const nextIndex = (activeIndex + 1) % staff.length;
       scrollToItem(nextIndex);
-    }, 3000); // Auto-scroll every 6000ms
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [staff.length, activeIndex, isPaused]);
@@ -237,7 +282,6 @@ export function StaffSection() {
             onTouchStart={() => setIsPaused(true)}
             onTouchEnd={() => setIsPaused(false)}
           >
-            {/* Left Scroll Button */}
             <button
               onClick={() => scroll('left')}
               disabled={!canScrollLeft}
@@ -251,7 +295,6 @@ export function StaffSection() {
               <ChevronLeft className="w-5 h-5" />
             </button>
 
-            {/* Scroll Window */}
             <div
               ref={scrollContainerRef}
               className="flex gap-4 md:gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-4 px-1"
@@ -269,7 +312,6 @@ export function StaffSection() {
               ))}
             </div>
 
-            {/* Right Scroll Button */}
             <button
               onClick={() => scroll('right')}
               disabled={!canScrollRight}
@@ -283,7 +325,6 @@ export function StaffSection() {
               <ChevronRight className="w-5 h-5" />
             </button>
 
-            {/* Dot Pagination indicators */}
             <div className="flex justify-center gap-2 mt-4">
               {staff.map((_, index) => (
                 <button
