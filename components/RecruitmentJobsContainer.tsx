@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Briefcase, MapPin, DollarSign, ArrowLeft } from 'lucide-react';
 import { RecruitmentClientActions } from '@/components/RecruitmentClientActions';
 
