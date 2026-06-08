@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { Tables } from '@/lib/types/database';
 
 import { getVisibleCategoryIds } from '@/lib/services/category-visibility';
+import { compareRankKey } from '@/lib/services/admin/rank-key';
 
 export type PublicProductImage = Pick<
   Tables<'product_images'>,
@@ -306,14 +307,17 @@ export async function getPublicProductsPage({
 
   const rawProducts = (data ?? []) as unknown as PublicProductQueryRow[];
   
-  // Sort in memory by: category rank_key asc, is_featured desc, created_at desc, name asc
+  // TODO: Currently sorts public products in memory to combine category rank_key + is_featured.
+  // This is acceptable for the current dataset size.
+  // Future scale path: use DB view/materialized view or denormalized category_rank_key in products table.
   const sortedProducts = [...rawProducts].sort((a, b) => {
     const catA = a.categories as any;
     const catB = b.categories as any;
     const rankA = catA?.rank_key ?? '';
     const rankB = catB?.rank_key ?? '';
-    if (rankA !== rankB) {
-      return rankA.localeCompare(rankB);
+    const rankCompare = compareRankKey(rankA, rankB);
+    if (rankCompare !== 0) {
+      return rankCompare;
     }
     
     const featA = a.is_featured ? 1 : 0;
@@ -592,13 +596,17 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
 
     const rawRootProducts = (rootProducts ?? []) as unknown as PublicProductQueryRow[];
 
+    // TODO: Currently sorts homepage products in memory to combine category rank_key + is_featured.
+    // This is acceptable for the current dataset size.
+    // Future scale path: use DB view/materialized view or denormalized category_rank_key in products table.
     const sorted = [...rawRootProducts].sort((a, b) => {
       const catA = a.categories as any;
       const catB = b.categories as any;
       const rankA = catA?.rank_key ?? '';
       const rankB = catB?.rank_key ?? '';
-      if (rankA !== rankB) {
-        return rankA.localeCompare(rankB);
+      const rankCompare = compareRankKey(rankA, rankB);
+      if (rankCompare !== 0) {
+        return rankCompare;
       }
       
       const featA = a.is_featured ? 1 : 0;
