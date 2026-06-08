@@ -120,6 +120,16 @@ function BannerPreview({
   );
 }
 
+function validateImageUrl(url: string): boolean {
+  if (!url.trim()) return true;
+  try {
+    const u = new URL(url.trim());
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function BannerForm({ formId, formAction, state, banner }: BannerFormProps) {
   const [name, setName] = useState(banner?.name ?? '');
   const [content, setContent] = useState(banner?.content ?? '');
@@ -129,7 +139,27 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
   const [imageMobileUrl, setImageMobileUrl] = useState(banner?.image_mobile_url ?? '');
   const [startAt, setStartAt] = useState(toDatetimeLocal(banner?.start_at));
   const [endAt, setEndAt] = useState(toDatetimeLocal(banner?.end_at));
+  const [desktopUrlError, setDesktopUrlError] = useState('');
+  const [mobileUrlError, setMobileUrlError] = useState('');
   const selectedPosition = POSITION_OPTIONS.find((option) => option.value === position) ?? POSITION_OPTIONS[0];
+
+  const handleDesktopUrlChange = (value: string) => {
+    setImageDesktopUrl(value);
+    if (value.trim() && !validateImageUrl(value)) {
+      setDesktopUrlError('URL ảnh không hợp lệ. Vui lòng sử dụng URL đầy đủ (https://...)');
+    } else {
+      setDesktopUrlError('');
+    }
+  };
+
+  const handleMobileUrlChange = (value: string) => {
+    setImageMobileUrl(value);
+    if (value.trim() && !validateImageUrl(value)) {
+      setMobileUrlError('URL ảnh không hợp lệ. Vui lòng sử dụng URL đầy đủ (https://...)');
+    } else {
+      setMobileUrlError('');
+    }
+  };
 
   return (
     <form id={formId} action={formAction} className="space-y-5">
@@ -149,7 +179,7 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
         </p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <div className="grid gap-5 lg:grid-cols-[1fr_380px] xl:grid-cols-[minmax(0,1.2fr)_minmax(380px,1fr)]">
         <div className="space-y-5">
           <section className="space-y-4 rounded-2xl border border-[#EEF2F6] bg-white p-4">
             <div>
@@ -246,26 +276,34 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
                 <span className={labelClass}>Ảnh banner máy tính</span>
                 <input
                   name="image_desktop_url"
-                  type="url"
+                  type="text"
                   value={imageDesktopUrl}
-                  onChange={(event) => setImageDesktopUrl(event.target.value)}
-                  className={fieldClass}
+                  onChange={(event) => handleDesktopUrlChange(event.target.value)}
+                  className={`${fieldClass} ${desktopUrlError ? 'border-rose-300 bg-rose-50/50' : ''}`}
                   placeholder="https://..."
                 />
-                <span className={helperClass}>Khuyến nghị 1600×500 hoặc 1920×600, ảnh ngang, dung lượng nhẹ.</span>
+                {desktopUrlError ? (
+                  <span className="mt-1.5 block text-[10px] font-medium text-rose-600">{desktopUrlError}</span>
+                ) : (
+                  <span className={helperClass}>Khuyến nghị 1600×500 hoặc 1920×600, ảnh ngang, dung lượng nhẹ.</span>
+                )}
               </label>
 
               <label className="block">
                 <span className={labelClass}>Ảnh banner điện thoại</span>
                 <input
                   name="image_mobile_url"
-                  type="url"
+                  type="text"
                   value={imageMobileUrl}
-                  onChange={(event) => setImageMobileUrl(event.target.value)}
-                  className={fieldClass}
+                  onChange={(event) => handleMobileUrlChange(event.target.value)}
+                  className={`${fieldClass} ${mobileUrlError ? 'border-rose-300 bg-rose-50/50' : ''}`}
                   placeholder="https://..."
                 />
-                <span className={helperClass}>Khuyến nghị 800×600 hoặc tỉ lệ gần vuông để hiển thị tốt trên mobile.</span>
+                {mobileUrlError ? (
+                  <span className="mt-1.5 block text-[10px] font-medium text-rose-600">{mobileUrlError}</span>
+                ) : (
+                  <span className={helperClass}>Khuyến nghị 800×600 hoặc tỉ lệ gần vuông để hiển thị tốt trên mobile.</span>
+                )}
               </label>
             </div>
           </section>
