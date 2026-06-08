@@ -9,7 +9,8 @@ import {
   updateInquiryStatus,
   type InquiryPriority,
 } from '@/lib/services/admin/inquiries';
-import type { InquiryStatus } from '@/lib/types/database';
+import type { InquiryStatus, Updates } from '@/lib/types/database';
+import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 export type InquiryActionState = { ok: boolean; error?: string };
 
@@ -132,6 +133,19 @@ export async function updateInquiryWorkflowAction(formData: FormData): Promise<I
     const { createServiceRoleClient } = await import('@/lib/supabase/server');
     const supabase = createServiceRoleClient();
 
+    // Validate assignee if provided
+    if (nextAssigneeId) {
+      const { data: assignee, error: assigneeErr } = await supabase
+        .from('admin_users')
+        .select('id, is_active, role')
+        .eq('id', nextAssigneeId)
+        .maybeSingle();
+
+      if (assigneeErr || !assignee || !assignee.is_active || !['super_admin', 'admin', 'editor'].includes(assignee.role)) {
+        return { ok: false, error: 'Người phụ trách không hợp lệ hoặc không còn hoạt động.' };
+      }
+    }
+
     // Fetch existing inquiry
     const { data: current, error: getErr } = await supabase
       .from('inquiries')
@@ -151,11 +165,9 @@ export async function updateInquiryWorkflowAction(formData: FormData): Promise<I
 
     // Calculate changes
     const changes: Record<string, { old: any; new: any }> = {};
-    const updatePayload: Record<string, any> = {};
 
     if (nextStatus && nextStatus !== current.status) {
       changes.status = { old: current.status, new: nextStatus };
-      updatePayload.status = nextStatus;
     }
 
     if (nextPriority && nextPriority !== prevPriority) {
@@ -164,7 +176,6 @@ export async function updateInquiryWorkflowAction(formData: FormData): Promise<I
 
     if (nextAssigneeId !== current.assigned_to) {
       changes.assigned_to = { old: current.assigned_to, new: nextAssigneeId };
-      updatePayload.assigned_to = nextAssigneeId;
     }
 
     // If nothing changed, return ok
@@ -244,7 +255,18 @@ export async function updateInquiryWorkflowAction(formData: FormData): Promise<I
       priority: nextPriority,
       timeline: [...newTimelineItems, ...timeline],
     };
-    updatePayload.metadata = nextMetadata;
+    
+    const updatePayload: Updates<'inquiries'> = {
+      metadata: nextMetadata,
+    };
+
+    if (changes.status) {
+      updatePayload.status = nextStatus;
+    }
+
+    if (changes.assigned_to) {
+      updatePayload.assigned_to = nextAssigneeId;
+    }
 
     // Persist updates
     const { error: updateErr } = await supabase

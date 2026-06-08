@@ -7,6 +7,7 @@ const rules: Record<string, RateLimitRule> = {
   ip: { limit: 5, windowMs: 10 * 60 * 1000 },              // 5 requests / 10 mins
   phone: { limit: 3, windowMs: 30 * 60 * 1000 },           // 3 requests / 30 mins
   phoneProduct: { limit: 2, windowMs: 15 * 60 * 1000 },    // 2 requests / 15 mins
+  ipProduct: { limit: 3, windowMs: 15 * 60 * 1000 },       // 3 requests / 15 mins
 };
 
 // Simple in-memory cache to store timestamps of hits
@@ -40,7 +41,7 @@ if (typeof global !== 'undefined') {
   }
 }
 
-export function isRateLimited(ruleName: 'ip' | 'phone' | 'phoneProduct', identifier: string): boolean {
+export function isRateLimited(ruleName: 'ip' | 'phone' | 'phoneProduct' | 'ipProduct', identifier: string): boolean {
   try {
     const rule = rules[ruleName];
     if (!rule || !identifier) return false;

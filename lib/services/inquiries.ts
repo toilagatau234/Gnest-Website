@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts } from '@/lib/types/database';
 
 export type CreateInquiryInput = Pick<
@@ -12,7 +12,8 @@ export async function createInquiry(input: CreateInquiryInput) {
   // Find active sale/admin to assign the inquiry (round-robin / least active new inquiry strategy)
   let assignedTo: string | null = null;
   try {
-    const { data: adminUsers } = await supabase
+    const adminSupabase = createServiceRoleClient();
+    const { data: adminUsers } = await adminSupabase
       .from('admin_users')
       .select('id')
       .eq('is_active', true)
@@ -20,7 +21,7 @@ export async function createInquiry(input: CreateInquiryInput) {
 
     if (adminUsers && adminUsers.length > 0) {
       // Find count of new/active inquiries assigned to each active admin
-      const { data: counts } = await supabase
+      const { data: counts } = await adminSupabase
         .from('inquiries')
         .select('assigned_to')
         .in('status', ['new', 'contacted', 'quoted'])

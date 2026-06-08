@@ -91,6 +91,11 @@ export async function submitQuoteAction(
     return { status: 'error', message: 'Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.' };
   }
 
+  // Rate Limiting by IP + Product: 3 requests / 15 minutes
+  if (isRateLimited('ipProduct', `${ip}:${productId}`)) {
+    return { status: 'error', message: 'Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.' };
+  }
+
   let verifiedProductId: string;
   let metadata: Record<string, string>;
 

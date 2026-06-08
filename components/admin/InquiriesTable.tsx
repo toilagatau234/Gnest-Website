@@ -14,10 +14,8 @@ import {
 } from 'lucide-react';
 
 import {
+  updateInquiryWorkflowAction,
   addInquiryInternalNoteAction,
-  assignInquiryAction,
-  updateInquiryPriorityAction,
-  updateInquiryStatusAction,
 } from '@/app/admin/(dashboard)/inquiries/actions';
 import { AdminFilterBar } from '@/components/admin/AdminFilterBar';
 import { AdminModal } from '@/components/admin/AdminModal';
@@ -173,16 +171,6 @@ function QuickActions({ inquiry, compact = false }: { inquiry: AdminInquiry; com
       >
         <Phone className="h-4 w-4" />
       </a>
-      <a
-        href={zaloLink(inquiry.phone)}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Nhắn Zalo"
-        aria-label="Nhắn Zalo"
-        className={`admin-focus flex ${size} items-center justify-center rounded-lg border border-[#E5E7EF] text-slate-500 transition-colors hover:border-[#4880FF] hover:text-[#3749A6]`}
-      >
-        <MessageCircle className="h-4 w-4" />
-      </a>
       {inquiry.email ? (
         <a
           href={`mailto:${inquiry.email}`}
@@ -263,54 +251,6 @@ export function InquiriesTable({
     searchTimerRef.current = setTimeout(() => {
       router.push(buildInquiriesUrl({ q: value || undefined, status: currentStatus }));
     }, 400);
-  };
-
-  const runAction = (formData: FormData, action: (formData: FormData) => Promise<{ ok: boolean; error?: string }>) => {
-    setError(null);
-    startTransition(async () => {
-      const result = await action(formData);
-      if (!result.ok) {
-        setError(result.error ?? 'Không thể cập nhật yêu cầu.');
-        toast(result.error ?? 'Không thể cập nhật yêu cầu.', 'error');
-        return;
-      }
-
-      toast('Đã cập nhật yêu cầu báo giá.', 'success');
-      router.refresh();
-    });
-  };
-
-  const updateStatus = (inquiryId: string, status: InquiryStatus) => {
-    const formData = new FormData();
-    formData.set('inquiry_id', inquiryId);
-    formData.set('status', status);
-    runAction(formData, updateInquiryStatusAction);
-  };
-
-  const updateAssignee = (inquiryId: string, assignedTo: string) => {
-    const formData = new FormData();
-    formData.set('inquiry_id', inquiryId);
-    formData.set('assigned_to', assignedTo);
-    runAction(formData, assignInquiryAction);
-  };
-
-  const updatePriority = (inquiryId: string, priority: InquiryPriority) => {
-    const formData = new FormData();
-    formData.set('inquiry_id', inquiryId);
-    formData.set('priority', priority);
-    runAction(formData, updateInquiryPriorityAction);
-  };
-
-  const submitNote = () => {
-    if (!selected || !note.trim()) {
-      return;
-    }
-
-    const formData = new FormData();
-    formData.set('inquiry_id', selected.id);
-    formData.set('note', note);
-    setNote('');
-    runAction(formData, addInquiryInternalNoteAction);
   };
 
   return (
@@ -557,7 +497,6 @@ function InquiryWorkflowPanel({
       formData.set('priority', priority);
       formData.set('assigned_to', assignedTo);
 
-      const { updateInquiryWorkflowAction } = await import('@/app/admin/(dashboard)/inquiries/actions');
       const result = await updateInquiryWorkflowAction(formData);
       
       if (!result.ok) {
@@ -581,7 +520,6 @@ function InquiryWorkflowPanel({
       formData.set('inquiry_id', inquiry.id);
       formData.set('note', note);
 
-      const { addInquiryInternalNoteAction } = await import('@/app/actions/inquiries');
       const result = await addInquiryInternalNoteAction(formData);
 
       if (!result.ok) {
@@ -813,6 +751,9 @@ function InquiryWorkflowPanel({
               >
                 Copy nội dung gửi Zalo
               </button>
+              <p className="text-[10px] text-slate-400 text-center">
+                Copy nội dung để gửi thủ công qua Zalo OA/sale phụ trách.
+              </p>
 
               <div className="relative group">
                 <button
