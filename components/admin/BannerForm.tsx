@@ -6,6 +6,7 @@ import {
   CalendarClock,
   Eye,
   ImageIcon,
+  LayoutGrid,
   Link2,
   ListOrdered,
   Megaphone,
@@ -84,7 +85,7 @@ function BannerPreview({
     : undefined;
 
   return (
-    <div className={mode === 'desktop' ? 'space-y-2' : 'space-y-2'}>
+    <div className="space-y-2">
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
         {mode === 'desktop' ? <Monitor className="h-3.5 w-3.5" /> : <Smartphone className="h-3.5 w-3.5" />}
         {mode === 'desktop' ? 'Xem trước máy tính' : 'Xem trước điện thoại'}
@@ -95,7 +96,7 @@ function BannerPreview({
         }`}
         style={previewStyle}
       >
-        <div className={`flex h-full min-h-inherit flex-col justify-center gap-3 p-5 ${hasImage ? 'text-white' : 'bg-gradient-to-br from-[#EEF4FF] to-white text-[#1B3A6B]'}`}>
+        <div className={`flex min-h-[inherit] flex-col justify-center gap-3 p-5 ${hasImage ? 'text-white' : 'bg-gradient-to-br from-[#EEF4FF] to-white text-[#1B3A6B]'}`}>
           <div className="inline-flex w-fit items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ring-1 ring-white/25">
             <Megaphone className="h-3 w-3" />
             Banner
