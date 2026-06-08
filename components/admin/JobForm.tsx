@@ -39,6 +39,16 @@ function slugify(text: string): string {
     .replace(/-+$/, '');
 }
 
+function formatVietnameseNumber(value: string) {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return value;
+  return Number(digits).toLocaleString('vi-VN');
+}
+
+function formatSalaryRangeText(value: string) {
+  return value.replace(/\d[\d.\s,]{3,}\d|\d{4,}/g, (match) => formatVietnameseNumber(match));
+}
+
 function escapeHtml(text: string) {
   return text
     .replace(/&/g, '&amp;')
@@ -147,6 +157,7 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
   const [title, setTitle] = useState(job?.title ?? '');
   const [slug, setSlug] = useState(job?.slug ?? '');
   const [isSlugManual, setIsSlugManual] = useState(Boolean(job?.slug));
+  const [salaryRange, setSalaryRange] = useState(job?.salary_range ?? '');
   const [intro, setIntro] = useState(initialDescription.intro);
   const [responsibilities, setResponsibilities] = useState(listToLines(initialDescription.responsibilities));
   const [requirements, setRequirements] = useState(listToLines(initialDescription.requirements));
@@ -241,10 +252,15 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
           <input
             name="salary_range"
             type="text"
-            defaultValue={job?.salary_range ?? ''}
+            value={salaryRange}
+            onChange={(event) => setSalaryRange(event.target.value)}
+            onBlur={() => setSalaryRange((current) => formatSalaryRangeText(current))}
             className={fieldClass}
-            placeholder="VD: 8 - 12 triệu hoặc thỏa thuận"
+            placeholder="VD: 8.000.000 - 12.000.000 hoặc thỏa thuận"
           />
+          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
+            Có thể nhập số như 8000000 - 12000000; khi rời ô, hệ thống sẽ tự đổi thành 8.000.000 - 12.000.000.
+          </span>
         </label>
 
         <div className="sm:col-span-2 space-y-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
