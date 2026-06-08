@@ -58,8 +58,8 @@ function BannerFormDialogSession({ banner, onClose }: BannerFormDialogSessionPro
       open
       onClose={closeDialog}
       title={isEdit ? 'Cập nhật banner quảng cáo' : 'Thêm banner quảng cáo'}
-      description="Quản lý banner truyền thông hiển thị ở vị trí trên cùng của tất cả các trang công khai."
-      size="lg"
+      description="Tạo banner bằng nội dung dễ hiểu, ảnh tùy chọn, lịch hiển thị và preview trực quan trước khi lưu."
+      size="2xl"
       dismissible={!isPending}
       footer={
         <>
