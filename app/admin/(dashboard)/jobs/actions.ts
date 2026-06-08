@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import {
   createAdminJob,
   deleteAdminJob,
-  reorderAdminJobs,
+  moveAdminJob,
   setAdminJobActive,
   updateAdminJob,
   type JobVacancyPayload,
@@ -138,14 +138,23 @@ export async function toggleJobActiveAction(formData: FormData) {
   revalidateJobs();
 }
 
-export async function reorderJobsAction(orderedIds: string[]): Promise<AdminFormState> {
-  if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
-    return { ok: false, error: 'Dữ liệu sắp xếp không hợp lệ.' };
+export async function moveJobAction(input: {
+  itemId: string;
+  beforeId: string | null;
+  afterId: string | null;
+}): Promise<AdminFormState> {
+  if (!input.itemId) {
+    return { ok: false, error: 'Dữ liệu di chuyển không hợp lệ.' };
   }
 
   try {
     const requestContext = await getRequestContext();
-    const { error } = await reorderAdminJobs(orderedIds, requestContext);
+    const { error } = await moveAdminJob(
+      input.itemId,
+      input.beforeId,
+      input.afterId,
+      requestContext
+    );
 
     if (error) {
       return { ok: false, error };

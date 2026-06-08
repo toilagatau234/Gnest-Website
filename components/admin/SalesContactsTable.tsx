@@ -6,7 +6,7 @@ import { Check, MessageCircle, Phone, Search, Shield, UserRound } from 'lucide-r
 
 import { SalesContactRowActions } from '@/components/admin/SalesContactRowActions';
 import { AdminSortableListDialog } from '@/components/admin/AdminSortableListDialog';
-import { reorderSalesContactsAction } from '@/app/admin/(dashboard)/sales-contacts/actions';
+import { moveSalesContactAction } from '@/app/admin/(dashboard)/sales-contacts/actions';
 import type { AdminSalesContact } from '@/lib/services/admin/sales-contacts';
 
 interface SalesContactsTableProps {
@@ -94,7 +94,19 @@ export function SalesContactsTable({ contacts, allContacts, page, pageCount, tot
             successMessage="Đã cập nhật thứ tự hiển thị."
             errorMessage="Không thể cập nhật thứ tự hiển thị."
             scopes={reorderScopes}
-            onSave={async (_scopeId, orderedIds) => reorderSalesContactsAction(orderedIds)}
+            onSave={async (_scopeId, moves) => {
+              for (const move of moves) {
+                const res = await moveSalesContactAction({
+                  itemId: move.itemId,
+                  beforeId: move.beforeId,
+                  afterId: move.afterId,
+                });
+                if (!res.ok) {
+                  return res;
+                }
+              }
+              return { ok: true };
+            }}
           />
 
           <div className="relative w-full sm:w-72">

@@ -4,6 +4,7 @@ type CategoryVisibilityRecord = {
   parent_id: string | null;
   is_active: boolean;
   sort_order: number | null;
+  rank_key?: string | null;
   name: string;
 };
 
@@ -15,6 +16,13 @@ export interface CategoryPriorityWarning {
 
 export function sortCategoriesDeterministically<T extends CategoryVisibilityRecord>(categories: T[]): T[] {
   return [...categories].sort((left, right) => {
+    const leftRank = left.rank_key ?? '';
+    const rightRank = right.rank_key ?? '';
+
+    if (leftRank !== rightRank) {
+      return leftRank < rightRank ? -1 : 1;
+    }
+
     const leftOrder = left.sort_order ?? 0;
     const rightOrder = right.sort_order ?? 0;
 

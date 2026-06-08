@@ -48,7 +48,10 @@ interface AdminSortableListDialogProps {
   successMessage: string;
   errorMessage: string;
   scopes: AdminSortableListScope[];
-  onSave: (scopeId: string, orderedIds: string[]) => Promise<{ ok: boolean; error?: string }>;
+  onSave: (
+    scopeId: string,
+    moves: Array<{ itemId: string; beforeId: string | null; afterId: string | null }>
+  ) => Promise<{ ok: boolean; error?: string }>;
 }
 
 function SortableRow({ item }: { item: AdminSortableListItem }) {
@@ -126,6 +129,7 @@ export function AdminSortableListDialog({
   const [isPending, startTransition] = useTransition();
   const [selectedScopeId, setSelectedScopeId] = useState(scopes[0]?.id ?? '');
   const [draftItems, setDraftItems] = useState<AdminSortableListItem[]>([]);
+  const [moves, setMoves] = useState<Array<{ itemId: string; beforeId: string | null; afterId: string | null }>>([]);
 
   const scopeMap = useMemo(() => new Map(scopes.map((scope) => [scope.id, scope])), [scopes]);
   const currentScopeId = scopeMap.has(selectedScopeId) ? selectedScopeId : (scopes[0]?.id ?? '');
@@ -151,6 +155,7 @@ export function AdminSortableListDialog({
 
     setSelectedScopeId(scopes[0].id);
     setDraftItems(scopes[0].items);
+    setMoves([]);
     setOpen(true);
   };
 
@@ -167,15 +172,29 @@ export function AdminSortableListDialog({
       return;
     }
 
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
     setDraftItems((current) => {
-      const oldIndex = current.findIndex((item) => item.id === active.id);
-      const newIndex = current.findIndex((item) => item.id === over.id);
+      const oldIndex = current.findIndex((item) => item.id === activeId);
+      const newIndex = current.findIndex((item) => item.id === overId);
 
       if (oldIndex < 0 || newIndex < 0) {
         return current;
       }
 
-      return arrayMove(current, oldIndex, newIndex);
+      const updated = arrayMove(current, oldIndex, newIndex);
+
+      const updatedIndex = updated.findIndex((item) => item.id === activeId);
+      const beforeId = updatedIndex > 0 ? updated[updatedIndex - 1].id : null;
+      const afterId = updatedIndex < updated.length - 1 ? updated[updatedIndex + 1].id : null;
+
+      setMoves((prev) => {
+        const filtered = prev.filter((m) => m.itemId !== activeId);
+        return [...filtered, { itemId: activeId, beforeId, afterId }];
+      });
+
+      return updated;
     });
   };
 
@@ -188,7 +207,7 @@ export function AdminSortableListDialog({
       void (async () => {
         const result = await onSave(
           selectedScope.id,
-          draftItems.map((item) => item.id),
+          moves,
         );
 
         if (!result.ok) {
@@ -254,6 +273,7 @@ export function AdminSortableListDialog({
                   const nextScopeId = event.target.value;
                   setSelectedScopeId(nextScopeId);
                   setDraftItems(scopeMap.get(nextScopeId)?.items ?? []);
+                  setMoves([]);
                 }}
                 className="admin-select text-xs"
               >

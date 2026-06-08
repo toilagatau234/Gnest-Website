@@ -19,36 +19,83 @@ interface SalesContactFormDialogProps {
   contact?: AdminSalesContact;
 }
 
+interface SalesContactFormDialogSessionProps extends SalesContactFormDialogProps {
+  onClose: () => void;
+}
+
 const INITIAL_STATE: AdminFormState = { ok: false };
 
-export function SalesContactFormDialog({ contact }: SalesContactFormDialogProps) {
+function SalesContactFormDialogSession({ contact, onClose }: SalesContactFormDialogSessionProps) {
   const router = useRouter();
   const { toast } = useToast();
   const formId = useId();
   const isEdit = Boolean(contact);
-
-  const [open, setOpen] = useState(false);
   const action = contact ? updateSalesContactAction : createSalesContactAction;
   const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
   const handledOk = useRef(false);
 
   useEffect(() => {
-    if (open && state.ok && !handledOk.current) {
-      handledOk.current = true;
-      toast(isEdit ? 'Đã cập nhật liên hệ bán hàng.' : 'Đã thêm liên hệ bán hàng.', 'success');
-      setOpen(false);
-      router.refresh();
+    if (!state.ok || handledOk.current) {
+      return;
     }
-  }, [open, state.ok, isEdit, router, toast]);
 
-  const openDialog = () => {
-    handledOk.current = false;
-    setOpen(true);
-  };
+    handledOk.current = true;
+    toast(isEdit ? 'Đã cập nhật liên hệ bán hàng.' : 'Đã thêm liên hệ bán hàng.', 'success');
+    onClose();
+    router.refresh();
+  }, [state.ok, isEdit, onClose, router, toast]);
 
   const closeDialog = () => {
-    if (isPending) return;
-    setOpen(false);
+    if (isPending) {
+      return;
+    }
+
+    onClose();
+  };
+
+  return (
+    <AdminModal
+      open
+      onClose={closeDialog}
+      title={isEdit ? 'Cập nhật liên hệ bán hàng' : 'Thêm liên hệ bán hàng'}
+      description="Quản lý nhân sự tư vấn, hotline và liên kết Zalo hiển thị trên website."
+      size="lg"
+      dismissible={!isPending}
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={closeDialog}
+            disabled={isPending}
+            className="admin-button-secondary px-5 text-xs"
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            form={formId}
+            disabled={isPending}
+            className="admin-button-primary px-6 text-xs"
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {isPending ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : 'Thêm liên hệ'}
+          </button>
+        </>
+      }
+    >
+      <SalesContactForm formId={formId} formAction={formAction} state={state} contact={contact} />
+    </AdminModal>
+  );
+}
+
+export function SalesContactFormDialog({ contact }: SalesContactFormDialogProps) {
+  const isEdit = Boolean(contact);
+  const [open, setOpen] = useState(false);
+  const [sessionKey, setSessionKey] = useState(0);
+
+  const openDialog = () => {
+    setSessionKey((current) => current + 1);
+    setOpen(true);
   };
 
   return (
@@ -63,37 +110,13 @@ export function SalesContactFormDialog({ contact }: SalesContactFormDialogProps)
         </AdminActionButton>
       )}
 
-      <AdminModal
-        open={open}
-        onClose={closeDialog}
-        title={isEdit ? 'Cập nhật liên hệ bán hàng' : 'Thêm liên hệ bán hàng'}
-        description="Quản lý nhân sự tư vấn, hotline và liên kết Zalo hiển thị trên website."
-        size="lg"
-        dismissible={!isPending}
-        footer={
-          <>
-            <button
-              type="button"
-              onClick={closeDialog}
-              disabled={isPending}
-              className="admin-button-secondary px-5 text-xs"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              form={formId}
-              disabled={isPending}
-              className="admin-button-primary px-6 text-xs"
-            >
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {isPending ? 'Đang lưu…' : isEdit ? 'Lưu thay đổi' : 'Thêm liên hệ'}
-            </button>
-          </>
-        }
-      >
-        <SalesContactForm formId={formId} formAction={formAction} state={state} contact={contact} />
-      </AdminModal>
+      {open ? (
+        <SalesContactFormDialogSession
+          key={sessionKey}
+          contact={contact}
+          onClose={() => setOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

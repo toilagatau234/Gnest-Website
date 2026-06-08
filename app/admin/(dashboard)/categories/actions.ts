@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import {
   createAdminCategory,
   deleteAdminCategory,
-  reorderAdminCategories,
+  moveAdminCategory,
   setAdminCategoryActive,
   updateAdminCategory,
   type CategoryPayload,
@@ -142,17 +142,25 @@ export async function toggleCategoryActiveAction(formData: FormData) {
   revalidateCategories();
 }
 
-export async function reorderCategoriesAction(input: {
+export async function moveCategoryAction(input: {
+  itemId: string;
   scope: CategoryReorderScope;
-  orderedIds: string[];
+  beforeId: string | null;
+  afterId: string | null;
 }): Promise<AdminFormState> {
-  if (!input.scope || !Array.isArray(input.orderedIds) || input.orderedIds.length === 0) {
-    return { ok: false, error: 'Dữ liệu sắp xếp không hợp lệ.' };
+  if (!input.itemId || !input.scope) {
+    return { ok: false, error: 'Dữ liệu di chuyển không hợp lệ.' };
   }
 
   try {
     const requestContext = await getRequestContext();
-    const { error } = await reorderAdminCategories(input.scope, input.orderedIds, requestContext);
+    const { error } = await moveAdminCategory(
+      input.itemId,
+      input.scope,
+      input.beforeId,
+      input.afterId,
+      requestContext
+    );
 
     if (error) {
       return { ok: false, error };

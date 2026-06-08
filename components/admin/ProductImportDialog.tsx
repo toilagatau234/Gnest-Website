@@ -983,8 +983,10 @@ export function ProductImportContent({ onClose, onPendingChange }: ProductImport
 export function ProductImportDialog() {
   const [open, setOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [sessionKey, setSessionKey] = useState(0);
 
   function openDialog() {
+    setSessionKey((current) => current + 1);
     setOpen(true);
   }
 
@@ -1008,6 +1010,7 @@ export function ProductImportDialog() {
         dismissible={!isPending}
       >
         <ProductImportContent
+          key={sessionKey}
           onClose={closeDialog}
           onPendingChange={setIsPending}
         />

@@ -6,7 +6,7 @@ import { Briefcase, MapPin, DollarSign, Search, Check, Shield } from 'lucide-rea
 
 import { JobRowActions } from '@/components/admin/JobRowActions';
 import { AdminSortableListDialog } from '@/components/admin/AdminSortableListDialog';
-import { reorderJobsAction } from '@/app/admin/(dashboard)/jobs/actions';
+import { moveJobAction } from '@/app/admin/(dashboard)/jobs/actions';
 import type { AdminJobVacancy } from '@/lib/services/admin/jobs';
 
 interface JobsTableProps {
@@ -101,7 +101,19 @@ export function JobsTable({ jobs, allJobs, page, pageCount, total }: JobsTablePr
             successMessage="Đã cập nhật thứ tự hiển thị."
             errorMessage="Không thể cập nhật thứ tự hiển thị."
             scopes={reorderScopes}
-            onSave={async (_scopeId, orderedIds) => reorderJobsAction(orderedIds)}
+            onSave={async (_scopeId, moves) => {
+              for (const move of moves) {
+                const res = await moveJobAction({
+                  itemId: move.itemId,
+                  beforeId: move.beforeId,
+                  afterId: move.afterId,
+                });
+                if (!res.ok) {
+                  return res;
+                }
+              }
+              return { ok: true };
+            }}
           />
 
           <div className="relative w-full sm:w-72">

@@ -20,7 +20,7 @@ import {
   AdminSortableListDialog,
   type AdminSortableListScope,
 } from '@/components/admin/AdminSortableListDialog';
-import { reorderCategoriesAction } from '@/app/admin/(dashboard)/categories/actions';
+import { moveCategoryAction } from '@/app/admin/(dashboard)/categories/actions';
 import type { AdminCategory, CategoryReorderScope } from '@/lib/services/admin/categories';
 import type { CategoryType } from '@/lib/types/database';
 
@@ -497,14 +497,26 @@ export function CategoriesTable({ categories, fixedType }: CategoriesTableProps)
               successMessage="Đã cập nhật thứ tự hiển thị."
               errorMessage="Không thể cập nhật thứ tự hiển thị."
               scopes={scopes}
-              onSave={async (scopeId, orderedIds) => {
+              onSave={async (scopeId, moves) => {
                 const scope = scopeMap.get(scopeId);
 
                 if (!scope) {
                   return { ok: false, error: 'Không xác định được phạm vi sắp xếp.' };
                 }
 
-                return reorderCategoriesAction({ scope, orderedIds });
+                for (const move of moves) {
+                  const res = await moveCategoryAction({
+                    itemId: move.itemId,
+                    scope,
+                    beforeId: move.beforeId,
+                    afterId: move.afterId,
+                  });
+                  if (!res.ok) {
+                    return res;
+                  }
+                }
+
+                return { ok: true };
               }}
             />
             <CategoryViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />

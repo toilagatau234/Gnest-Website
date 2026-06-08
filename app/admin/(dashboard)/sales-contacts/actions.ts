@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import {
   createAdminSalesContact,
   deleteAdminSalesContact,
-  reorderAdminSalesContacts,
+  moveAdminSalesContact,
   setAdminSalesContactActive,
   updateAdminSalesContact,
   type SalesContactPayload,
@@ -135,14 +135,23 @@ export async function toggleSalesContactActiveAction(formData: FormData) {
   revalidateSalesContacts();
 }
 
-export async function reorderSalesContactsAction(orderedIds: string[]): Promise<AdminFormState> {
-  if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
-    return { ok: false, error: 'Dữ liệu sắp xếp không hợp lệ.' };
+export async function moveSalesContactAction(input: {
+  itemId: string;
+  beforeId: string | null;
+  afterId: string | null;
+}): Promise<AdminFormState> {
+  if (!input.itemId) {
+    return { ok: false, error: 'Dữ liệu di chuyển không hợp lệ.' };
   }
 
   try {
     const requestContext = await getRequestContext();
-    const { error } = await reorderAdminSalesContacts(orderedIds, requestContext);
+    const { error } = await moveAdminSalesContact(
+      input.itemId,
+      input.beforeId,
+      input.afterId,
+      requestContext
+    );
 
     if (error) {
       return { ok: false, error };

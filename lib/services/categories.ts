@@ -26,6 +26,7 @@ export async function getCategories() {
     .from('categories')
     .select('*')
     .eq('is_active', true)
+    .order('rank_key', { ascending: true })
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true });
 
