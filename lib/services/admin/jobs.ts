@@ -16,7 +16,6 @@ export interface JobVacancyPayload {
   description: string | null;
   location: string | null;
   salary_range: string | null;
-  sort_order: number;
   is_active: boolean;
 }
 
@@ -46,7 +45,7 @@ function normalizeNullableText(value: string | null) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function normalizeJobVacancyPayload(payload: JobVacancyPayload): Inserts<'job_vacancies'> {
+function normalizeJobVacancyPayload(payload: JobVacancyPayload): Omit<Inserts<'job_vacancies'>, 'sort_order'> {
   const title = payload.title.trim();
   const slug = payload.slug.trim() ? slugify(payload.slug) : slugify(title);
 
@@ -56,9 +55,64 @@ function normalizeJobVacancyPayload(payload: JobVacancyPayload): Inserts<'job_va
     description: normalizeNullableText(payload.description),
     location: normalizeNullableText(payload.location),
     salary_range: normalizeNullableText(payload.salary_range),
-    sort_order: payload.sort_order,
     is_active: payload.is_active,
   };
+}
+
+async function shiftJobOrdersForNewestFirst(supabase: ReturnType<typeof createServiceRoleClient>) {
+  const { data, error } = await supabase
+    .from('job_vacancies')
+    .select('id, sort_order')
+    .order('sort_order', { ascending: false })
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    return error.message;
+  }
+
+  for (const job of data ?? []) {
+    const { error: updateError } = await supabase
+      .from('job_vacancies')
+      .update({ sort_order: (job.sort_order ?? 0) + 1 })
+      .eq('id', job.id);
+
+    if (updateError) {
+      return updateError.message;
+    }
+  }
+
+  return null;
+}
+
+async function validateGlobalJobOrder(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  orderedIds: string[],
+) {
+  const uniqueIds = new Set(orderedIds);
+
+  if (uniqueIds.size !== orderedIds.length) {
+    return 'Danh sách sắp xếp có ID bị lặp.';
+  }
+
+  const { data, error } = await supabase.from('job_vacancies').select('id').order('sort_order', { ascending: true });
+
+  if (error) {
+    return error.message;
+  }
+
+  const existingIds = (data ?? []).map((item) => item.id);
+
+  if (existingIds.length !== orderedIds.length) {
+    return 'Danh sách sắp xếp không khớp dữ liệu hiện tại.';
+  }
+
+  for (const id of orderedIds) {
+    if (!existingIds.includes(id)) {
+      return 'Danh sách sắp xếp chứa tin tuyển dụng ngoài phạm vi cho phép.';
+    }
+  }
+
+  return null;
 }
 
 export async function getAdminJobs() {
@@ -174,18 +228,23 @@ export async function getAdminJobStats(): Promise<{ data: AdminJobStats; error: 
 export async function createAdminJob(payload: JobVacancyPayload, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(JOB_VACANCY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
-  const insertPayload = normalizeJobVacancyPayload(payload);
+  const basePayload = normalizeJobVacancyPayload(payload);
 
-  if (!insertPayload.title) {
+  if (!basePayload.title) {
     return { data: null, error: 'Tiêu đề tuyển dụng là bắt buộc.' };
   }
-  if (!insertPayload.slug) {
+  if (!basePayload.slug) {
     return { data: null, error: 'Đường dẫn (slug) là bắt buộc.' };
+  }
+
+  const shiftError = await shiftJobOrdersForNewestFirst(supabase);
+  if (shiftError) {
+    return { data: null, error: shiftError };
   }
 
   const { data, error } = await supabase
     .from('job_vacancies')
-    .insert(insertPayload)
+    .insert({ ...basePayload, sort_order: 0 })
     .select('*')
     .single();
 
@@ -200,7 +259,7 @@ export async function createAdminJob(payload: JobVacancyPayload, requestContext?
     entity_id: data.id,
     metadata: buildAuditMetadata({
       label: data.title,
-      after: { title: data.title, slug: data.slug, is_active: data.is_active },
+      after: { title: data.title, slug: data.slug, sort_order: data.sort_order, is_active: data.is_active },
       requestContext,
     }),
   });
@@ -213,10 +272,14 @@ export async function updateAdminJob(jobId: string, payload: JobVacancyPayload, 
   const supabase = createServiceRoleClient();
   const { data: before } = await supabase
     .from('job_vacancies')
-    .select('title, slug, is_active')
+    .select(ADMIN_JOB_VACANCY_SELECT)
     .eq('id', jobId)
-    .maybeSingle();
-  const updatePayload: Updates<'job_vacancies'> = normalizeJobVacancyPayload(payload);
+    .maybeSingle<AdminJobVacancy>();
+  const basePayload = normalizeJobVacancyPayload(payload);
+  const updatePayload: Updates<'job_vacancies'> = {
+    ...basePayload,
+    sort_order: before?.sort_order ?? 0,
+  };
 
   if (!updatePayload.title) {
     return { data: null, error: 'Tiêu đề tuyển dụng là bắt buộc.' };
@@ -243,8 +306,15 @@ export async function updateAdminJob(jobId: string, payload: JobVacancyPayload, 
     entity_id: data.id,
     metadata: buildAuditMetadata({
       label: data.title,
-      before,
-      after: { title: data.title, slug: data.slug, is_active: data.is_active },
+      before: before
+        ? {
+            title: before.title,
+            slug: before.slug,
+            sort_order: before.sort_order,
+            is_active: before.is_active,
+          }
+        : null,
+      after: { title: data.title, slug: data.slug, sort_order: data.sort_order, is_active: data.is_active },
       requestContext,
     }),
   });
@@ -292,7 +362,7 @@ export async function setAdminJobActive(jobId: string, isActive: boolean, reques
   const supabase = createServiceRoleClient();
   const { data: before } = await supabase
     .from('job_vacancies')
-    .select('title, slug, is_active')
+    .select('title, slug, sort_order, is_active')
     .eq('id', jobId)
     .maybeSingle();
 
@@ -300,7 +370,7 @@ export async function setAdminJobActive(jobId: string, isActive: boolean, reques
     .from('job_vacancies')
     .update({ is_active: isActive })
     .eq('id', jobId)
-    .select('id, title, slug, is_active')
+    .select('id, title, slug, sort_order, is_active')
     .single();
 
   if (error) {
@@ -315,10 +385,45 @@ export async function setAdminJobActive(jobId: string, isActive: boolean, reques
     metadata: buildAuditMetadata({
       label: data.title,
       before,
-      after: { title: data.title, slug: data.slug, is_active: data.is_active },
+      after: { title: data.title, slug: data.slug, sort_order: data.sort_order, is_active: data.is_active },
       requestContext,
     }),
   });
 
   return { data, error: null };
+}
+
+export async function reorderAdminJobs(orderedIds: string[], requestContext?: RequestContext) {
+  const adminUser = await requireAdminAuth(JOB_VACANCY_MUTATION_ROLES);
+  const supabase = createServiceRoleClient();
+
+  const validationError = await validateGlobalJobOrder(supabase, orderedIds);
+  if (validationError) {
+    return { data: null, error: validationError };
+  }
+
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    const { error } = await supabase
+      .from('job_vacancies')
+      .update({ sort_order: index })
+      .eq('id', orderedIds[index]);
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_id: adminUser.id,
+    action: 'reorder',
+    entity: 'job_vacancies',
+    entity_id: orderedIds[0] ?? adminUser.id,
+    metadata: buildAuditMetadata({
+      label: 'job_vacancies',
+      extra: { ordered_ids: orderedIds },
+      requestContext,
+    }),
+  });
+
+  return { data: orderedIds, error: null };
 }

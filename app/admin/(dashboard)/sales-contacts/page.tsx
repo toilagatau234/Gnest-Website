@@ -1,4 +1,4 @@
-import { AlertCircle, Phone, PhoneCall, UserRound, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Phone, PhoneCall, UserRound } from 'lucide-react';
 
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
@@ -6,7 +6,11 @@ import { AdminSection } from '@/components/admin/AdminSection';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { SalesContactFormDialog } from '@/components/admin/SalesContactFormDialog';
 import { SalesContactsTable } from '@/components/admin/SalesContactsTable';
-import { getAdminSalesContactsPage, getAdminSalesContactStats } from '@/lib/services/admin/sales-contacts';
+import {
+  getAdminSalesContacts,
+  getAdminSalesContactsPage,
+  getAdminSalesContactStats,
+} from '@/lib/services/admin/sales-contacts';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,15 +23,17 @@ export default async function SalesContactsPage({
   const page = Math.max(1, Number(sp.page) || 1);
   const pageSize = 20;
 
-  const [pageResult, statsResult] = await Promise.all([
+  const [pageResult, statsResult, allContactsResult] = await Promise.all([
     getAdminSalesContactsPage({ page, pageSize }),
     getAdminSalesContactStats(),
+    getAdminSalesContacts(),
   ]);
 
   const { data: contacts, error: pageError, pageCount, total } = pageResult;
   const { data: stats } = statsResult;
   const safeContacts = contacts ?? [];
-  const error = pageError;
+  const allContacts = allContactsResult.data ?? [];
+  const error = pageError ?? allContactsResult.error;
 
   return (
     <AdminSection>
@@ -86,6 +92,7 @@ export default async function SalesContactsPage({
       {!error && total > 0 ? (
         <SalesContactsTable
           contacts={safeContacts}
+          allContacts={allContacts}
           page={page}
           pageCount={pageCount}
           total={total}

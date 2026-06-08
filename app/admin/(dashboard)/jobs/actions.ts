@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import {
   createAdminJob,
   deleteAdminJob,
+  reorderAdminJobs,
   setAdminJobActive,
   updateAdminJob,
   type JobVacancyPayload,
@@ -25,7 +26,6 @@ function readBoolean(formData: FormData, key: string) {
 function readJobVacancyPayload(formData: FormData): JobVacancyPayload {
   const title = readString(formData, 'title');
   const slug = readString(formData, 'slug');
-  const sortOrder = Number(readString(formData, 'sort_order') || 0);
 
   if (!title) {
     throw new Error('Tiêu đề tuyển dụng là bắt buộc.');
@@ -37,7 +37,6 @@ function readJobVacancyPayload(formData: FormData): JobVacancyPayload {
     description: readString(formData, 'description') || null,
     location: readString(formData, 'location') || null,
     salary_range: readString(formData, 'salary_range') || null,
-    sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
     is_active: readBoolean(formData, 'is_active'),
   };
 }
@@ -137,4 +136,24 @@ export async function toggleJobActiveAction(formData: FormData) {
   }
 
   revalidateJobs();
+}
+
+export async function reorderJobsAction(orderedIds: string[]): Promise<AdminFormState> {
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+    return { ok: false, error: 'Dữ liệu sắp xếp không hợp lệ.' };
+  }
+
+  try {
+    const requestContext = await getRequestContext();
+    const { error } = await reorderAdminJobs(orderedIds, requestContext);
+
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể cập nhật thứ tự hiển thị.' };
+  }
+
+  revalidateJobs();
+  return { ok: true };
 }

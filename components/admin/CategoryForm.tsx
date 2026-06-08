@@ -24,7 +24,7 @@ const labelClass = 'mb-1.5 flex items-center gap-1 text-xs font-bold uppercase t
 function slugify(value: string) {
   return value
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[đĐ]/g, 'd')
     .toLowerCase()
     .trim()
@@ -47,7 +47,6 @@ export function CategoryForm({ formId, formAction, state, categories, category, 
 
   const handleNameChange = (value: string) => {
     setName(value);
-    // Auto-suggest slug from name only while the user hasn't edited it manually.
     if (!slugTouched) {
       setSlug(slugify(value));
     }
@@ -75,7 +74,7 @@ export function CategoryForm({ formId, formAction, state, categories, category, 
             value={name}
             onChange={(event) => handleNameChange(event.target.value)}
             className={fieldClass}
-            placeholder={fixedType === 'service' ? "VD: In chai lọ thủy tinh" : "VD: Hũ thủy tinh"}
+            placeholder={fixedType === 'service' ? 'VD: In chai lọ thủy tinh' : 'VD: Hũ thủy tinh'}
           />
         </label>
 
@@ -121,22 +120,6 @@ export function CategoryForm({ formId, formAction, state, categories, category, 
             </select>
           </label>
         )}
-
-        <label className="block sm:col-span-2">
-          <span className={labelClass}>Display Priority</span>
-          <input
-            name="sort_order"
-            type="number"
-            min={0}
-            step={1}
-            inputMode="numeric"
-            defaultValue={category?.sort_order ?? 0}
-            className={fieldClass}
-          />
-          <span className="mt-1.5 block text-[10px] font-medium text-slate-400">
-            Số nhỏ hơn sẽ ưu tiên hiển thị trước. Nếu trùng priority, hệ thống fallback theo tên và slug.
-          </span>
-        </label>
       </div>
 
       <div className="admin-soft-panel space-y-2.5 px-4 py-3.5">

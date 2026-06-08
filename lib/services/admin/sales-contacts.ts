@@ -17,7 +17,6 @@ export interface SalesContactPayload {
   phone: string;
   zalo: string | null;
   avatar_url: string | null;
-  sort_order: number;
   is_active: boolean;
 }
 
@@ -77,7 +76,7 @@ function normalizeZalo(value: string | null, phone: string) {
   return phoneDigits ? `https://zalo.me/${phoneDigits}` : null;
 }
 
-function normalizeSalesContactPayload(payload: SalesContactPayload): Inserts<'sales_contacts'> {
+function normalizeSalesContactPayload(payload: SalesContactPayload): Omit<Inserts<'sales_contacts'>, 'sort_order'> {
   const phone = normalizePhone(payload.phone);
   const name = payload.name.trim();
 
@@ -87,7 +86,6 @@ function normalizeSalesContactPayload(payload: SalesContactPayload): Inserts<'sa
     phone,
     zalo: normalizeZalo(payload.zalo, phone),
     avatar_url: normalizeNullableText(payload.avatar_url) ?? buildGeneratedAvatar(name),
-    sort_order: payload.sort_order,
     is_active: payload.is_active,
   };
 }
@@ -102,6 +100,62 @@ function toSalesContactAuditSnapshot(contact: AdminSalesContact) {
     sort_order: contact.sort_order,
     is_active: contact.is_active,
   };
+}
+
+async function shiftSalesContactOrdersForNewestFirst(supabase: ReturnType<typeof createServiceRoleClient>) {
+  const { data, error } = await supabase
+    .from('sales_contacts')
+    .select('id, sort_order')
+    .order('sort_order', { ascending: false })
+    .order('name', { ascending: true });
+
+  if (error) {
+    return error.message;
+  }
+
+  for (const contact of data ?? []) {
+    const { error: updateError } = await supabase
+      .from('sales_contacts')
+      .update({ sort_order: (contact.sort_order ?? 0) + 1 })
+      .eq('id', contact.id);
+
+    if (updateError) {
+      return updateError.message;
+    }
+  }
+
+  return null;
+}
+
+async function validateGlobalSalesContactOrder(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  orderedIds: string[],
+) {
+  const uniqueIds = new Set(orderedIds);
+
+  if (uniqueIds.size !== orderedIds.length) {
+    return 'Danh sách sắp xếp có ID bị lặp.';
+  }
+
+  const { data, error } = await supabase.from('sales_contacts').select('id').order('sort_order', { ascending: true });
+
+  if (error) {
+    return error.message;
+  }
+
+  const existingIds = (data ?? []).map((item) => item.id);
+
+  if (existingIds.length !== orderedIds.length) {
+    return 'Danh sách sắp xếp không khớp dữ liệu hiện tại.';
+  }
+
+  for (const id of orderedIds) {
+    if (!existingIds.includes(id)) {
+      return 'Danh sách sắp xếp chứa liên hệ ngoài phạm vi cho phép.';
+    }
+  }
+
+  return null;
 }
 
 export async function getAdminSalesContacts() {
@@ -217,11 +271,16 @@ export async function getAdminSalesContactStats(): Promise<{ data: AdminSalesCon
 export async function createAdminSalesContact(payload: SalesContactPayload, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(SALES_CONTACT_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
-  const insertPayload = normalizeSalesContactPayload(payload);
+  const basePayload = normalizeSalesContactPayload(payload);
+
+  const shiftError = await shiftSalesContactOrdersForNewestFirst(supabase);
+  if (shiftError) {
+    return { data: null, error: shiftError };
+  }
 
   const { data, error } = await supabase
     .from('sales_contacts')
-    .insert(insertPayload)
+    .insert({ ...basePayload, sort_order: 0 })
     .select('*')
     .single();
 
@@ -252,7 +311,10 @@ export async function updateAdminSalesContact(contactId: string, payload: SalesC
     .select(ADMIN_SALES_CONTACT_SELECT)
     .eq('id', contactId)
     .maybeSingle<AdminSalesContact>();
-  const updatePayload: Updates<'sales_contacts'> = normalizeSalesContactPayload(payload);
+  const updatePayload: Updates<'sales_contacts'> = {
+    ...normalizeSalesContactPayload(payload),
+    sort_order: before?.sort_order ?? 0,
+  };
 
   const { data, error } = await supabase
     .from('sales_contacts')
@@ -332,7 +394,7 @@ export async function setAdminSalesContactActive(contactId: string, isActive: bo
     .from('sales_contacts')
     .update({ is_active: isActive })
     .eq('id', contactId)
-    .select('id, name, phone, is_active')
+    .select('id, name, phone, sort_order, is_active')
     .single();
 
   if (error) {
@@ -349,6 +411,7 @@ export async function setAdminSalesContactActive(contactId: string, isActive: bo
       before: before ? toSalesContactAuditSnapshot(before) : null,
       after: {
         ...(before ? toSalesContactAuditSnapshot(before) : {}),
+        sort_order: data.sort_order,
         is_active: data.is_active,
       },
       requestContext,
@@ -356,4 +419,39 @@ export async function setAdminSalesContactActive(contactId: string, isActive: bo
   });
 
   return { data, error: null };
+}
+
+export async function reorderAdminSalesContacts(orderedIds: string[], requestContext?: RequestContext) {
+  const adminUser = await requireAdminAuth(SALES_CONTACT_MUTATION_ROLES);
+  const supabase = createServiceRoleClient();
+
+  const validationError = await validateGlobalSalesContactOrder(supabase, orderedIds);
+  if (validationError) {
+    return { data: null, error: validationError };
+  }
+
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    const { error } = await supabase
+      .from('sales_contacts')
+      .update({ sort_order: index })
+      .eq('id', orderedIds[index]);
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_id: adminUser.id,
+    action: 'reorder',
+    entity: 'sales_contacts',
+    entity_id: orderedIds[0] ?? adminUser.id,
+    metadata: buildAuditMetadata({
+      label: 'sales_contacts',
+      extra: { ordered_ids: orderedIds },
+      requestContext,
+    }),
+  });
+
+  return { data: orderedIds, error: null };
 }

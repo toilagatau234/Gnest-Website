@@ -28,7 +28,7 @@ const labelClass = 'mb-1.5 flex items-center gap-1 text-xs font-bold uppercase t
 function slugify(text: string): string {
   return text
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[đĐ]/g, 'd')
     .toLowerCase()
     .trim()
@@ -247,19 +247,6 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
           />
         </label>
 
-        <label className="block">
-          <span className={labelClass}>Thứ tự hiển thị</span>
-          <input
-            name="sort_order"
-            type="number"
-            defaultValue={job?.sort_order ?? 0}
-            className={fieldClass}
-          />
-          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Số nhỏ hơn sẽ được hiển thị trước trong danh sách tuyển dụng.
-          </span>
-        </label>
-
         <div className="sm:col-span-2 space-y-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-wide text-[#1B3A6B]">
@@ -321,7 +308,7 @@ export function JobForm({ formId, formAction, state, job }: JobFormProps) {
               <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-[10px] font-medium leading-relaxed text-amber-800">
                 Bài đăng này đang chứa HTML cũ. Nội dung bên dưới chỉ hiển thị để tham khảo, không thể chỉnh sửa và sẽ không được lưu lại sau khi bấm lưu.
               </div>
-              <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[10px] leading-relaxed text-slate-500 whitespace-pre-wrap select-all">
+              <pre className="select-all whitespace-pre-wrap overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[10px] leading-relaxed text-slate-500">
                 {customHtml}
               </pre>
             </div>

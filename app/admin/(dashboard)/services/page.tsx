@@ -1,4 +1,4 @@
-import { AlertCircle, Eye, EyeOff, Sparkles, Layers3 } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Sparkles } from 'lucide-react';
 
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { AdminSection } from '@/components/admin/AdminSection';
@@ -12,19 +12,11 @@ import { getAdminCategories } from '@/lib/services/admin/categories';
 export const dynamic = 'force-dynamic';
 
 export default async function ServicesPage() {
-  // eslint-disable-next-line react-hooks/purity
-  const _t0 = Date.now();
   const { data: categories, error } = await getAdminCategories();
-  if (process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1') {
-    // eslint-disable-next-line react-hooks/purity
-    console.log(`[admin-timing] services page total: ${Date.now() - _t0}ms`);
-  }
   const allCategories = categories || [];
   const safeCategories = allCategories.filter((item) => item.type === 'service');
   const activeCount = safeCategories.filter((item) => item.is_active).length;
   const hiddenCount = safeCategories.length - activeCount;
-  const parentCount = safeCategories.filter((item) => !item.parent_id).length;
-  const childCount = safeCategories.length - parentCount;
   const priorityWarnings = getCategoryPriorityWarnings(safeCategories);
 
   return (
@@ -59,14 +51,14 @@ export default async function ServicesPage() {
 
       {priorityWarnings.length > 0 ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p className="font-extrabold">Cảnh báo trùng display priority</p>
+          <p className="font-extrabold">Cảnh báo trùng thứ tự hiển thị</p>
           <p className="mt-1 text-xs leading-relaxed text-amber-800">
-            Hệ thống vẫn sắp xếp an toàn theo priority trước, sau đó fallback theo tên/slug. Nên điều chỉnh các nhóm sau để tránh khó hiểu trên menu.
+            Hệ thống vẫn sắp xếp an toàn theo thứ tự trước, sau đó fallback theo tên và slug. Nên kiểm tra các nhóm sau để tránh hiển thị khó đoán trên trang chủ.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {priorityWarnings.slice(0, 6).map((warning) => (
               <span key={`${warning.parentId ?? 'root'}-${warning.sortOrder}`} className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[11px] font-bold text-amber-900">
-                Priority #{warning.sortOrder}: {warning.categories.map((category) => category.name).join(', ')}
+                Nhóm #{warning.sortOrder}: {warning.categories.map((category) => category.name).join(', ')}
               </span>
             ))}
           </div>

@@ -17,9 +17,13 @@ export interface CategoryPayload {
   slug: string;
   type: CategoryType;
   parent_id: string | null;
-  sort_order: number;
   has_filters: boolean;
   is_active: boolean;
+}
+
+export interface CategoryReorderScope {
+  type: CategoryType;
+  parent_id: string | null;
 }
 
 const CATEGORY_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
@@ -45,14 +49,20 @@ function logTiming(label: string, durationMs: number) {
   console.info(`[admin:categories] ${label} ${durationMs.toFixed(1)}ms`);
 }
 
-function normalizeCategoryPayload(payload: CategoryPayload): Inserts<'categories'> {
+function normalizeCategoryPayload(payload: CategoryPayload): {
+  name: string;
+  slug: string;
+  type: CategoryType;
+  parent_id: string | null;
+  has_filters: boolean;
+  is_active: boolean;
+} {
   const isService = payload.type === 'service';
   return {
     name: payload.name.trim(),
     slug: payload.slug.trim().toLowerCase(),
     type: payload.type,
     parent_id: isService ? null : (payload.parent_id || null),
-    sort_order: payload.sort_order,
     has_filters: isService ? false : payload.has_filters,
     is_active: payload.is_active,
   };
@@ -70,34 +80,85 @@ function toCategoryAuditSnapshot(category: CategoryAuditRow) {
   };
 }
 
-async function findDuplicateSortOrder(
+async function getCategoriesInScope(
   supabase: ReturnType<typeof createServiceRoleClient>,
-  payload: { type: CategoryType; parent_id: string | null; sort_order: number },
-  excludeCategoryId?: string,
+  scope: CategoryReorderScope,
 ) {
   let query = supabase
     .from('categories')
-    .select('id, name')
-    .eq('type', payload.type)
-    .eq('sort_order', payload.sort_order);
+    .select(ADMIN_CATEGORY_SELECT)
+    .eq('type', scope.type);
 
-  query = payload.parent_id ? query.eq('parent_id', payload.parent_id) : query.is('parent_id', null);
+  query = scope.parent_id ? query.eq('parent_id', scope.parent_id) : query.is('parent_id', null);
 
-  if (excludeCategoryId) {
-    query = query.neq('id', excludeCategoryId);
-  }
-
-  const { data, error } = await query.limit(1).maybeSingle<Pick<Tables<'categories'>, 'id' | 'name'>>();
+  const { data, error } = await query
+    .order('sort_order', { ascending: true })
+    .order('name', { ascending: true })
+    .returns<AdminCategory[]>();
 
   if (error) {
-    return { duplicate: null, error: error.message };
+    return { data: null, error: error.message };
   }
 
-  return { duplicate: data, error: null };
+  return { data: data ?? [], error: null };
 }
 
-function getDuplicateSortOrderError(sortOrder: number, categoryName: string) {
-  return `Độ ưu tiên hiển thị ${sortOrder} đang được dùng bởi danh mục "${categoryName}" trong cùng cấp. Vui lòng chọn số khác.`;
+async function shiftCategoryScopeForNewestFirst(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  scope: CategoryReorderScope,
+) {
+  const scopeResult = await getCategoriesInScope(supabase, scope);
+
+  if (scopeResult.error || !scopeResult.data) {
+    return scopeResult.error ?? 'Không thể chuẩn bị thứ tự danh mục.';
+  }
+
+  const reversed = [...scopeResult.data].sort((left, right) => (right.sort_order ?? 0) - (left.sort_order ?? 0));
+
+  for (const category of reversed) {
+    const { error } = await supabase
+      .from('categories')
+      .update({ sort_order: (category.sort_order ?? 0) + 1 })
+      .eq('id', category.id);
+
+    if (error) {
+      return error.message;
+    }
+  }
+
+  return null;
+}
+
+async function validateCategoryReorderScope(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  scope: CategoryReorderScope,
+  orderedIds: string[],
+) {
+  const uniqueIds = new Set(orderedIds);
+
+  if (uniqueIds.size !== orderedIds.length) {
+    return 'Danh sách sắp xếp có ID bị lặp.';
+  }
+
+  const scopeResult = await getCategoriesInScope(supabase, scope);
+
+  if (scopeResult.error || !scopeResult.data) {
+    return scopeResult.error ?? 'Không thể kiểm tra phạm vi sắp xếp.';
+  }
+
+  const scopeIds = scopeResult.data.map((item) => item.id);
+
+  if (scopeIds.length !== orderedIds.length) {
+    return 'Danh sách sắp xếp không khớp với phạm vi danh mục hiện tại.';
+  }
+
+  for (const id of orderedIds) {
+    if (!scopeIds.includes(id)) {
+      return 'Danh sách sắp xếp chứa danh mục ngoài phạm vi cho phép.';
+    }
+  }
+
+  return null;
 }
 
 async function cascadeCategoryVisibility(
@@ -200,24 +261,17 @@ export async function createAdminCategory(payload: CategoryPayload, requestConte
     }
   }
 
-  const duplicateResult = await findDuplicateSortOrder(supabase, {
-    type: payload.type,
+  const shiftError = await shiftCategoryScopeForNewestFirst(supabase, {
+    type: insertPayload.type,
     parent_id: insertPayload.parent_id ?? null,
-    sort_order: payload.sort_order,
   });
-  if (duplicateResult.error) {
-    return { data: null, error: duplicateResult.error };
-  }
-  if (duplicateResult.duplicate) {
-    return {
-      data: null,
-      error: getDuplicateSortOrderError(payload.sort_order, duplicateResult.duplicate.name),
-    };
+  if (shiftError) {
+    return { data: null, error: shiftError };
   }
 
   const { data, error } = await supabase
     .from('categories')
-    .insert(insertPayload)
+    .insert({ ...insertPayload, sort_order: 0 })
     .select('*')
     .single();
 
@@ -249,7 +303,14 @@ export async function updateAdminCategory(categoryId: string, payload: CategoryP
     .eq('id', categoryId)
     .maybeSingle<CategoryAuditRow>();
 
-  let updatePayload: Updates<'categories'> = normalizeCategoryPayload(payload);
+  if (!before) {
+    return { data: null, error: 'Không tìm thấy danh mục cần cập nhật.' };
+  }
+
+  let updatePayload: Updates<'categories'> = {
+    ...normalizeCategoryPayload(payload),
+    sort_order: before.sort_order,
+  };
 
   if (updatePayload.parent_id) {
     const { data: parentCategory } = await supabase
@@ -261,25 +322,6 @@ export async function updateAdminCategory(categoryId: string, payload: CategoryP
     if (parentCategory && !parentCategory.is_active) {
       updatePayload = { ...updatePayload, is_active: false };
     }
-  }
-
-  const duplicateResult = await findDuplicateSortOrder(
-    supabase,
-    {
-      type: payload.type,
-      parent_id: updatePayload.parent_id ?? null,
-      sort_order: payload.sort_order,
-    },
-    categoryId,
-  );
-  if (duplicateResult.error) {
-    return { data: null, error: duplicateResult.error };
-  }
-  if (duplicateResult.duplicate) {
-    return {
-      data: null,
-      error: getDuplicateSortOrderError(payload.sort_order, duplicateResult.duplicate.name),
-    };
   }
 
   const { data, error } = await supabase
@@ -309,7 +351,7 @@ export async function updateAdminCategory(categoryId: string, payload: CategoryP
     entity_id: data.id,
     metadata: buildAuditMetadata({
       label: data.name,
-      before: before ? toCategoryAuditSnapshot(before) : null,
+      before: toCategoryAuditSnapshot(before),
       after: toCategoryAuditSnapshot(data),
       extra: cascadedChildren > 0 ? { cascaded_children: cascadedChildren } : null,
       requestContext,
@@ -323,8 +365,6 @@ export async function deleteAdminCategory(categoryId: string, requestContext?: R
   const adminUser = await requireAdminAuth(CATEGORY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
 
-  // Read first so we can write a meaningful audit log and guard against
-  // deleting a category that still has children or products attached.
   const { data: category } = await supabase
     .from('categories')
     .select('id, name, slug')
@@ -338,7 +378,6 @@ export async function deleteAdminCategory(categoryId: string, requestContext?: R
   const { error } = await supabase.from('categories').delete().eq('id', categoryId);
 
   if (error) {
-    // 23503 = foreign_key_violation (children categories or products reference it).
     if (error.code === '23503') {
       return {
         data: null,
@@ -379,7 +418,7 @@ export async function setAdminCategoryActive(categoryId: string, isActive: boole
     .from('categories')
     .update({ is_active: isActive })
     .eq('id', categoryId)
-    .select('id, name, slug, is_active')
+    .select('id, name, slug, sort_order, is_active')
     .single();
 
   if (error) {
@@ -405,6 +444,7 @@ export async function setAdminCategoryActive(categoryId: string, isActive: boole
       before: before ? toCategoryAuditSnapshot(before) : null,
       after: {
         ...(before ? toCategoryAuditSnapshot(before) : {}),
+        sort_order: data.sort_order,
         is_active: data.is_active,
       },
       extra: cascadedChildren > 0 ? { cascaded_children: cascadedChildren } : null,
@@ -413,4 +453,51 @@ export async function setAdminCategoryActive(categoryId: string, isActive: boole
   });
 
   return { data, error: null };
+}
+
+export async function reorderAdminCategories(
+  scope: CategoryReorderScope,
+  orderedIds: string[],
+  requestContext?: RequestContext,
+) {
+  const adminUser = await requireAdminAuth(CATEGORY_MUTATION_ROLES);
+  const supabase = createServiceRoleClient();
+
+  const validationError = await validateCategoryReorderScope(supabase, scope, orderedIds);
+  if (validationError) {
+    return { data: null, error: validationError };
+  }
+
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    let query = supabase
+      .from('categories')
+      .update({ sort_order: index })
+      .eq('id', orderedIds[index])
+      .eq('type', scope.type);
+
+    query = scope.parent_id ? query.eq('parent_id', scope.parent_id) : query.is('parent_id', null);
+
+    const { error } = await query;
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_id: adminUser.id,
+    action: 'reorder',
+    entity: 'categories',
+    entity_id: orderedIds[0] ?? adminUser.id,
+    metadata: buildAuditMetadata({
+      label: 'categories',
+      extra: {
+        scope,
+        ordered_ids: orderedIds,
+      },
+      requestContext,
+    }),
+  });
+
+  return { data: orderedIds, error: null };
 }
