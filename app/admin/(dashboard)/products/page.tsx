@@ -10,6 +10,7 @@ import { getAdminCategories } from '@/lib/services/admin/categories';
 import {
   getAdminProductsPage,
   getAdminProductStats,
+  type ImageFilter,
   type PriceFilter,
   type StatusFilter,
   type StockFilter,
@@ -26,6 +27,9 @@ function parseStock(v: unknown): StockFilter | undefined {
 function parsePrice(v: unknown): PriceFilter | undefined {
   return v === 'fixed' || v === 'contact' ? v : undefined;
 }
+function parseImages(v: unknown): ImageFilter | undefined {
+  return v === 'missing' || v === 'has_image' ? v : undefined;
+}
 
 export default async function ProductsPage({
   searchParams,
@@ -37,15 +41,16 @@ export default async function ProductsPage({
 
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
-  const pageSize = Math.min(100, Math.max(10, Number(sp.pageSize) || 30));
+  const pageSize = Math.min(100, Math.max(1, Number(sp.pageSize) || 30));
   const q = typeof sp.q === 'string' && sp.q ? sp.q : undefined;
   const categoryId = typeof sp.categoryId === 'string' && sp.categoryId !== 'all' ? sp.categoryId : undefined;
   const status = parseStatus(sp.status);
   const stock = parseStock(sp.stock);
   const price = parsePrice(sp.price);
+  const images = parseImages(sp.images);
 
   const [listResult, stats, { data: categories }] = await Promise.all([
-    getAdminProductsPage({ page, pageSize, q, categoryId, status, stock, price }),
+    getAdminProductsPage({ page, pageSize, q, categoryId, status, stock, price, images }),
     getAdminProductStats(),
     getAdminCategories(),
   ]);
@@ -80,15 +85,15 @@ export default async function ProductsPage({
         </div>
       ) : null}
 
-      {!listResult.error && listResult.total === 0 && !q && !status && !stock && !price && !categoryId ? (
+      {!listResult.error && listResult.total === 0 && !q && !status && !stock && !price && !categoryId && !images ? (
         <AdminEmptyState
           icon={<Package className="h-6 w-6" />}
           title="Chưa có sản phẩm nào"
           description="Tạo sản phẩm đầu tiên sau khi đã có danh mục phù hợp."
         />
       ) : null}
-
-      {(!listResult.error && (listResult.total > 0 || q || status || stock || price || categoryId)) ? (
+ 
+      {(!listResult.error && (listResult.total > 0 || q || status || stock || price || categoryId || images)) ? (
         <ProductsTable
           items={listResult.data}
           categories={safeCategories}
@@ -104,6 +109,7 @@ export default async function ProductsPage({
             status: status ?? 'all',
             stock: stock ?? 'all',
             price: price ?? 'all',
+            images: images ?? 'all',
           }}
           stats={stats}
         />

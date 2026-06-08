@@ -43,6 +43,7 @@ export type ProductListItem = {
 export type StockFilter = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
 export type StatusFilter = 'all' | 'active' | 'hidden';
 export type PriceFilter = 'all' | 'fixed' | 'contact';
+export type ImageFilter = 'all' | 'missing' | 'has_image';
 
 export interface ProductListParams {
   page?: number;
@@ -52,6 +53,7 @@ export interface ProductListParams {
   status?: StatusFilter;
   stock?: StockFilter;
   price?: PriceFilter;
+  images?: ImageFilter;
 }
 
 export interface ProductStats {
@@ -137,13 +139,26 @@ function normalizeProductPayload(payload: ProductPayload): Inserts<'products'> {
 }
 
 export async function getAdminProductsPage(params: ProductListParams = {}): Promise<ProductListResult> {
-  const { page = 1, pageSize = 30, q, categoryId, status, stock, price } = params;
+  const { page = 1, pageSize = 30, q, categoryId, status, stock, price, images = 'all' } = params;
   const safePage = Math.max(1, page);
   const safePageSize = Math.min(100, Math.max(1, pageSize));
 
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
+
+    let imageProductIds: string[] = [];
+    if (images === 'missing' || images === 'has_image') {
+      const { data: imgData, error: imgError } = await supabase
+        .from('product_images')
+        .select('product_id');
+
+      if (imgError) {
+        throw new Error(`Failed to load product images for filtering: ${imgError.message}`);
+      }
+
+      imageProductIds = Array.from(new Set((imgData ?? []).map((img) => img.product_id).filter(Boolean)));
+    }
 
     // --- Phase 0: Fetch total count first to enable out-of-range page clamping ---
     let countQuery = supabase
@@ -159,6 +174,18 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
     else if (stock === 'low_stock') countQuery = countQuery.gt('stock', 0).lte('stock', 5);
     if (price === 'fixed') countQuery = countQuery.not('price', 'is', null);
     else if (price === 'contact') countQuery = countQuery.is('price', null);
+
+    if (images === 'has_image') {
+      if (imageProductIds.length > 0) {
+        countQuery = countQuery.in('id', imageProductIds);
+      } else {
+        countQuery = countQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      }
+    } else if (images === 'missing') {
+      if (imageProductIds.length > 0) {
+        countQuery = countQuery.not('id', 'in', `(${imageProductIds.join(',')})`);
+      }
+    }
 
     const { count: countTotal, error: countError } = await countQuery;
     if (countError) {
@@ -193,6 +220,18 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
     else if (stock === 'low_stock') query = query.gt('stock', 0).lte('stock', 5);
     if (price === 'fixed') query = query.not('price', 'is', null);
     else if (price === 'contact') query = query.is('price', null);
+
+    if (images === 'has_image') {
+      if (imageProductIds.length > 0) {
+        query = query.in('id', imageProductIds);
+      } else {
+        query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+      }
+    } else if (images === 'missing') {
+      if (imageProductIds.length > 0) {
+        query = query.not('id', 'in', `(${imageProductIds.join(',')})`);
+      }
+    }
 
     const { data: baseRows, error } = await query.returns<ProductBaseRow[]>();
 

@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { FormattedDate } from '@/components/admin/FormattedDate';
 import { ProductRowActions } from '@/components/admin/ProductRowActions';
 import type { AdminCategory } from '@/lib/services/admin/categories';
-import type { PriceFilter, ProductListItem, ProductListResult, ProductStats, StatusFilter, StockFilter } from '@/lib/services/admin/products';
+import type { ImageFilter, PriceFilter, ProductListItem, ProductListResult, ProductStats, StatusFilter, StockFilter } from '@/lib/services/admin/products';
 
 interface ProductsTableProps {
   items: ProductListItem[];
@@ -20,6 +20,7 @@ interface ProductsTableProps {
     status: StatusFilter;
     stock: StockFilter;
     price: PriceFilter;
+    images: ImageFilter;
   };
   stats: ProductStats;
 }
@@ -36,8 +37,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
   // Uncontrolled search input — key resets it when the URL query changes
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Client-side missing-images filter — applies only to the current page
-  const [missingImagesOnly, setMissingImagesOnly] = useState(false);
+
 
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
 
@@ -47,6 +47,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
     status?: StatusFilter;
     stock?: StockFilter;
     price?: PriceFilter;
+    images?: ImageFilter;
     page?: number;
     pageSize?: number;
   }) {
@@ -60,6 +61,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
     if (merged.status && merged.status !== 'all') params.set('status', merged.status);
     if (merged.stock && merged.stock !== 'all') params.set('stock', merged.stock);
     if (merged.price && merged.price !== 'all') params.set('price', merged.price);
+    if (merged.images && merged.images !== 'all') params.set('images', merged.images);
     if (newPage > 1) params.set('page', String(newPage));
     if (merged.pageSize !== 30) params.set('pageSize', String(merged.pageSize));
     const qs = params.toString();
@@ -75,9 +77,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
     navigate(buildUrl({ q: searchRef.current?.value ?? '' }));
   }
 
-  const visibleItems = missingImagesOnly
-    ? items.filter((item) => item.imageCount === 0)
-    : items;
+  const visibleItems = items;
 
   const { page, pageSize, total, pageCount } = pagination;
 
@@ -199,18 +199,15 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
               </select>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setMissingImagesOnly((v) => !v)}
-              className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 py-1.5 font-medium transition-colors ${
-                missingImagesOnly
-                  ? 'border-rose-200 bg-rose-50 text-rose-700'
-                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <ImageIcon className="h-3.5 w-3.5" />
-              {missingImagesOnly ? 'Đang lọc thiếu ảnh (trang này)' : 'Chỉ xem thiếu ảnh (trang này)'}
-            </button>
+              <select
+                value={filters.images}
+                onChange={(e) => navigate(buildUrl({ images: e.target.value as ImageFilter }))}
+                className="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
+              >
+                <option value="all">Mọi trạng thái ảnh</option>
+                <option value="missing">Thiếu ảnh</option>
+                <option value="has_image">Đã có ảnh</option>
+              </select>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-[10px] font-medium leading-relaxed text-slate-500">
@@ -381,7 +378,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
           <div className="flex items-center gap-3 text-slate-400">
             <span>
               Trang {page}/{pageCount} · {total} sản phẩm
-              {missingImagesOnly ? ' (đang lọc thiếu ảnh trên trang này)' : ''}
+              {filters.images === 'missing' ? ' (đang lọc thiếu ảnh)' : ''}
             </span>
             <select
               value={pageSize}
