@@ -29,8 +29,12 @@ function parseNumber(value: string) {
     return null;
   }
 
-  const normalized = value.replace(/,/g, '');
-  const parsed = Number(normalized);
+  const clean = value.replace(/\D/g, '');
+  if (!clean) {
+    return null;
+  }
+
+  const parsed = Number(clean);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -59,6 +63,7 @@ function readProductPayload(formData: FormData): ProductPayload {
   const categoryId = readString(formData, 'category_id');
   const price = parseNumber(readString(formData, 'price'));
   const stock = Number(readString(formData, 'stock') || 0);
+  const isFeatured = readBoolean(formData, 'is_featured');
 
   if (!name) {
     throw new Error('Tên sản phẩm là bắt buộc.');
@@ -81,6 +86,7 @@ function readProductPayload(formData: FormData): ProductPayload {
     stock,
     specs: parseSpecs(readString(formData, 'specs')),
     is_active: readBoolean(formData, 'is_active'),
+    is_featured: isFeatured,
   };
 }
 
@@ -191,6 +197,7 @@ export type BulkRowPayload = {
   price: number | null;
   stock: number;
   is_active: boolean;
+  is_featured: boolean;
   description: string | null;
 };
 
@@ -225,6 +232,7 @@ export async function bulkCreateProductsAction(rows: BulkRowPayload[]): Promise<
         stock: Math.max(0, Math.floor(row.stock ?? 0)),
         specs: {} as Json,
         is_active: row.is_active,
+        is_featured: row.is_featured,
       };
 
       const { data, error } = await createAdminProduct(payload, requestContext);

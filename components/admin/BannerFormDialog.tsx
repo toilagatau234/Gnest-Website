@@ -19,36 +19,83 @@ interface BannerFormDialogProps {
   banner?: AdminBanner;
 }
 
+interface BannerFormDialogSessionProps extends BannerFormDialogProps {
+  onClose: () => void;
+}
+
 const INITIAL_STATE: AdminFormState = { ok: false };
 
-export function BannerFormDialog({ banner }: BannerFormDialogProps) {
+function BannerFormDialogSession({ banner, onClose }: BannerFormDialogSessionProps) {
   const router = useRouter();
   const { toast } = useToast();
   const formId = useId();
   const isEdit = Boolean(banner);
-
-  const [open, setOpen] = useState(false);
   const action = banner ? updateBannerAction : createBannerAction;
   const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
   const handledOk = useRef(false);
 
   useEffect(() => {
-    if (open && state.ok && !handledOk.current) {
-      handledOk.current = true;
-      toast(isEdit ? 'Đã cập nhật banner quảng cáo.' : 'Đã thêm banner quảng cáo.', 'success');
-      setOpen(false);
-      router.refresh();
+    if (!state.ok || handledOk.current) {
+      return;
     }
-  }, [open, state.ok, isEdit, router, toast]);
 
-  const openDialog = () => {
-    handledOk.current = false;
-    setOpen(true);
-  };
+    handledOk.current = true;
+    toast(isEdit ? 'Đã cập nhật banner quảng cáo.' : 'Đã thêm banner quảng cáo.', 'success');
+    onClose();
+    router.refresh();
+  }, [state.ok, isEdit, onClose, router, toast]);
 
   const closeDialog = () => {
-    if (isPending) return;
-    setOpen(false);
+    if (isPending) {
+      return;
+    }
+
+    onClose();
+  };
+
+  return (
+    <AdminModal
+      open
+      onClose={closeDialog}
+      title={isEdit ? 'Cập nhật banner quảng cáo' : 'Thêm banner quảng cáo'}
+      description="Quản lý banner truyền thông hiển thị ở vị trí trên cùng của tất cả các trang công khai."
+      size="lg"
+      dismissible={!isPending}
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={closeDialog}
+            disabled={isPending}
+            className="admin-button-secondary px-5 text-xs"
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            form={formId}
+            disabled={isPending}
+            className="admin-button-primary px-6 text-xs"
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {isPending ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : 'Thêm banner'}
+          </button>
+        </>
+      }
+    >
+      <BannerForm formId={formId} formAction={formAction} state={state} banner={banner} />
+    </AdminModal>
+  );
+}
+
+export function BannerFormDialog({ banner }: BannerFormDialogProps) {
+  const isEdit = Boolean(banner);
+  const [open, setOpen] = useState(false);
+  const [sessionKey, setSessionKey] = useState(0);
+
+  const openDialog = () => {
+    setSessionKey((current) => current + 1);
+    setOpen(true);
   };
 
   return (
@@ -63,37 +110,13 @@ export function BannerFormDialog({ banner }: BannerFormDialogProps) {
         </AdminActionButton>
       )}
 
-      <AdminModal
-        open={open}
-        onClose={closeDialog}
-        title={isEdit ? 'Cập nhật banner quảng cáo' : 'Thêm banner quảng cáo'}
-        description="Quản lý banner truyền thông hiển thị ở vị trí trên cùng của tất cả các trang công khai."
-        size="lg"
-        dismissible={!isPending}
-        footer={
-          <>
-            <button
-              type="button"
-              onClick={closeDialog}
-              disabled={isPending}
-              className="admin-button-secondary px-5 text-xs"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              form={formId}
-              disabled={isPending}
-              className="admin-button-primary px-6 text-xs"
-            >
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {isPending ? 'Đang lưu…' : isEdit ? 'Lưu thay đổi' : 'Thêm banner'}
-            </button>
-          </>
-        }
-      >
-        <BannerForm formId={formId} formAction={formAction} state={state} banner={banner} />
-      </AdminModal>
+      {open ? (
+        <BannerFormDialogSession
+          key={sessionKey}
+          banner={banner}
+          onClose={() => setOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

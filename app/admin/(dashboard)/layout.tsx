@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import { AdminShell } from '@/components/admin/AdminShell';
-import { getAdminSessionState } from '@/lib/services/admin/auth';
+import { ADMIN_DISABLED_CLEAR_PATH, getAdminSessionState } from '@/lib/services/admin/auth';
 import { requiresAdminPasswordReset } from '@/lib/services/admin/user-password-reset';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +21,10 @@ export default async function DashboardLayout({
 
   if (sessionState.status === 'unauthenticated') {
     redirect('/admin/login');
+  }
+
+  if (sessionState.status === 'disabled') {
+    redirect(ADMIN_DISABLED_CLEAR_PATH);
   }
 
   if (sessionState.status !== 'authorized') {

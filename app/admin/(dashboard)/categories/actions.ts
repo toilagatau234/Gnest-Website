@@ -5,9 +5,11 @@ import { revalidatePath } from 'next/cache';
 import {
   createAdminCategory,
   deleteAdminCategory,
+  moveAdminCategory,
   setAdminCategoryActive,
   updateAdminCategory,
   type CategoryPayload,
+  type CategoryReorderScope,
 } from '@/lib/services/admin/categories';
 import { getRequestContext } from '@/lib/services/admin/audit-metadata';
 import type { CategoryType } from '@/lib/types/database';
@@ -23,29 +25,12 @@ function readBoolean(formData: FormData, key: string) {
   return formData.get(key) === 'on' || formData.get(key) === 'true';
 }
 
-function readSortOrder(formData: FormData) {
-  const rawValue = readString(formData, 'sort_order');
-
-  if (!rawValue) {
-    return 0;
-  }
-
-  const value = Number(rawValue);
-
-  if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0 || !Number.isSafeInteger(value)) {
-    throw new Error('Độ ưu tiên hiển thị phải là số nguyên không âm.');
-  }
-
-  return value;
-}
-
 function readCategoryPayload(formData: FormData): CategoryPayload {
   const name = readString(formData, 'name');
   const slug = readString(formData, 'slug');
   const rawType = readString(formData, 'type');
   const type: CategoryType = rawType === 'service' ? 'service' : 'product';
   const parentId = readString(formData, 'parent_id');
-  const sortOrder = readSortOrder(formData);
 
   if (!name) {
     throw new Error('Tên danh mục là bắt buộc.');
@@ -60,10 +45,17 @@ function readCategoryPayload(formData: FormData): CategoryPayload {
     slug,
     type,
     parent_id: type === 'service' ? null : (parentId || null),
-    sort_order: sortOrder,
     has_filters: type === 'service' ? false : readBoolean(formData, 'has_filters'),
     is_active: readBoolean(formData, 'is_active'),
   };
+}
+
+function revalidateCategories() {
+  revalidatePath('/admin/categories');
+  revalidatePath('/admin/services');
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/danh-muc');
+  revalidatePath('/');
 }
 
 export async function createCategoryAction(
@@ -82,11 +74,7 @@ export async function createCategoryAction(
     return { ok: false, error: err instanceof Error ? err.message : 'Không thể tạo danh mục.' };
   }
 
-  revalidatePath('/admin/categories');
-  revalidatePath('/admin/services');
-  revalidatePath('/admin/dashboard');
-  revalidatePath('/danh-muc');
-  revalidatePath('/');
+  revalidateCategories();
   return { ok: true };
 }
 
@@ -112,11 +100,7 @@ export async function updateCategoryAction(
     return { ok: false, error: err instanceof Error ? err.message : 'Không thể cập nhật danh mục.' };
   }
 
-  revalidatePath('/admin/categories');
-  revalidatePath('/admin/services');
-  revalidatePath('/admin/dashboard');
-  revalidatePath('/danh-muc');
-  revalidatePath('/');
+  revalidateCategories();
   return { ok: true };
 }
 
@@ -136,11 +120,7 @@ export async function deleteCategoryAction(categoryId: string): Promise<AdminFor
     return { ok: false, error: err instanceof Error ? err.message : 'Không thể xóa danh mục.' };
   }
 
-  revalidatePath('/admin/categories');
-  revalidatePath('/admin/services');
-  revalidatePath('/admin/dashboard');
-  revalidatePath('/danh-muc');
-  revalidatePath('/');
+  revalidateCategories();
   return { ok: true };
 }
 
@@ -159,9 +139,36 @@ export async function toggleCategoryActiveAction(formData: FormData) {
     throw new Error(error);
   }
 
-  revalidatePath('/admin/categories');
-  revalidatePath('/admin/services');
-  revalidatePath('/admin/dashboard');
-  revalidatePath('/danh-muc');
-  revalidatePath('/');
+  revalidateCategories();
+}
+
+export async function moveCategoryAction(input: {
+  itemId: string;
+  scope: CategoryReorderScope;
+  beforeId: string | null;
+  afterId: string | null;
+}): Promise<AdminFormState> {
+  if (!input.itemId || !input.scope) {
+    return { ok: false, error: 'Dữ liệu di chuyển không hợp lệ.' };
+  }
+
+  try {
+    const requestContext = await getRequestContext();
+    const { error } = await moveAdminCategory(
+      input.itemId,
+      input.scope,
+      input.beforeId,
+      input.afterId,
+      requestContext
+    );
+
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể cập nhật thứ tự hiển thị.' };
+  }
+
+  revalidateCategories();
+  return { ok: true };
 }

@@ -1,10 +1,8 @@
 import 'server-only';
 
-
-
+import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { AdminRole, Tables } from '@/lib/types/database';
-import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 type AdminUserRow = Pick<
   Tables<'admin_users'>,
@@ -56,7 +54,7 @@ export interface AdminUserActionResult<T = unknown> {
 
 const ADMIN_USER_COLUMNS = 'id, email, role, is_active, created_at, updated_at';
 const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,30}[a-z0-9])?$/;
-const INTERNAL_EMAIL_DOMAIN = 'internal.admin.gnest.local';
+const ADMIN_EMAIL_DOMAIN = 'gnest.com';
 const DEFAULT_ADMIN_PASSWORD = 'abc@123';
 
 function normalizeNullableText(value: string | null | undefined) {
@@ -77,8 +75,8 @@ function normalizeUsername(value: string) {
     .replace(/^[._-]+|[._-]+$/g, '');
 }
 
-function buildInternalLoginEmail(username: string) {
-  return `${username}@${INTERNAL_EMAIL_DOMAIN}`;
+function buildAdminLoginEmail(localPart: string) {
+  return `${localPart}@${ADMIN_EMAIL_DOMAIN}`;
 }
 
 function getDefaultAdminPassword() {
@@ -104,11 +102,9 @@ async function enrichAdminUsers(
 
       return {
         ...user,
-        display_name:
-          typeof metadata.display_name === 'string' ? metadata.display_name : null,
+        display_name: typeof metadata.display_name === 'string' ? metadata.display_name : null,
         username: typeof metadata.username === 'string' ? metadata.username : null,
-        contact_email:
-          typeof metadata.contact_email === 'string' ? metadata.contact_email : null,
+        contact_email: typeof metadata.contact_email === 'string' ? metadata.contact_email : null,
         force_password_change: Boolean(metadata.force_password_change),
       } satisfies AdminUserListItem;
     }),
@@ -135,7 +131,7 @@ export async function getAdminUsers(): Promise<{ data: AdminUserListItem[]; erro
   } catch (err) {
     return {
       data: [],
-      error: err instanceof Error ? err.message : 'Khong the tai danh sach tai khoan quan tri.',
+      error: err instanceof Error ? err.message : 'Không thể tải danh sách tài khoản quản trị.',
     };
   }
 }
@@ -148,21 +144,26 @@ export async function inviteAdminUser(
     const supabase = createServiceRoleClient();
 
     const displayName = input.displayName.trim();
-    const username = normalizeUsername(input.username);
+    const rawUsername = input.username.trim();
+    const username = normalizeUsername(rawUsername);
     const contactEmail = normalizeNullableText(input.contactEmail)?.toLowerCase() ?? null;
 
     if (!displayName) {
-      return { ok: false, error: 'Ten hien thi la bat buoc.' };
+      return { ok: false, error: 'Tên hiển thị là bắt buộc.' };
     }
 
-    if (!USERNAME_PATTERN.test(username)) {
+    if (!rawUsername) {
+      return { ok: false, error: 'Tên email là bắt buộc.' };
+    }
+
+    if (rawUsername.includes('@') || !USERNAME_PATTERN.test(username)) {
       return {
         ok: false,
-        error: 'Ten dang nhap chi duoc dung chu thuong, so va . _ - (3-32 ky tu).',
+        error: 'Tên email chỉ được dùng chữ thường, số và . _ - (3-32 ký tự).',
       };
     }
 
-    const loginEmail = buildInternalLoginEmail(username);
+    const loginEmail = buildAdminLoginEmail(username);
 
     const { data: existingUser, error: checkError } = await supabase
       .from('admin_users')
@@ -175,7 +176,7 @@ export async function inviteAdminUser(
     }
 
     if (existingUser) {
-      return { ok: false, error: 'Ten dang nhap nay da ton tai trong he thong.' };
+      return { ok: false, error: 'Tên email này đã tồn tại trong hệ thống.' };
     }
 
     const temporaryPassword = getDefaultAdminPassword();
@@ -192,12 +193,12 @@ export async function inviteAdminUser(
     });
 
     if (createAuthError) {
-      return { ok: false, error: `Khong the tao tai khoan auth: ${createAuthError.message}` };
+      return { ok: false, error: 'Không thể tạo tài khoản quản trị.' };
     }
 
     const authUser = createdAuthUser.user;
     if (!authUser) {
-      return { ok: false, error: 'Khong the khoi tao tai khoan tren he thong Auth.' };
+      return { ok: false, error: 'Không thể tạo tài khoản quản trị.' };
     }
 
     const { data: insertedUser, error: insertError } = await supabase
@@ -213,12 +214,10 @@ export async function inviteAdminUser(
 
     if (insertError) {
       await supabase.auth.admin.deleteUser(authUser.id);
-      return { ok: false, error: `Khong the luu quyen truy cap: ${insertError.message}` };
+      return { ok: false, error: 'Không thể tạo tài khoản quản trị.' };
     }
 
-    const enrichedUser = (
-      await enrichAdminUsers(supabase, [insertedUser as AdminUserRow])
-    )[0];
+    const enrichedUser = (await enrichAdminUsers(supabase, [insertedUser as AdminUserRow]))[0];
 
     await supabase.from('audit_logs').insert({
       actor_id: actor.id,
@@ -245,7 +244,7 @@ export async function inviteAdminUser(
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : 'Khong the tao tai khoan quan tri noi bo.',
+      error: err instanceof Error ? err.message : 'Không thể tạo tài khoản quản trị.',
     };
   }
 }
@@ -258,7 +257,7 @@ export async function updateAdminUserRole(
     const supabase = createServiceRoleClient();
 
     if (input.userId === input.currentAdminId) {
-      return { ok: false, error: 'Ban khong the tu thay doi vai tro cua chinh minh.' };
+      return { ok: false, error: 'Bạn không thể tự thay đổi vai trò của chính mình.' };
     }
 
     const { data: targetUser, error: targetError } = await supabase
@@ -268,7 +267,7 @@ export async function updateAdminUserRole(
       .maybeSingle();
 
     if (targetError || !targetUser) {
-      return { ok: false, error: 'Khong tim thay tai khoan can cap nhat vai tro.' };
+      return { ok: false, error: 'Không tìm thấy tài khoản cần cập nhật vai trò.' };
     }
 
     const oldRole = targetUser.role;
@@ -287,7 +286,7 @@ export async function updateAdminUserRole(
       if ((count ?? 0) <= 1) {
         return {
           ok: false,
-          error: 'Khong the ha cap vi day la tai khoan Super Admin hoat dong duy nhat.',
+          error: 'Không thể hạ cấp vì đây là tài khoản Super Admin hoạt động duy nhất.',
         };
       }
     }
@@ -322,7 +321,7 @@ export async function updateAdminUserRole(
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : 'Khong the cap nhat vai tro quan tri.',
+      error: err instanceof Error ? err.message : 'Không thể cập nhật vai trò quản trị.',
     };
   }
 }
@@ -337,7 +336,7 @@ export async function setAdminUserActive(
     const supabase = createServiceRoleClient();
 
     if (userId === currentAdminId) {
-      return { ok: false, error: 'Ban khong the tu vo hieu hoa tai khoan cua chinh minh.' };
+      return { ok: false, error: 'Bạn không thể tự vô hiệu hóa tài khoản của chính mình.' };
     }
 
     const { data: targetUser, error: targetError } = await supabase
@@ -347,7 +346,7 @@ export async function setAdminUserActive(
       .maybeSingle();
 
     if (targetError || !targetUser) {
-      return { ok: false, error: 'Khong tim thay tai khoan can cap nhat trang thai.' };
+      return { ok: false, error: 'Không tìm thấy tài khoản cần cập nhật trạng thái.' };
     }
 
     if (targetUser.role === 'super_admin' && !isActive) {
@@ -364,7 +363,7 @@ export async function setAdminUserActive(
       if ((count ?? 0) <= 1) {
         return {
           ok: false,
-          error: 'Khong the vo hieu hoa vi day la tai khoan Super Admin hoat dong duy nhat.',
+          error: 'Không thể vô hiệu hóa vì đây là tài khoản Super Admin hoạt động duy nhất.',
         };
       }
     }
@@ -398,7 +397,7 @@ export async function setAdminUserActive(
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : 'Khong the cap nhat trang thai tai khoan.',
+      error: err instanceof Error ? err.message : 'Không thể cập nhật trạng thái tài khoản.',
     };
   }
 }
@@ -412,7 +411,7 @@ export async function removeAdminUserAccess(
     const supabase = createServiceRoleClient();
 
     if (userId === currentAdminId) {
-      return { ok: false, error: 'Ban khong the tu xoa tai khoan cua chinh minh.' };
+      return { ok: false, error: 'Bạn không thể tự xóa tài khoản của chính mình.' };
     }
 
     const { data: targetUser, error: targetError } = await supabase
@@ -422,7 +421,7 @@ export async function removeAdminUserAccess(
       .maybeSingle();
 
     if (targetError || !targetUser) {
-      return { ok: false, error: 'Khong tim thay tai khoan can xoa truy cap.' };
+      return { ok: false, error: 'Không tìm thấy tài khoản cần xóa truy cập.' };
     }
 
     if (targetUser.role === 'super_admin') {
@@ -439,7 +438,7 @@ export async function removeAdminUserAccess(
       if ((count ?? 0) <= 1) {
         return {
           ok: false,
-          error: 'Khong the xoa vi day la tai khoan Super Admin hoat dong duy nhat.',
+          error: 'Không thể xóa vì đây là tài khoản Super Admin hoạt động duy nhất.',
         };
       }
     }
@@ -448,7 +447,7 @@ export async function removeAdminUserAccess(
     const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId);
 
     if (deleteAuthError) {
-      return { ok: false, error: `Khong the xoa tai khoan auth: ${deleteAuthError.message}` };
+      return { ok: false, error: 'Không thể xóa tài khoản quản trị.' };
     }
 
     await supabase.from('audit_logs').insert({
@@ -467,7 +466,7 @@ export async function removeAdminUserAccess(
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : 'Khong the xoa quyen truy cap quan tri.',
+      error: err instanceof Error ? err.message : 'Không thể xóa quyền truy cập quản trị.',
     };
   }
 }
@@ -481,7 +480,7 @@ export async function resetAdminUserPassword(
     const supabase = createServiceRoleClient();
 
     if (userId === currentAdminId) {
-      return { ok: false, error: 'Ban khong the tu reset mat khau cua chinh minh.' };
+      return { ok: false, error: 'Bạn không thể tự đặt lại mật khẩu của chính mình.' };
     }
 
     const { data: targetUser, error: targetError } = await supabase
@@ -491,12 +490,12 @@ export async function resetAdminUserPassword(
       .maybeSingle();
 
     if (targetError || !targetUser) {
-      return { ok: false, error: 'Khong tim thay tai khoan de reset mat khau.' };
+      return { ok: false, error: 'Không tìm thấy tài khoản để đặt lại mật khẩu.' };
     }
 
     const { data: authData, error: authError } = await supabase.auth.admin.getUserById(userId);
     if (authError || !authData.user) {
-      return { ok: false, error: 'Khong tim thay thong tin auth cua tai khoan nay.' };
+      return { ok: false, error: 'Không tìm thấy thông tin đăng nhập của tài khoản này.' };
     }
 
     const temporaryPassword = getDefaultAdminPassword();
@@ -511,7 +510,7 @@ export async function resetAdminUserPassword(
     });
 
     if (updateAuthError) {
-      return { ok: false, error: `Khong the reset mat khau: ${updateAuthError.message}` };
+      return { ok: false, error: 'Không thể đặt lại mật khẩu.' };
     }
 
     const enrichedUser = (await enrichAdminUsers(supabase, [targetUser as AdminUserRow]))[0];
@@ -538,7 +537,7 @@ export async function resetAdminUserPassword(
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : 'Khong the reset mat khau.',
+      error: err instanceof Error ? err.message : 'Không thể đặt lại mật khẩu.',
     };
   }
 }

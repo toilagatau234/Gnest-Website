@@ -5,10 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Check, MessageCircle, Phone, Search, Shield, UserRound } from 'lucide-react';
 
 import { SalesContactRowActions } from '@/components/admin/SalesContactRowActions';
+import { AdminSortableListDialog } from '@/components/admin/AdminSortableListDialog';
+import { moveSalesContactAction } from '@/app/admin/(dashboard)/sales-contacts/actions';
 import type { AdminSalesContact } from '@/lib/services/admin/sales-contacts';
 
 interface SalesContactsTableProps {
   contacts: AdminSalesContact[];
+  allContacts: AdminSalesContact[];
   page: number;
   pageCount: number;
   total: number;
@@ -36,7 +39,7 @@ function getZaloLink(contact: AdminSalesContact) {
   return digits ? `https://zalo.me/${digits}` : '#';
 }
 
-export function SalesContactsTable({ contacts, page, pageCount, total }: SalesContactsTableProps) {
+export function SalesContactsTable({ contacts, allContacts, page, pageCount, total }: SalesContactsTableProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -55,6 +58,24 @@ export function SalesContactsTable({ contacts, page, pageCount, total }: SalesCo
     });
   }, [contacts, deferredQuery]);
 
+  const reorderScopes = useMemo(
+    () => [
+      {
+        id: 'sales-contacts:global',
+        label: 'Toàn bộ liên hệ bán hàng',
+        description: 'Kéo thả để thay đổi thứ tự hiển thị các đầu mối liên hệ trên website.',
+        items: allContacts.map((contact) => ({
+          id: contact.id,
+          label: contact.name,
+          subtitle: contact.role ?? undefined,
+          meta: `${contact.phone}${contact.zalo ? ` • ${contact.zalo}` : ''}`,
+          is_active: contact.is_active,
+        })),
+      },
+    ],
+    [allContacts],
+  );
+
   return (
     <div className="admin-card space-y-5 p-4 sm:p-6">
       <div className="flex flex-col justify-between gap-4 border-b border-[#EEF2F6] pb-4 lg:flex-row lg:items-center">
@@ -65,15 +86,39 @@ export function SalesContactsTable({ contacts, page, pageCount, total }: SalesCo
           </p>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <input
-            type="search"
-            placeholder="Tìm tên, vai trò, số điện thoại..."
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="admin-input h-9 pl-9 text-xs"
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <AdminSortableListDialog
+            buttonLabel="Tùy chỉnh sắp xếp"
+            title="Tùy chỉnh thứ tự liên hệ"
+            description="Kéo thả các liên hệ bán hàng để thay đổi thứ tự hiển thị trên website."
+            successMessage="Đã cập nhật thứ tự hiển thị."
+            errorMessage="Không thể cập nhật thứ tự hiển thị."
+            scopes={reorderScopes}
+            onSave={async (_scopeId, moves) => {
+              for (const move of moves) {
+                const res = await moveSalesContactAction({
+                  itemId: move.itemId,
+                  beforeId: move.beforeId,
+                  afterId: move.afterId,
+                });
+                if (!res.ok) {
+                  return res;
+                }
+              }
+              return { ok: true };
+            }}
           />
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+
+          <div className="relative w-full sm:w-72">
+            <input
+              type="search"
+              placeholder="Tìm tên, vai trò, số điện thoại..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="admin-input h-9 pl-9 text-xs"
+            />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          </div>
         </div>
       </div>
 
@@ -91,8 +136,6 @@ export function SalesContactsTable({ contacts, page, pageCount, total }: SalesCo
                 <div className="flex min-w-0 gap-3">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#E5E7EF] bg-[#F7F9FB] text-[#4880FF]">
                     {contact.avatar_url ? (
-                      // Use a standard img tag because admins may paste images from arbitrary hosts
-                      // that are not present in next.config remotePatterns.
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={contact.avatar_url}

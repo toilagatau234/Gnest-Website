@@ -2,12 +2,13 @@ import 'server-only';
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts, Tables, Updates } from '@/lib/types/database';
+import { getRankBefore, getRankBetween } from '@/lib/services/admin/rank-key';
 import { buildAuditMetadata, type RequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 
 export type AdminJobVacancy = Pick<
   Tables<'job_vacancies'>,
-  'id' | 'title' | 'slug' | 'description' | 'location' | 'salary_range' | 'sort_order' | 'is_active' | 'created_at' | 'updated_at'
+  'id' | 'title' | 'slug' | 'description' | 'location' | 'salary_range' | 'sort_order' | 'rank_key' | 'is_active' | 'created_at' | 'updated_at'
 >;
 
 export interface JobVacancyPayload {
@@ -16,13 +17,12 @@ export interface JobVacancyPayload {
   description: string | null;
   location: string | null;
   salary_range: string | null;
-  sort_order: number;
   is_active: boolean;
 }
 
 const JOB_VACANCY_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
 const ADMIN_JOB_VACANCY_SELECT =
-  'id, title, slug, description, location, salary_range, sort_order, is_active, created_at, updated_at';
+  'id, title, slug, description, location, salary_range, sort_order, rank_key, is_active, created_at, updated_at';
 const SHOULD_LOG_TIMINGS =
   process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
 
@@ -46,7 +46,7 @@ function normalizeNullableText(value: string | null) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function normalizeJobVacancyPayload(payload: JobVacancyPayload): Inserts<'job_vacancies'> {
+function normalizeJobVacancyPayload(payload: JobVacancyPayload): Omit<Inserts<'job_vacancies'>, 'sort_order' | 'rank_key'> {
   const title = payload.title.trim();
   const slug = payload.slug.trim() ? slugify(payload.slug) : slugify(title);
 
@@ -56,7 +56,6 @@ function normalizeJobVacancyPayload(payload: JobVacancyPayload): Inserts<'job_va
     description: normalizeNullableText(payload.description),
     location: normalizeNullableText(payload.location),
     salary_range: normalizeNullableText(payload.salary_range),
-    sort_order: payload.sort_order,
     is_active: payload.is_active,
   };
 }
@@ -70,6 +69,7 @@ export async function getAdminJobs() {
     const { data, error } = await supabase
       .from('job_vacancies')
       .select(ADMIN_JOB_VACANCY_SELECT)
+      .order('rank_key', { ascending: true })
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
 
@@ -114,6 +114,7 @@ export async function getAdminJobsPage(
     const { data, error, count } = await supabase
       .from('job_vacancies')
       .select(ADMIN_JOB_VACANCY_SELECT, { count: 'exact' })
+      .order('rank_key', { ascending: true })
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1);
@@ -174,18 +175,29 @@ export async function getAdminJobStats(): Promise<{ data: AdminJobStats; error: 
 export async function createAdminJob(payload: JobVacancyPayload, requestContext?: RequestContext) {
   const adminUser = await requireAdminAuth(JOB_VACANCY_MUTATION_ROLES);
   const supabase = createServiceRoleClient();
-  const insertPayload = normalizeJobVacancyPayload(payload);
+  const basePayload = normalizeJobVacancyPayload(payload);
 
-  if (!insertPayload.title) {
+  if (!basePayload.title) {
     return { data: null, error: 'Tiêu đề tuyển dụng là bắt buộc.' };
   }
-  if (!insertPayload.slug) {
+  if (!basePayload.slug) {
     return { data: null, error: 'Đường dẫn (slug) là bắt buộc.' };
   }
 
+  // Get first job's rank key to place new item first
+  const { data: firstJobs } = await supabase
+    .from('job_vacancies')
+    .select('rank_key')
+    .order('rank_key', { ascending: true })
+    .order('sort_order', { ascending: true })
+    .limit(1);
+
+  const firstRank = firstJobs?.[0]?.rank_key ?? null;
+  const newRank = getRankBefore(firstRank);
+
   const { data, error } = await supabase
     .from('job_vacancies')
-    .insert(insertPayload)
+    .insert({ ...basePayload, rank_key: newRank, sort_order: 0 })
     .select('*')
     .single();
 
@@ -200,7 +212,7 @@ export async function createAdminJob(payload: JobVacancyPayload, requestContext?
     entity_id: data.id,
     metadata: buildAuditMetadata({
       label: data.title,
-      after: { title: data.title, slug: data.slug, is_active: data.is_active },
+      after: { title: data.title, slug: data.slug, sort_order: data.sort_order, rank_key: data.rank_key, is_active: data.is_active },
       requestContext,
     }),
   });
@@ -213,10 +225,15 @@ export async function updateAdminJob(jobId: string, payload: JobVacancyPayload, 
   const supabase = createServiceRoleClient();
   const { data: before } = await supabase
     .from('job_vacancies')
-    .select('title, slug, is_active')
+    .select(ADMIN_JOB_VACANCY_SELECT)
     .eq('id', jobId)
-    .maybeSingle();
-  const updatePayload: Updates<'job_vacancies'> = normalizeJobVacancyPayload(payload);
+    .maybeSingle<AdminJobVacancy>();
+  const basePayload = normalizeJobVacancyPayload(payload);
+  const updatePayload: Updates<'job_vacancies'> = {
+    ...basePayload,
+    sort_order: before?.sort_order ?? 0,
+    rank_key: before?.rank_key,
+  };
 
   if (!updatePayload.title) {
     return { data: null, error: 'Tiêu đề tuyển dụng là bắt buộc.' };
@@ -243,8 +260,16 @@ export async function updateAdminJob(jobId: string, payload: JobVacancyPayload, 
     entity_id: data.id,
     metadata: buildAuditMetadata({
       label: data.title,
-      before,
-      after: { title: data.title, slug: data.slug, is_active: data.is_active },
+      before: before
+        ? {
+            title: before.title,
+            slug: before.slug,
+            sort_order: before.sort_order,
+            rank_key: before.rank_key,
+            is_active: before.is_active,
+          }
+        : null,
+      after: { title: data.title, slug: data.slug, sort_order: data.sort_order, rank_key: data.rank_key, is_active: data.is_active },
       requestContext,
     }),
   });
@@ -292,7 +317,7 @@ export async function setAdminJobActive(jobId: string, isActive: boolean, reques
   const supabase = createServiceRoleClient();
   const { data: before } = await supabase
     .from('job_vacancies')
-    .select('title, slug, is_active')
+    .select('title, slug, sort_order, rank_key, is_active')
     .eq('id', jobId)
     .maybeSingle();
 
@@ -300,7 +325,7 @@ export async function setAdminJobActive(jobId: string, isActive: boolean, reques
     .from('job_vacancies')
     .update({ is_active: isActive })
     .eq('id', jobId)
-    .select('id, title, slug, is_active')
+    .select('id, title, slug, sort_order, rank_key, is_active')
     .single();
 
   if (error) {
@@ -315,10 +340,88 @@ export async function setAdminJobActive(jobId: string, isActive: boolean, reques
     metadata: buildAuditMetadata({
       label: data.title,
       before,
-      after: { title: data.title, slug: data.slug, is_active: data.is_active },
+      after: { title: data.title, slug: data.slug, sort_order: data.sort_order, rank_key: data.rank_key, is_active: data.is_active },
       requestContext,
     }),
   });
 
   return { data, error: null };
+}
+
+export async function moveAdminJob(
+  itemId: string,
+  beforeId: string | null,
+  afterId: string | null,
+  requestContext?: RequestContext,
+) {
+  const adminUser = await requireAdminAuth(JOB_VACANCY_MUTATION_ROLES);
+  const supabase = createServiceRoleClient();
+
+  const retryOperation = async () => {
+    const ids = [itemId];
+    if (beforeId) ids.push(beforeId);
+    if (afterId) ids.push(afterId);
+
+    const { data: items, error: fetchError } = await supabase
+      .from('job_vacancies')
+      .select('id, rank_key, title')
+      .in('id', ids);
+
+    if (fetchError || !items) {
+      return { data: null, error: fetchError?.message ?? 'Không thể tải tin tuyển dụng.' };
+    }
+
+    const itemMap = new Map(items.map((i) => [i.id, i]));
+    const item = itemMap.get(itemId);
+    if (!item) {
+      return { data: null, error: 'Không tìm thấy tin tuyển dụng di chuyển.' };
+    }
+
+    const beforeRank = beforeId ? itemMap.get(beforeId)?.rank_key ?? null : null;
+    const afterRank = afterId ? itemMap.get(afterId)?.rank_key ?? null : null;
+
+    let newRank: string;
+    try {
+      newRank = getRankBetween(beforeRank, afterRank);
+    } catch (err) {
+      return { data: null, error: 'Không thể tính toán thứ tự: ' + (err instanceof Error ? err.message : String(err)) };
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from('job_vacancies')
+      .update({ rank_key: newRank })
+      .eq('id', itemId)
+      .select('rank_key')
+      .single();
+
+    if (updateError) {
+      return { data: null, error: updateError.message };
+    }
+
+    await supabase.from('audit_logs').insert({
+      actor_id: adminUser.id,
+      action: 'reorder',
+      entity: 'job_vacancies',
+      entity_id: itemId,
+      metadata: buildAuditMetadata({
+        label: item.title,
+        extra: {
+          moved_id: itemId,
+          before_id: beforeId,
+          after_id: afterId,
+          new_rank_key: newRank,
+        },
+        requestContext,
+      }),
+    });
+
+    return { data: newRank, error: null };
+  };
+
+  const result = await retryOperation();
+  if (result.error) {
+    const retryResult = await retryOperation();
+    return retryResult;
+  }
+  return result;
 }

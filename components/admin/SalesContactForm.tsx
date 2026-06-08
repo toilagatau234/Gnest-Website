@@ -120,16 +120,6 @@ export function SalesContactForm({ formId, formAction, state, contact }: SalesCo
           ) : null}
         </label>
 
-        <label className="block">
-          <span className={labelClass}>Thứ tự hiển thị</span>
-          <input
-            name="sort_order"
-            type="number"
-            defaultValue={contact?.sort_order ?? 0}
-            className={fieldClass}
-          />
-        </label>
-
         <label className="block sm:col-span-2">
           <span className={labelClass}>Avatar URL</span>
           <input

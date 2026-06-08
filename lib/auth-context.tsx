@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     if (!supabase) {
-      throw new Error('Thieu cau hinh Supabase tren trinh duyet.');
+      throw new Error('Thiếu cấu hình Supabase trên trình duyệt.');
     }
 
     const { error } = await supabase.auth.signOut();

@@ -7,7 +7,11 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { requiresAdminPasswordReset } from '@/lib/services/admin/user-password-reset';
 
-export function AdminLoginForm() {
+interface AdminLoginFormProps {
+  timedOut?: boolean;
+}
+
+export function AdminLoginForm({ timedOut = false }: AdminLoginFormProps) {
   const router = useRouter();
   const { loading, signInWithPassword } = useAuth();
   const [email, setEmail] = useState('');
@@ -59,6 +63,12 @@ export function AdminLoginForm() {
           </div>
 
           <div className="px-8 py-8">
+            {timedOut ? (
+              <div className="mb-5 rounded-xl border border-[#D7E0EC] bg-[#F5F8FF] px-4 py-3 text-sm text-[#1B3A6B]">
+                Phiên đăng nhập đã hết hạn do không hoạt động quá 10 phút. Vui lòng đăng nhập lại.
+              </div>
+            ) : null}
+
             {error ? (
               <div className="mb-5 rounded-xl border border-[#F2C5C7] bg-[#FFF5F5] px-4 py-3 text-sm text-[#B42318]">
                 {error}

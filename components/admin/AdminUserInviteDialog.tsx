@@ -1,16 +1,16 @@
 'use client';
 
 import { useActionState, useEffect, useId, useMemo, useState } from 'react';
-import { Loader2, KeyRound, ShieldCheck, UserPlus2 } from 'lucide-react';
+import { KeyRound, Loader2, ShieldCheck, UserPlus2 } from 'lucide-react';
 
+import { inviteAdminUserAction, type AdminFormState } from '@/app/admin/(dashboard)/admin-users/actions';
 import { AdminActionButton } from '@/components/admin/AdminActionButton';
 import { AdminModal } from '@/components/admin/AdminModal';
 import { useToast } from '@/components/admin/AdminToast';
-import { inviteAdminUserAction, type AdminFormState } from '@/app/admin/(dashboard)/admin-users/actions';
 import { ADMIN_ROLE_LABELS } from '@/lib/types/admin';
 
 const INITIAL_STATE: AdminFormState = { ok: false };
-const INTERNAL_EMAIL_DOMAIN = 'internal.admin.gnest.local';
+const ADMIN_EMAIL_DOMAIN = 'gnest.com';
 
 function normalizeUsername(value: string) {
   return value
@@ -40,13 +40,16 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
 
   useEffect(() => {
     if (state.ok) {
-      toast('Tài khoản nội bộ đã được tạo. Sao chép mật khẩu mặc định trước khi đóng.', 'success');
+      toast(
+        'Tài khoản quản trị đã được tạo. Sao chép mật khẩu mặc định trước khi đóng.',
+        'success'
+      );
     }
   }, [state.ok, toast]);
 
   const previewLoginEmail = useMemo(() => {
     const safeUsername = normalizeUsername(username);
-    return safeUsername ? `${safeUsername}@${INTERNAL_EMAIL_DOMAIN}` : `username@${INTERNAL_EMAIL_DOMAIN}`;
+    return safeUsername ? `${safeUsername}@${ADMIN_EMAIL_DOMAIN}` : `dev.it@${ADMIN_EMAIL_DOMAIN}`;
   }, [username]);
 
   return state.ok && state.createdUser ? (
@@ -67,13 +70,17 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Email đăng nhập</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+            Email đăng nhập
+          </p>
           <p className="mt-1 break-all text-sm font-semibold text-slate-900">
             {state.createdUser.loginEmail}
           </p>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">Mật khẩu mặc định</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">
+            Mật khẩu mặc định
+          </p>
           <p className="mt-1 break-all font-mono text-sm font-bold text-amber-950">
             {state.createdUser.temporaryPassword}
           </p>
@@ -86,8 +93,8 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
       <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
         <p className="font-bold text-slate-800">Lưu ý bàn giao</p>
         <p className="mt-1 leading-relaxed">
-          Chia sẻ email đăng nhập và mật khẩu mặc định <strong>abc@123</strong> qua kênh nội bộ an toàn. Sau khi đổi mật khẩu,
-          cờ <code>force_password_change</code> sẽ tự động được gỡ.
+          Chia sẻ email đăng nhập và mật khẩu mặc định <strong>abc@123</strong> qua kênh an toàn.
+          Sau khi đổi mật khẩu, cờ <code>force_password_change</code> sẽ tự động được gỡ.
         </p>
       </div>
 
@@ -123,7 +130,7 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
 
         <label className="block">
           <span className="mb-1 block text-xs font-bold text-slate-600">
-            Tên đăng nhập <span className="text-[#E31E24]">*</span>
+            Tên email <span className="text-[#E31E24]">*</span>
           </span>
           <input
             name="username"
@@ -134,11 +141,11 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
               setUsernameTouched(true);
               setUsername(normalizeUsername(event.target.value));
             }}
-            placeholder="nguyen.van.an"
+            placeholder="dev.it"
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
           />
           <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Chỉ dùng chữ thường, số và các ký tự <code>.</code>, <code>_</code>, <code>-</code>.
+            Không nhập @{ADMIN_EMAIL_DOMAIN}. Hệ thống sẽ tự thêm phần đuôi email.
           </span>
         </label>
 
@@ -183,7 +190,9 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
         </p>
         <p className="mt-1 break-all text-sm font-semibold text-slate-900">{previewLoginEmail}</p>
         <p className="mt-1 text-[10px] font-medium text-slate-500">
-          Mật khẩu mặc định của tài khoản mới là <strong className="text-amber-700">abc@123</strong> và hệ thống yêu cầu đổi mật khẩu sau khi đăng nhập lần đầu.
+          Mật khẩu mặc định của tài khoản mới là{' '}
+          <strong className="text-amber-700">abc@123</strong> và hệ thống yêu cầu đổi mật khẩu
+          sau khi đăng nhập lần đầu.
         </p>
       </div>
 
@@ -194,10 +203,20 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
       ) : null}
 
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={onClose} disabled={isPending} className="admin-button-secondary px-5 text-xs">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={isPending}
+          className="admin-button-secondary px-5 text-xs"
+        >
           Hủy
         </button>
-        <button type="submit" form={formId} disabled={isPending} className="admin-button-primary px-6 text-xs">
+        <button
+          type="submit"
+          form={formId}
+          disabled={isPending}
+          className="admin-button-primary px-6 text-xs"
+        >
           {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {isPending ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
         </button>
@@ -229,8 +248,8 @@ export function AdminUserInviteDialog() {
       <AdminModal
         open={open}
         onClose={closeDialog}
-        title="Tạo tài khoản quản trị nội bộ"
-        description="Cấp tài khoản đăng nhập nội bộ cho nhân sự. Hệ thống sẽ tạo email đăng nhập nội bộ, gán mật khẩu mặc định abc@123 và bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên."
+        title="Tạo tài khoản quản trị"
+        description="Hệ thống sẽ tự thêm @gnest.com, gán mật khẩu mặc định abc@123 và yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên."
         size="lg"
         footer={null}
       >

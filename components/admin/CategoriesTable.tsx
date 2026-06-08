@@ -16,8 +16,12 @@ import {
 } from 'lucide-react';
 
 import { CategoryRowActions } from '@/components/admin/CategoryRowActions';
-import type { AdminCategory } from '@/lib/services/admin/categories';
-
+import {
+  AdminSortableListDialog,
+  type AdminSortableListScope,
+} from '@/components/admin/AdminSortableListDialog';
+import { moveCategoryAction } from '@/app/admin/(dashboard)/categories/actions';
+import type { AdminCategory, CategoryReorderScope } from '@/lib/services/admin/categories';
 import type { CategoryType } from '@/lib/types/database';
 
 interface CategoriesTableProps {
@@ -151,7 +155,7 @@ function CategoryFilterBar({
       <div className="relative w-full sm:w-64">
         <input
           type="search"
-          placeholder={fixedType === 'service' ? "Tìm dịch vụ..." : "Tìm danh mục..."}
+          placeholder={fixedType === 'service' ? 'Tìm dịch vụ...' : 'Tìm danh mục...'}
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           className="admin-input h-9 pl-9 text-xs"
@@ -282,7 +286,7 @@ function CategoryTableView({ categories, allCategories, categoryById, fixedType 
             <th className="p-3.5">Slug</th>
             {!fixedType && <th className="p-3.5">Loại</th>}
             {fixedType !== 'service' && <th className="p-3.5">Danh mục cha</th>}
-            <th className="p-3.5">Display Priority</th>
+            <th className="p-3.5">Thứ tự</th>
             <th className="p-3.5">Trạng thái</th>
             <th className="p-3.5 text-right">Thao tác</th>
           </tr>
@@ -308,9 +312,7 @@ function CategoryTableView({ categories, allCategories, categoryById, fixedType 
                   </td>
                 )}
                 {fixedType !== 'service' && <td className="p-3.5 text-[#646464]">{parent ? parent.name : '—'}</td>}
-                <td className="p-3.5 font-mono font-semibold text-[#646464]">
-                  {category.sort_order}
-                </td>
+                <td className="p-3.5 font-mono font-semibold text-[#646464]">{category.sort_order}</td>
                 <td className="p-3.5">
                   <CategoryStatusBadge active={category.is_active} />
                 </td>
@@ -328,6 +330,66 @@ function CategoryTableView({ categories, allCategories, categoryById, fixedType 
   );
 }
 
+function buildCategoryReorderScopes(categories: AdminCategory[], fixedType?: CategoryType) {
+  const scopeDefinitions: { scopeId: string; scope: CategoryReorderScope }[] = [];
+  const scopes: AdminSortableListScope[] = [];
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+
+  const addScope = (scopeId: string, scope: CategoryReorderScope, items: AdminCategory[], label: string, description: string) => {
+    if (items.length === 0) {
+      return;
+    }
+
+    scopeDefinitions.push({ scopeId, scope });
+    scopes.push({
+      id: scopeId,
+      label,
+      description,
+      items: items.map((item) => ({
+        id: item.id,
+        label: item.name,
+        subtitle: `/${item.slug}`,
+        meta: item.parent_id ? `Thuộc ${categoryById.get(item.parent_id)?.name ?? 'danh mục cha'}` : 'Danh mục gốc',
+        is_active: item.is_active,
+      })),
+    });
+  };
+
+  if (fixedType === 'service') {
+    addScope(
+      'service:root',
+      { type: 'service', parent_id: null },
+      categories.filter((item) => item.type === 'service' && !item.parent_id),
+      'Dịch vụ chuyên nghiệp',
+      'Chỉ kéo thả trong nhóm dịch vụ đang hiển thị trên trang chủ.',
+    );
+
+    return { scopes, scopeDefinitions };
+  }
+
+  addScope(
+    'product:root',
+    { type: 'product', parent_id: null },
+    categories.filter((item) => item.type === 'product' && !item.parent_id),
+    'Danh mục gốc sản phẩm',
+    'Sắp xếp các danh mục cấp gốc trong catalog sản phẩm.',
+  );
+
+  categories
+    .filter((item) => item.type === 'product' && !item.parent_id)
+    .forEach((parent) => {
+      addScope(
+        `product:${parent.id}`,
+        { type: 'product', parent_id: parent.id },
+        categories.filter((item) => item.type === 'product' && item.parent_id === parent.id),
+        `Danh mục con của ${parent.name}`,
+        `Chỉ thay đổi thứ tự các danh mục con thuộc ${parent.name}. Không thể kéo sang danh mục cha khác trong tác vụ này.`,
+      );
+    });
+
+  return { scopes, scopeDefinitions };
+}
+
 export function CategoriesTable({ categories, fixedType }: CategoriesTableProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const [query, setQuery] = useState('');
@@ -339,6 +401,16 @@ export function CategoriesTable({ categories, fixedType }: CategoriesTableProps)
   const categoryById = useMemo(() => {
     return new Map(categories.map((category) => [category.id, category]));
   }, [categories]);
+
+  const { scopes, scopeDefinitions } = useMemo(
+    () => buildCategoryReorderScopes(categories, fixedType),
+    [categories, fixedType],
+  );
+
+  const scopeMap = useMemo(
+    () => new Map(scopeDefinitions.map((definition) => [definition.scopeId, definition.scope])),
+    [scopeDefinitions],
+  );
 
   const filtered = useMemo(() => {
     const normalized = deferredQuery.trim().toLowerCase();
@@ -413,7 +485,42 @@ export function CategoriesTable({ categories, fixedType }: CategoriesTableProps)
             </p>
           </div>
 
-          <CategoryViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <AdminSortableListDialog
+              buttonLabel="Tùy chỉnh sắp xếp"
+              title={fixedType === 'service' ? 'Tùy chỉnh thứ tự dịch vụ' : 'Tùy chỉnh thứ tự danh mục'}
+              description={
+                fixedType === 'service'
+                  ? 'Kéo thả để thay đổi thứ tự hiển thị dịch vụ trên website.'
+                  : 'Kéo thả để thay đổi thứ tự hiển thị danh mục trong từng phạm vi sản phẩm.'
+              }
+              successMessage="Đã cập nhật thứ tự hiển thị."
+              errorMessage="Không thể cập nhật thứ tự hiển thị."
+              scopes={scopes}
+              onSave={async (scopeId, moves) => {
+                const scope = scopeMap.get(scopeId);
+
+                if (!scope) {
+                  return { ok: false, error: 'Không xác định được phạm vi sắp xếp.' };
+                }
+
+                for (const move of moves) {
+                  const res = await moveCategoryAction({
+                    itemId: move.itemId,
+                    scope,
+                    beforeId: move.beforeId,
+                    afterId: move.afterId,
+                  });
+                  if (!res.ok) {
+                    return res;
+                  }
+                }
+
+                return { ok: true };
+              }}
+            />
+            <CategoryViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+          </div>
         </div>
 
         <CategoryFilterBar

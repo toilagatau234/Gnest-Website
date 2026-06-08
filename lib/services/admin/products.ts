@@ -16,7 +16,7 @@ export type AdminProduct = Tables<'products'> & {
 // Minimal scalar fields needed by the product edit form
 export type ProductFormData = Pick<
   Tables<'products'>,
-  'id' | 'name' | 'slug' | 'category_id' | 'price' | 'stock' | 'is_active' | 'description' | 'specs'
+  'id' | 'name' | 'slug' | 'category_id' | 'price' | 'stock' | 'is_active' | 'is_featured' | 'description' | 'specs'
 >;
 
 // Slim row for the paginated list — no description, specs, or nested arrays.
@@ -30,6 +30,7 @@ export type ProductListItem = {
   price: number | null;
   stock: number;
   is_active: boolean;
+  is_featured: boolean;
   updated_at: string;
   created_at: string;
   categories: Pick<Tables<'categories'>, 'id' | 'name' | 'slug'> | null;
@@ -42,6 +43,7 @@ export type ProductListItem = {
 export type StockFilter = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
 export type StatusFilter = 'all' | 'active' | 'hidden';
 export type PriceFilter = 'all' | 'fixed' | 'contact';
+export type ImageFilter = 'all' | 'missing' | 'has_image';
 
 export interface ProductListParams {
   page?: number;
@@ -51,6 +53,7 @@ export interface ProductListParams {
   status?: StatusFilter;
   stock?: StockFilter;
   price?: PriceFilter;
+  images?: ImageFilter;
 }
 
 export interface ProductStats {
@@ -79,6 +82,7 @@ export interface ProductPayload {
   stock: number;
   specs: Json;
   is_active: boolean;
+  is_featured: boolean;
 }
 
 // Base row shape returned by the slim list query (Phase 1)
@@ -90,6 +94,7 @@ type ProductBaseRow = {
   price: number | null;
   stock: number;
   is_active: boolean;
+  is_featured: boolean;
   updated_at: string;
   created_at: string;
   categories: Pick<Tables<'categories'>, 'id' | 'name' | 'slug'> | null;
@@ -106,6 +111,7 @@ function toProductAuditSnapshot(product: {
   price?: number | null;
   stock?: number;
   is_active: boolean;
+  is_featured?: boolean;
 }) {
   return {
     name: product.name,
@@ -114,6 +120,7 @@ function toProductAuditSnapshot(product: {
     price: product.price ?? null,
     stock: product.stock ?? 0,
     is_active: product.is_active,
+    is_featured: product.is_featured ?? false,
   };
 }
 
@@ -127,17 +134,31 @@ function normalizeProductPayload(payload: ProductPayload): Inserts<'products'> {
     stock: payload.stock,
     specs: payload.specs,
     is_active: payload.is_active,
+    is_featured: payload.is_featured,
   };
 }
 
 export async function getAdminProductsPage(params: ProductListParams = {}): Promise<ProductListResult> {
-  const { page = 1, pageSize = 30, q, categoryId, status, stock, price } = params;
+  const { page = 1, pageSize = 30, q, categoryId, status, stock, price, images = 'all' } = params;
   const safePage = Math.max(1, page);
   const safePageSize = Math.min(100, Math.max(1, pageSize));
 
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
+
+    let imageProductIds: string[] = [];
+    if (images === 'missing' || images === 'has_image') {
+      const { data: imgData, error: imgError } = await supabase
+        .from('product_images')
+        .select('product_id');
+
+      if (imgError) {
+        throw new Error(`Failed to load product images for filtering: ${imgError.message}`);
+      }
+
+      imageProductIds = Array.from(new Set((imgData ?? []).map((img) => img.product_id).filter(Boolean)));
+    }
 
     // --- Phase 0: Fetch total count first to enable out-of-range page clamping ---
     let countQuery = supabase
@@ -153,6 +174,18 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
     else if (stock === 'low_stock') countQuery = countQuery.gt('stock', 0).lte('stock', 5);
     if (price === 'fixed') countQuery = countQuery.not('price', 'is', null);
     else if (price === 'contact') countQuery = countQuery.is('price', null);
+
+    if (images === 'has_image') {
+      if (imageProductIds.length > 0) {
+        countQuery = countQuery.in('id', imageProductIds);
+      } else {
+        countQuery = countQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      }
+    } else if (images === 'missing') {
+      if (imageProductIds.length > 0) {
+        countQuery = countQuery.not('id', 'in', `(${imageProductIds.join(',')})`);
+      }
+    }
 
     const { count: countTotal, error: countError } = await countQuery;
     if (countError) {
@@ -172,8 +205,9 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
     let query = supabase
       .from('products')
       .select(
-        'id, name, slug, category_id, price, stock, is_active, updated_at, created_at, categories(id, name, slug)',
+        'id, name, slug, category_id, price, stock, is_active, is_featured, updated_at, created_at, categories(id, name, slug)',
       )
+      .order('is_featured', { ascending: false })
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -186,6 +220,18 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
     else if (stock === 'low_stock') query = query.gt('stock', 0).lte('stock', 5);
     if (price === 'fixed') query = query.not('price', 'is', null);
     else if (price === 'contact') query = query.is('price', null);
+
+    if (images === 'has_image') {
+      if (imageProductIds.length > 0) {
+        query = query.in('id', imageProductIds);
+      } else {
+        query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+      }
+    } else if (images === 'missing') {
+      if (imageProductIds.length > 0) {
+        query = query.not('id', 'in', `(${imageProductIds.join(',')})`);
+      }
+    }
 
     const { data: baseRows, error } = await query.returns<ProductBaseRow[]>();
 
@@ -258,6 +304,7 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
         price: row.price,
         stock: row.stock,
         is_active: row.is_active,
+        is_featured: row.is_featured,
         updated_at: row.updated_at,
         created_at: row.created_at,
         categories: row.categories,

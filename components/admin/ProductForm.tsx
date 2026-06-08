@@ -5,6 +5,7 @@ import { AlertCircle, ImageIcon, Star, Upload, X } from 'lucide-react';
 
 import { SpecsEditor } from '@/components/admin/SpecsEditor';
 import { AdminToggle } from '@/components/admin/AdminToggle';
+import { formatCurrencyInput } from '@/lib/utils/currency';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { ProductFormData } from '@/lib/services/admin/products';
 import type { AdminFormState } from '@/app/admin/(dashboard)/products/actions';
@@ -110,7 +111,15 @@ export function ProductForm({
   const [name, setName] = useState(product?.name ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
   const [slugTouched, setSlugTouched] = useState(Boolean(product));
+  const [price, setPrice] = useState<string>(() => {
+    if (product?.price === undefined || product?.price === null) return '';
+    return formatCurrencyInput(String(product.price));
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPrice(formatCurrencyInput(e.target.value));
+  };
 
   const activeCategories = categories.filter(
     (c) => c.is_active || c.id === product?.category_id,
@@ -233,6 +242,15 @@ export function ProductForm({
             description="Tắt để ẩn sản phẩm khỏi website."
           />
         </div>
+
+        <div className="admin-soft-panel px-4 py-3">
+          <AdminToggle
+            name="is_featured"
+            defaultChecked={product?.is_featured ?? false}
+            label="Sản phẩm nổi bật"
+            description="Ưu tiên hiển thị sản phẩm này trước các sản phẩm thường trong cùng danh mục."
+          />
+        </div>
       </div>
 
       {/* ── Pricing ────────────────────────────────────────────────────────── */}
@@ -242,12 +260,11 @@ export function ProductForm({
             <span className={labelClass}>Giá lẻ tham khảo (VNĐ)</span>
             <input
               name="price"
-              type="number"
-              min="0"
-              step="100"
-              defaultValue={product?.price ?? ''}
+              type="text"
+              value={price}
+              onChange={handlePriceChange}
               className={fieldClass}
-              placeholder='Để trống nếu hiển thị "Liên hệ"'
+              placeholder="Ví dụ: 1.000.000"
             />
             <span className="mt-1.5 block text-[10px] font-medium text-slate-400">
               Để trống nếu muốn hiển thị chữ &quot;Liên hệ&quot; thay vì giá cụ thể.

@@ -47,6 +47,7 @@ const ALL_COLUMNS = [
   'base_price',
   'stock',
   'is_active',
+  'is_featured',
   'description',
   // Physical spec fields → merged into specs JSONB
   'unit',
@@ -83,6 +84,7 @@ async function downloadTemplate() {
       base_price: 18500,
       stock: 240,
       is_active: 'true',
+      is_featured: 'true',
       description: 'Mô tả ngắn hiển thị trong catalog sỉ.',
       unit: 'chai',
       volume: '500ml',
@@ -106,6 +108,7 @@ async function downloadTemplate() {
       base_price: 2100,
       stock: 1000,
       is_active: 'true',
+      is_featured: 'false',
       description: 'Phụ kiện đi kèm cho hũ thủy tinh 58mm.',
       unit: 'cái',
       volume: '',
@@ -129,6 +132,7 @@ async function downloadTemplate() {
       base_price: '',
       stock: '',
       is_active: 'true',
+      is_featured: 'false',
       description: '',
       unit: '',
       volume: '',
@@ -155,6 +159,7 @@ async function downloadTemplate() {
     ['—', 'base_price', 'Tùy chọn', 'products.price', 'Giá niêm yết. Số không âm (VD: 18500). Để trống → hiển thị "Liên hệ tư vấn".'],
     ['—', 'stock', 'Tùy chọn', 'products.stock', 'Số lượng tồn kho (số nguyên ≥ 0). Để trống → mặc định 0.'],
     ['—', 'is_active', 'Tùy chọn', 'products.is_active', 'Trạng thái hiển thị. Chấp nhận: true/false, 1/0, yes/no, active/hidden. Để trống → true.'],
+    ['—', 'is_featured', 'Tùy chọn', 'products.is_featured', 'Đánh dấu sản phẩm nổi bật. Chấp nhận true/false, 1/0, yes/no. Để trống → false.'],
     ['—', 'description', 'Tùy chọn', 'products.description', 'Mô tả ngắn (text thuần). Không dùng HTML.'],
     ['—', 'unit', 'Tùy chọn', 'products.specs.unit', 'Đơn vị tính. VD: chai, cái, kg, hộp. Được lưu vào trường specs JSON.'],
     ['—', 'volume', 'Tùy chọn', 'products.specs.volume', 'Dung tích. VD: 500ml, 1L. Được lưu vào trường specs JSON.'],
@@ -189,6 +194,7 @@ async function downloadTemplate() {
     ['base_price', 'Số không âm, hoặc để trống (= Liên hệ)', '18500'],
     ['stock', 'Số nguyên ≥ 0, hoặc để trống (= 0)', '240'],
     ['is_active', 'true / false / 1 / 0 / yes / no / active / hidden, hoặc để trống (= true)', 'true'],
+    ['is_featured', 'true / false / 1 / 0 / yes / no, hoặc để trống (= false)', 'false'],
     ['description', 'Text thuần, không dùng HTML', 'Mô tả ngắn cho catalog sỉ.'],
     ['unit', 'Text tự do', 'chai'],
     ['volume', 'Text tự do', '500ml'],
@@ -213,6 +219,7 @@ async function downloadTemplate() {
     { wch: 14 }, // base_price
     { wch: 10 }, // stock
     { wch: 12 }, // is_active
+    { wch: 12 }, // is_featured
     { wch: 40 }, // description
     { wch: 10 }, // unit
     { wch: 10 }, // volume
@@ -228,7 +235,7 @@ async function downloadTemplate() {
     { wch: 20 }, // tier_4_min_quantity
     { wch: 14 }, // tier_4_price
   ];
-  ws['!autofilter'] = { ref: `A1:U${sampleRows.length + 1}` };
+  ws['!autofilter'] = { ref: `A1:V${sampleRows.length + 1}` };
   ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
 
   // Instructions sheet
@@ -369,6 +376,12 @@ function parseFile(file: File): Promise<ParsedFile> {
             stock: raw2('stock'),
             is_active: (() => {
               const v = norm.is_active;
+              if (v === null || v === undefined) return null;
+              if (typeof v === 'string' || typeof v === 'boolean' || typeof v === 'number') return v;
+              return String(v);
+            })(),
+            is_featured: (() => {
+              const v = norm.is_featured;
               if (v === null || v === undefined) return null;
               if (typeof v === 'string' || typeof v === 'boolean' || typeof v === 'number') return v;
               return String(v);
@@ -518,6 +531,7 @@ function UploadStep({ onFile }: { onFile: (rows: ImportRow[], filename: string) 
             { col: 'base_price', note: 'Tùy chọn — số không âm, trống = Liên hệ' },
             { col: 'stock', note: 'Tùy chọn — số nguyên, mặc định 0' },
             { col: 'is_active', note: 'true/false/1/0/yes/no/active/hidden' },
+            { col: 'is_featured', note: 'true/false/1/0/yes/no' },
             { col: 'description', note: 'Tùy chọn — text thuần' },
             { col: 'unit / volume / height / diameter / material', note: 'Tùy chọn — lưu vào specs JSONB' },
             { col: 'image_1_url / image_2_url / image_3_url', note: 'Tùy chọn — URL https://' },
@@ -719,6 +733,7 @@ function PreviewStep({
               <th className="px-3 py-2.5 font-semibold text-slate-500">Giá</th>
               <th className="px-3 py-2.5 font-semibold text-slate-500">Kho</th>
               <th className="px-3 py-2.5 font-semibold text-slate-500">Hiện</th>
+              <th className="px-3 py-2.5 font-semibold text-slate-500">Nổi bật</th>
               <th className="px-3 py-2.5 font-semibold text-slate-500">
                 <ImageIcon className="inline h-3 w-3" />
               </th>
@@ -756,6 +771,9 @@ function PreviewStep({
                   <Cell value={row.stock != null ? String(row.stock) : '0'} />
                   <td className="px-3 py-2 text-slate-600">
                     {String(row.is_active ?? 'true').toLowerCase().replace('true', '✓').replace('false', '✗')}
+                  </td>
+                  <td className="px-3 py-2 text-slate-600">
+                    {String(row.is_featured ?? 'false').toLowerCase().replace('true', '✓').replace('false', '✗')}
                   </td>
                   <td className="px-3 py-2 text-slate-400">
                     {imgCount > 0 ? <span className="font-semibold text-slate-600">{imgCount}</span> : '—'}
@@ -983,8 +1001,10 @@ export function ProductImportContent({ onClose, onPendingChange }: ProductImport
 export function ProductImportDialog() {
   const [open, setOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [sessionKey, setSessionKey] = useState(0);
 
   function openDialog() {
+    setSessionKey((current) => current + 1);
     setOpen(true);
   }
 
@@ -1008,6 +1028,7 @@ export function ProductImportDialog() {
         dismissible={!isPending}
       >
         <ProductImportContent
+          key={sessionKey}
           onClose={closeDialog}
           onPendingChange={setIsPending}
         />

@@ -71,6 +71,7 @@ export interface Database {
           type: CategoryType;
           parent_id: string | null;
           sort_order: number;
+          rank_key: string;
           has_filters: boolean;
           is_active: boolean;
           created_at: string;
@@ -83,6 +84,7 @@ export interface Database {
           type?: CategoryType;
           parent_id?: string | null;
           sort_order?: number;
+          rank_key?: string;
           has_filters?: boolean;
           is_active?: boolean;
           created_at?: string;
@@ -94,6 +96,7 @@ export interface Database {
           type?: CategoryType;
           parent_id?: string | null;
           sort_order?: number;
+          rank_key?: string;
           has_filters?: boolean;
           is_active?: boolean;
           updated_at?: string;
@@ -111,6 +114,7 @@ export interface Database {
           stock: number;
           specs: Json;
           is_active: boolean;
+          is_featured: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -124,6 +128,7 @@ export interface Database {
           stock?: number;
           specs?: Json;
           is_active?: boolean;
+          is_featured?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -136,6 +141,7 @@ export interface Database {
           stock?: number;
           specs?: Json;
           is_active?: boolean;
+          is_featured?: boolean;
           updated_at?: string;
         };
         Relationships: [];
@@ -208,6 +214,7 @@ export interface Database {
           zalo: string | null;
           avatar_url: string | null;
           sort_order: number;
+          rank_key: string;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -220,6 +227,7 @@ export interface Database {
           zalo?: string | null;
           avatar_url?: string | null;
           sort_order?: number;
+          rank_key?: string;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -231,6 +239,7 @@ export interface Database {
           zalo?: string | null;
           avatar_url?: string | null;
           sort_order?: number;
+          rank_key?: string;
           is_active?: boolean;
           updated_at?: string;
         };
@@ -245,6 +254,7 @@ export interface Database {
           location: string | null;
           salary_range: string | null;
           sort_order: number;
+          rank_key: string;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -257,6 +267,7 @@ export interface Database {
           location?: string | null;
           salary_range?: string | null;
           sort_order?: number;
+          rank_key?: string;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -268,6 +279,7 @@ export interface Database {
           location?: string | null;
           salary_range?: string | null;
           sort_order?: number;
+          rank_key?: string;
           is_active?: boolean;
           updated_at?: string;
         };

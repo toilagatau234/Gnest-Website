@@ -6,7 +6,7 @@ import { AdminSection } from '@/components/admin/AdminSection';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { JobFormDialog } from '@/components/admin/JobFormDialog';
 import { JobsTable } from '@/components/admin/JobsTable';
-import { getAdminJobsPage, getAdminJobStats } from '@/lib/services/admin/jobs';
+import { getAdminJobs, getAdminJobsPage, getAdminJobStats } from '@/lib/services/admin/jobs';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,15 +19,17 @@ export default async function JobsPage({
   const page = Math.max(1, Number(sp.page) || 1);
   const pageSize = 20;
 
-  const [pageResult, statsResult] = await Promise.all([
+  const [pageResult, statsResult, allJobsResult] = await Promise.all([
     getAdminJobsPage({ page, pageSize }),
     getAdminJobStats(),
+    getAdminJobs(),
   ]);
 
   const { data: jobs, error: pageError, pageCount, total } = pageResult;
   const { data: stats } = statsResult;
   const safeJobs = jobs ?? [];
-  const error = pageError;
+  const allJobs = allJobsResult.data ?? [];
+  const error = pageError ?? allJobsResult.error;
 
   return (
     <AdminSection>
@@ -86,6 +88,7 @@ export default async function JobsPage({
       {!error && total > 0 ? (
         <JobsTable
           jobs={safeJobs}
+          allJobs={allJobs}
           page={page}
           pageCount={pageCount}
           total={total}

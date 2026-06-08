@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import {
   createAdminSalesContact,
   deleteAdminSalesContact,
+  moveAdminSalesContact,
   setAdminSalesContactActive,
   updateAdminSalesContact,
   type SalesContactPayload,
@@ -25,7 +26,6 @@ function readBoolean(formData: FormData, key: string) {
 function readSalesContactPayload(formData: FormData): SalesContactPayload {
   const name = readString(formData, 'name');
   const phone = readString(formData, 'phone');
-  const sortOrder = Number(readString(formData, 'sort_order') || 0);
 
   if (!name) {
     throw new Error('Tên nhân sự tư vấn là bắt buộc.');
@@ -41,7 +41,6 @@ function readSalesContactPayload(formData: FormData): SalesContactPayload {
     phone,
     zalo: readString(formData, 'zalo') || null,
     avatar_url: readString(formData, 'avatar_url') || null,
-    sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
     is_active: readBoolean(formData, 'is_active'),
   };
 }
@@ -134,4 +133,33 @@ export async function toggleSalesContactActiveAction(formData: FormData) {
   }
 
   revalidateSalesContacts();
+}
+
+export async function moveSalesContactAction(input: {
+  itemId: string;
+  beforeId: string | null;
+  afterId: string | null;
+}): Promise<AdminFormState> {
+  if (!input.itemId) {
+    return { ok: false, error: 'Dữ liệu di chuyển không hợp lệ.' };
+  }
+
+  try {
+    const requestContext = await getRequestContext();
+    const { error } = await moveAdminSalesContact(
+      input.itemId,
+      input.beforeId,
+      input.afterId,
+      requestContext
+    );
+
+    if (error) {
+      return { ok: false, error };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Không thể cập nhật thứ tự hiển thị.' };
+  }
+
+  revalidateSalesContacts();
+  return { ok: true };
 }

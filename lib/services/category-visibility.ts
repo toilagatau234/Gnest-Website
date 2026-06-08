@@ -1,9 +1,12 @@
+import { compareRankKey } from '@/lib/services/admin/rank-key';
+
 type CategoryVisibilityRecord = {
   id: string;
   slug: string;
   parent_id: string | null;
   is_active: boolean;
   sort_order: number | null;
+  rank_key?: string | null;
   name: string;
 };
 
@@ -15,6 +18,11 @@ export interface CategoryPriorityWarning {
 
 export function sortCategoriesDeterministically<T extends CategoryVisibilityRecord>(categories: T[]): T[] {
   return [...categories].sort((left, right) => {
+    const rankCompare = compareRankKey(left.rank_key, right.rank_key);
+    if (rankCompare !== 0) {
+      return rankCompare;
+    }
+
     const leftOrder = left.sort_order ?? 0;
     const rightOrder = right.sort_order ?? 0;
 

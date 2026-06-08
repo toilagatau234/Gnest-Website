@@ -13,6 +13,7 @@ import {
   updateProductDiscountAction,
   type ActionState,
 } from '@/app/admin/(dashboard)/products/media-discount-actions';
+import { formatCurrencyInput, parseCurrencyInput } from '@/lib/utils/currency';
 
 interface ProductDiscount {
   id: string;
@@ -28,18 +29,6 @@ interface ProductBulkDiscountManagerProps {
   retailPrice: number | null;
 }
 
-function formatCurrencyInput(value: string) {
-  const clean = value.replace(/[^0-9]/g, '');
-  if (!clean) {
-    return '';
-  }
-
-  return Number(clean).toLocaleString('vi-VN');
-}
-
-function parseCurrencyInput(value: string) {
-  return Number(value.replace(/[^0-9]/g, '') || 0);
-}
 
 export function ProductBulkDiscountManager({
   productId,

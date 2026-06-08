@@ -18,6 +18,7 @@ interface ProductMediaAndDiscountDialogProps {
 export function ProductMediaAndDiscountDialog({ productId, productName, productPrice }: ProductMediaAndDiscountDialogProps) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'media' | 'discounts'>('media');
+  const [discountSessionKey, setDiscountSessionKey] = useState(0);
   const [detail, setDetail] = useState<AdminProduct | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export function ProductMediaAndDiscountDialog({ productId, productName, productP
   }
 
   async function openDialog() {
+    setDiscountSessionKey((current) => current + 1);
     setOpen(true);
     if (detail) return;
     await loadDetail();
@@ -114,7 +116,12 @@ export function ProductMediaAndDiscountDialog({ productId, productName, productP
               {activeTab === 'media' ? (
                 <ProductMediaManager productId={productId} images={images} />
               ) : (
-                <ProductBulkDiscountManager productId={productId} discounts={discounts} retailPrice={productPrice} />
+                <ProductBulkDiscountManager
+                  key={`${productId}:${discountSessionKey}`}
+                  productId={productId}
+                  discounts={discounts}
+                  retailPrice={productPrice}
+                />
               )}
             </div>
           </div>
