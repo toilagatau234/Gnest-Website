@@ -218,6 +218,42 @@ type PublicProductQueryRow = {
   } | null;
 };
 
+export async function getHotProductInquiryCounts(productIds: string[], days = 30): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (productIds.length === 0) return counts;
+
+  try {
+    const supabase = await createClient();
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const { data, error } = await supabase
+      .from('inquiries')
+      .select('product_id')
+      .in('product_id', productIds)
+      .gte('created_at', cutoffDate.toISOString())
+      .neq('status', 'spam')
+      .not('product_id', 'is', null);
+
+    if (error) {
+      console.error(`Failed to fetch inquiries for hot product counts: ${error.message}`);
+      return counts;
+    }
+
+    if (data) {
+      data.forEach((row) => {
+        if (row.product_id) {
+          counts.set(row.product_id, (counts.get(row.product_id) || 0) + 1);
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Failed to get hot product inquiry counts:', err);
+  }
+
+  return counts;
+}
+
 export async function getPublicProductsPage({
   categorySlug,
   page,
@@ -306,10 +342,10 @@ export async function getPublicProductsPage({
   }
 
   const rawProducts = (data ?? []) as unknown as PublicProductQueryRow[];
+  const rawProductIds = rawProducts.map((p) => p.id);
+  const hotCounts = await getHotProductInquiryCounts(rawProductIds);
   
-  // TODO: Currently sorts public products in memory to combine category rank_key + is_featured.
-  // This is acceptable for the current dataset size.
-  // Future scale path: use DB view/materialized view or denormalized category_rank_key in products table.
+  // Sort products combined: category rank_key -> is_featured -> hot count -> created_at desc -> name asc
   const sortedProducts = [...rawProducts].sort((a, b) => {
     const catA = a.categories as any;
     const catB = b.categories as any;
@@ -324,6 +360,12 @@ export async function getPublicProductsPage({
     const featB = b.is_featured ? 1 : 0;
     if (featA !== featB) {
       return featB - featA;
+    }
+
+    const countA = hotCounts.get(a.id) || 0;
+    const countB = hotCounts.get(b.id) || 0;
+    if (countA !== countB) {
+      return countB - countA;
     }
     
     const timeA = new Date(a.created_at).getTime();
@@ -595,10 +637,10 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
     }
 
     const rawRootProducts = (rootProducts ?? []) as unknown as PublicProductQueryRow[];
+    const rawRootProductIds = rawRootProducts.map((p) => p.id);
+    const hotCounts = await getHotProductInquiryCounts(rawRootProductIds);
 
-    // TODO: Currently sorts homepage products in memory to combine category rank_key + is_featured.
-    // This is acceptable for the current dataset size.
-    // Future scale path: use DB view/materialized view or denormalized category_rank_key in products table.
+    // Sort homepage products in memory combining: category rank_key -> is_featured -> hot count -> created_at desc -> name asc
     const sorted = [...rawRootProducts].sort((a, b) => {
       const catA = a.categories as any;
       const catB = b.categories as any;
@@ -613,6 +655,12 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
       const featB = b.is_featured ? 1 : 0;
       if (featA !== featB) {
         return featB - featA;
+      }
+
+      const countA = hotCounts.get(a.id) || 0;
+      const countB = hotCounts.get(b.id) || 0;
+      if (countA !== countB) {
+        return countB - countA;
       }
       
       const timeA = new Date(a.created_at).getTime();
