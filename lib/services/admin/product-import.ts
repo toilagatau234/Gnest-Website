@@ -21,6 +21,7 @@ export interface ImportRow {
   base_price?: string | number | null;
   stock?: string | number | null;
   is_active?: string | boolean | number | null;
+  is_featured?: string | boolean | number | null;
   // Physical spec fields → merged into products.specs JSONB
   unit?: string | null;
   volume?: string | null;
@@ -112,9 +113,23 @@ function parseIsActive(value: unknown): boolean {
   return !IS_ACTIVE_FALSE.has(String(value).trim().toLowerCase());
 }
 
+function isValidIsFeatured(value: unknown): boolean {
+  if (isEmptyish(value)) return true;
+  return IS_ACTIVE_VALID.has(String(value).trim().toLowerCase());
+}
+
+function parseIsFeatured(value: unknown): boolean {
+  if (isEmptyish(value)) return false;
+  return !IS_ACTIVE_FALSE.has(String(value).trim().toLowerCase());
+}
+
 function parsePrice(value: unknown): number | null {
   if (isEmptyish(value)) return null;
-  const n = Number(String(value).replace(/,/g, '').trim());
+  const str = String(value).trim();
+  if (!str) return null;
+  const clean = str.replace(/[\s.,]/g, '');
+  if (!/^\d+$/.test(clean)) return NaN;
+  const n = Number(clean);
   return Number.isFinite(n) ? n : NaN;
 }
 
@@ -132,7 +147,11 @@ function parseTierQty(value: unknown): number | null {
 
 function parseTierPrice(value: unknown): number | null {
   if (isEmptyish(value)) return null;
-  const n = Number(String(value).replace(/,/g, '').trim());
+  const str = String(value).trim();
+  if (!str) return null;
+  const clean = str.replace(/[\s.,]/g, '');
+  if (!/^\d+$/.test(clean)) return NaN;
+  const n = Number(clean);
   return Number.isFinite(n) ? n : NaN;
 }
 
@@ -314,6 +333,17 @@ export function validateImportRows(
         value: String(row.is_active),
         message: 'Trạng thái hiển thị không hợp lệ.',
         suggestion: 'Dùng: true/false, 1/0, yes/no, active/hidden (hoặc để trống = hiển thị).',
+      });
+    }
+
+    // is_featured
+    if (!isValidIsFeatured(row.is_featured)) {
+      errors.push({
+        row: r,
+        field: 'is_featured',
+        value: String(row.is_featured),
+        message: 'Trạng thái nổi bật không hợp lệ.',
+        suggestion: 'Dùng: true/false, 1/0, yes/no hoặc để trống = không nổi bật.',
       });
     }
 
@@ -548,6 +578,7 @@ export async function bulkImportProducts(
       price: parsePrice(row.base_price) ?? null,
       stock: parseStock(row.stock) || 0,
       is_active: parseIsActive(row.is_active),
+      is_featured: parseIsFeatured(row.is_featured),
       specs: (Object.keys(specsData).length > 0 ? specsData : {}) as Json,
     };
   });

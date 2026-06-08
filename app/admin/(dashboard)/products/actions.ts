@@ -197,6 +197,7 @@ export type BulkRowPayload = {
   price: number | null;
   stock: number;
   is_active: boolean;
+  is_featured: boolean;
   description: string | null;
 };
 
@@ -231,7 +232,7 @@ export async function bulkCreateProductsAction(rows: BulkRowPayload[]): Promise<
         stock: Math.max(0, Math.floor(row.stock ?? 0)),
         specs: {} as Json,
         is_active: row.is_active,
-        is_featured: false,
+        is_featured: row.is_featured,
       };
 
       const { data, error } = await createAdminProduct(payload, requestContext);

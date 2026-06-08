@@ -21,6 +21,7 @@ import {
 } from '@/app/admin/(dashboard)/products/actions';
 import { uploadProductImageAction } from '@/app/admin/(dashboard)/products/media-discount-actions';
 import type { AdminCategory } from '@/lib/services/admin/categories';
+import { formatCurrencyInput, parseNullableCurrencyInput } from '@/lib/utils/currency';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,6 +52,7 @@ interface BulkRow {
   price: string;
   stock: string;
   is_active: boolean;
+  is_featured: boolean;
   images: RowImage[];
   expandImages: boolean;
   status: RowStatus;
@@ -96,6 +98,7 @@ function emptyRow(): BulkRow {
     price: '',
     stock: '0',
     is_active: true,
+    is_featured: false,
     images: [],
     expandImages: false,
     status: 'draft',
@@ -113,8 +116,11 @@ function validateRow(row: BulkRow, allRows: BulkRow[]): Record<string, string> {
   } else if (allRows.some((r) => r.clientId !== row.clientId && r.slug === row.slug)) {
     errs.slug = 'Slug trùng trong bảng';
   }
-  if (row.price !== '' && (isNaN(Number(row.price)) || Number(row.price) < 0)) {
-    errs.price = 'Giá >= 0';
+  if (row.price.trim() !== '') {
+    const clean = row.price.trim().replace(/[\s.,]/g, '');
+    if (!/^\d+$/.test(clean) || Number(clean) < 0) {
+      errs.price = 'Giá >= 0';
+    }
   }
   if (row.stock !== '' && (!Number.isInteger(Number(row.stock)) || Number(row.stock) < 0)) {
     errs.stock = 'Số nguyên >= 0';
@@ -428,7 +434,7 @@ function RowEditor({
           <input
             type="text"
             value={row.price}
-            onChange={(e) => onFieldChange('price', e.target.value)}
+            onChange={(e) => onFieldChange('price', formatCurrencyInput(e.target.value))}
             disabled={disabled || isLocked || isDone}
             placeholder="Liên hệ"
             className={inp(!!row.errors.price)}
@@ -460,6 +466,17 @@ function RowEditor({
             type="checkbox"
             checked={row.is_active}
             onChange={(e) => onFieldChange('is_active', e.target.checked)}
+            disabled={disabled || isLocked || isDone}
+            className="h-4 w-4 cursor-pointer rounded border-[#E5E7EF] text-[#4880FF] focus:ring-[#4880ff]/35"
+          />
+        </td>
+
+        {/* Is featured */}
+        <td className="px-2 py-1.5 text-center">
+          <input
+            type="checkbox"
+            checked={row.is_featured}
+            onChange={(e) => onFieldChange('is_featured', e.target.checked)}
             disabled={disabled || isLocked || isDone}
             className="h-4 w-4 cursor-pointer rounded border-[#E5E7EF] text-[#4880FF] focus:ring-[#4880ff]/35"
           />
@@ -538,7 +555,7 @@ function RowEditor({
       {/* Expandable image panel */}
       {row.expandImages && (
         <tr className={`border-b border-[#EEF2F6] ${rowBg}`}>
-          <td colSpan={10} className="px-4 pb-3 pt-1">
+          <td colSpan={11} className="px-4 pb-3 pt-1">
             <RowImagePanel
               images={row.images}
               disabled={isLocked || isDone}
@@ -759,9 +776,10 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
           name: row.name.trim(),
           slug: row.slug.trim(),
           category_id: row.category_id || null,
-          price: row.price !== '' ? Number(row.price) : null,
+          price: row.price.trim() !== '' ? parseNullableCurrencyInput(row.price) : null,
           stock: Math.max(0, Math.floor(Number(row.stock) || 0)),
           is_active: row.is_active,
+          is_featured: row.is_featured,
           description: null,
         }));
 
@@ -915,6 +933,7 @@ export function ProductBulkManualTable({ categories }: ProductBulkManualTablePro
               <th className="w-24 px-2 py-2.5">Giá (đ)</th>
               <th className="w-20 px-2 py-2.5">Kho</th>
               <th className="w-12 px-2 py-2.5 text-center">Hiện</th>
+              <th className="w-12 px-2 py-2.5 text-center" title="Ưu tiên hiển thị trước trong cùng danh mục">Nổi bật</th>
               <th className="w-16 px-2 py-2.5 text-center">Ảnh</th>
               <th className="w-28 px-2 py-2.5">Trạng thái</th>
               <th className="w-14 px-2 py-2.5" />
