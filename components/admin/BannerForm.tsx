@@ -1,7 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertCircle, Globe, LayoutGrid } from 'lucide-react';
+import {
+  AlertCircle,
+  CalendarClock,
+  Eye,
+  ImageIcon,
+  Link2,
+  ListOrdered,
+  Megaphone,
+  Monitor,
+  Smartphone,
+} from 'lucide-react';
 
 import { AdminToggle } from '@/components/admin/AdminToggle';
 import type { AdminBanner } from '@/lib/services/admin/banners';
@@ -16,6 +26,25 @@ interface BannerFormProps {
 
 const fieldClass = 'admin-input text-xs';
 const labelClass = 'mb-1.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#646464]';
+const helperClass = 'mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400';
+
+const POSITION_OPTIONS = [
+  {
+    value: 'site_top',
+    label: 'Thanh thông báo đầu trang',
+    description: 'Phù hợp cho thông báo ngắn, khuyến mãi nhanh hoặc thông tin toàn website.',
+  },
+  {
+    value: 'home_after_products',
+    label: 'Banner lớn ở trang chủ',
+    description: 'Phù hợp cho hình ảnh chiến dịch, chương trình nổi bật hoặc bộ sưu tập sản phẩm.',
+  },
+  {
+    value: 'catalog_top',
+    label: 'Banner đầu trang danh mục',
+    description: 'Phù hợp để nhấn mạnh ưu đãi hoặc thông tin khi khách đang xem danh mục sản phẩm.',
+  },
+] as const;
 
 function toDatetimeLocal(isoString?: string | null) {
   if (!isoString) return '';
@@ -30,6 +59,66 @@ function toDatetimeLocal(isoString?: string | null) {
   }
 }
 
+function getPositionLabel(position: string) {
+  return POSITION_OPTIONS.find((option) => option.value === position)?.label ?? 'Vị trí hiển thị';
+}
+
+function BannerPreview({
+  title,
+  content,
+  linkUrl,
+  imageUrl,
+  mode,
+}: {
+  title: string;
+  content: string;
+  linkUrl: string;
+  imageUrl: string;
+  mode: 'desktop' | 'mobile';
+}) {
+  const hasImage = imageUrl.trim().length > 0;
+  const previewStyle = hasImage
+    ? {
+        backgroundImage: `linear-gradient(90deg, rgba(27, 58, 107, 0.82), rgba(27, 58, 107, 0.34)), url(${imageUrl.trim()})`,
+      }
+    : undefined;
+
+  return (
+    <div className={mode === 'desktop' ? 'space-y-2' : 'space-y-2'}>
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        {mode === 'desktop' ? <Monitor className="h-3.5 w-3.5" /> : <Smartphone className="h-3.5 w-3.5" />}
+        {mode === 'desktop' ? 'Xem trước máy tính' : 'Xem trước điện thoại'}
+      </div>
+      <div
+        className={`overflow-hidden rounded-2xl border border-slate-200 bg-cover bg-center shadow-sm ${
+          mode === 'desktop' ? 'min-h-[150px]' : 'mx-auto min-h-[190px] max-w-[260px]'
+        }`}
+        style={previewStyle}
+      >
+        <div className={`flex h-full min-h-inherit flex-col justify-center gap-3 p-5 ${hasImage ? 'text-white' : 'bg-gradient-to-br from-[#EEF4FF] to-white text-[#1B3A6B]'}`}>
+          <div className="inline-flex w-fit items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ring-1 ring-white/25">
+            <Megaphone className="h-3 w-3" />
+            Banner
+          </div>
+          <div>
+            <p className={`font-extrabold leading-tight ${mode === 'desktop' ? 'text-lg' : 'text-base'}`}>
+              {title.trim() || 'Tên chiến dịch / chương trình'}
+            </p>
+            <p className={`mt-1.5 leading-relaxed ${mode === 'desktop' ? 'text-sm' : 'text-xs'} ${hasImage ? 'text-white/90' : 'text-slate-600'}`}>
+              {content.trim() || 'Nội dung banner sẽ hiển thị tại đây để admin kiểm tra trước khi lưu.'}
+            </p>
+          </div>
+          {linkUrl.trim() ? (
+            <span className={`inline-flex w-fit items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-bold ${hasImage ? 'bg-white text-[#1B3A6B]' : 'bg-[#1B3A6B] text-white'}`}>
+              <Link2 className="h-3 w-3" /> Có liên kết khi bấm vào
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function BannerForm({ formId, formAction, state, banner }: BannerFormProps) {
   const [name, setName] = useState(banner?.name ?? '');
   const [content, setContent] = useState(banner?.content ?? '');
@@ -39,6 +128,7 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
   const [imageMobileUrl, setImageMobileUrl] = useState(banner?.image_mobile_url ?? '');
   const [startAt, setStartAt] = useState(toDatetimeLocal(banner?.start_at));
   const [endAt, setEndAt] = useState(toDatetimeLocal(banner?.end_at));
+  const selectedPosition = POSITION_OPTIONS.find((option) => option.value === position) ?? POSITION_OPTIONS[0];
 
   return (
     <form id={formId} action={formAction} className="space-y-5">
@@ -51,170 +141,229 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block sm:col-span-2">
-          <span className={labelClass}>
-            Tên banner (Quản trị) <span className="text-[#E31E24]">*</span>
-          </span>
-          <input
-            name="name"
-            type="text"
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className={fieldClass}
-            placeholder="VD: Chương trình khuyến mãi hè 2026"
-          />
-          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Tên gọi nội bộ giúp nhận diện và quản lý banner trong danh sách CMS.
-          </span>
-        </label>
-
-        <label className="block">
-          <span className={labelClass}>Vị trí hiển thị</span>
-          <select
-            name="position"
-            value={position}
-            onChange={(event) => setPosition(event.target.value)}
-            className={fieldClass}
-          >
-            <option value="site_top">Thanh thông báo đầu trang (site_top)</option>
-            <option value="home_after_products">Vùng banner trang chủ (home_after_products)</option>
-            <option value="catalog_top">Vùng banner trang danh mục (catalog_top)</option>
-          </select>
-          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Khu vực mà banner này sẽ xuất hiện trên giao diện.
-          </span>
-        </label>
-
-        <label className="block">
-          <span className={labelClass}>Thứ tự ưu tiên</span>
-          <input
-            name="sort_order"
-            type="number"
-            defaultValue={banner?.sort_order ?? 0}
-            className={fieldClass}
-          />
-          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Số nhỏ hơn sẽ hiển thị trước. Nếu bằng nhau, banner tạo sau hiển thị trước.
-          </span>
-        </label>
-
-        <label className="block sm:col-span-2">
-          <span className={labelClass}>
-            Nội dung hiển thị / Headline mô tả <span className="text-[#E31E24]">*</span>
-          </span>
-          <textarea
-            name="content"
-            required
-            rows={2}
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            className={`${fieldClass} resize-y min-h-[56px]`}
-            placeholder="VD: Giảm ngay 10% cho tất cả đơn hàng hũ yến thủy tinh đặt trong hôm nay!"
-          />
-          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Nội dung văn bản hiển thị. Đối với banner hình ảnh, phần này đóng vai trò như thẻ ALT mô tả ảnh.
-          </span>
-        </label>
-
-        <label className="block sm:col-span-2">
-          <span className={labelClass}>Đường dẫn liên kết (Link URL)</span>
-          <input
-            name="link_url"
-            type="text"
-            value={linkUrl}
-            onChange={(event) => setLinkUrl(event.target.value)}
-            className={fieldClass}
-            placeholder="VD: /danh-muc/hu-yen-chung hoặc https://..."
-          />
-          <span className="mt-1.5 block text-[10px] font-medium leading-relaxed text-slate-400">
-            Đường dẫn chuyển tiếp khi người dùng click vào banner. Để trống nếu không cần dẫn link.
-          </span>
-        </label>
-
-        <div className="border-t border-[#EEF2F6] sm:col-span-2 my-2" />
-
-        {/* Image configurations (primarily used for homepage banner slots) */}
-        <div className="sm:col-span-2 space-y-4">
-          <h3 className="text-xs font-extrabold text-[#1B3A6B] flex items-center gap-1.5 uppercase tracking-wider">
-            <LayoutGrid className="w-4 h-4 text-slate-400" /> Cấu hình hình ảnh (Tùy chọn cho Vùng banner trang chủ)
-          </h3>
-          <p className="text-[11px] text-slate-400">
-            Các đường dẫn hình ảnh này sẽ được ưu tiên hiển thị ở Vùng banner trang chủ. Nếu không nhập, hệ thống sẽ tự động vẽ một card thông tin dạng văn bản nền màu tương ứng.
-          </p>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className={labelClass}>Desktop Image URL</span>
-              <input
-                name="image_desktop_url"
-                type="url"
-                value={imageDesktopUrl}
-                onChange={(event) => setImageDesktopUrl(event.target.value)}
-                className={`${fieldClass} font-mono`}
-                placeholder="https://..."
-              />
-            </label>
-
-            <label className="block">
-              <span className={labelClass}>Mobile Image URL</span>
-              <input
-                name="image_mobile_url"
-                type="url"
-                value={imageMobileUrl}
-                onChange={(event) => setImageMobileUrl(event.target.value)}
-                className={`${fieldClass} font-mono`}
-                placeholder="https://..."
-              />
-            </label>
-          </div>
-        </div>
-
-        <div className="border-t border-[#EEF2F6] sm:col-span-2 my-2" />
-
-        {/* Schedule settings */}
-        <div className="sm:col-span-2 space-y-4">
-          <h3 className="text-xs font-extrabold text-[#1B3A6B] flex items-center gap-1.5 uppercase tracking-wider">
-            <Globe className="w-4 h-4 text-slate-400" /> Cấu hình lịch trình phát sóng (Tùy chọn)
-          </h3>
-          <p className="text-[11px] text-slate-400">
-            Để trống nếu bạn muốn banner hiển thị ngay lập tức và không giới hạn thời gian (chỉ phụ thuộc vào trạng thái Kích hoạt bên dưới).
-          </p>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className={labelClass}>Ngày bắt đầu (Start Time)</span>
-              <input
-                name="start_at"
-                type="datetime-local"
-                value={startAt}
-                onChange={(event) => setStartAt(event.target.value)}
-                className={fieldClass}
-              />
-            </label>
-
-            <label className="block">
-              <span className={labelClass}>Ngày kết thúc (End Time)</span>
-              <input
-                name="end_at"
-                type="datetime-local"
-                value={endAt}
-                onChange={(event) => setEndAt(event.target.value)}
-                className={fieldClass}
-              />
-            </label>
-          </div>
-        </div>
+      <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-xs leading-relaxed text-[#1B3A6B]">
+        <p className="font-bold">Gợi ý nhanh cho admin</p>
+        <p className="mt-1 text-[11px] text-slate-600">
+          Chỉ cần nhập tên, nội dung, chọn vị trí và dán link ảnh nếu có. Nếu chưa có ảnh, website vẫn hiển thị banner dạng chữ nên bạn có thể lưu trước rồi bổ sung ảnh sau.
+        </p>
       </div>
 
-      <div className="admin-soft-panel px-4 py-3">
-        <AdminToggle
-          name="is_active"
-          defaultChecked={banner?.is_active ?? true}
-          label="Kích hoạt hiển thị công khai"
-          description="Tắt để tạm thời ẩn banner này khỏi website bất kể lịch trình."
-        />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <div className="space-y-5">
+          <section className="space-y-4 rounded-2xl border border-[#EEF2F6] bg-white p-4">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#1B3A6B]">
+                <Megaphone className="h-4 w-4 text-slate-400" /> Nội dung banner
+              </h3>
+              <p className="mt-1 text-[11px] text-slate-400">Thông tin chính mà khách hàng sẽ nhìn thấy trên website.</p>
+            </div>
+
+            <label className="block">
+              <span className={labelClass}>
+                Tên banner để quản lý <span className="text-[#E31E24]">*</span>
+              </span>
+              <input
+                name="name"
+                type="text"
+                required
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className={fieldClass}
+                placeholder="VD: Khuyến mãi hè 2026"
+              />
+              <span className={helperClass}>Tên này giúp bạn nhận diện banner trong trang quản trị, khách hàng có thể không nhìn thấy phần này.</span>
+            </label>
+
+            <label className="block">
+              <span className={labelClass}>
+                Nội dung hiển thị <span className="text-[#E31E24]">*</span>
+              </span>
+              <textarea
+                name="content"
+                required
+                rows={3}
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
+                className={`${fieldClass} min-h-[82px] resize-y`}
+                placeholder="VD: Giảm 10% cho đơn hàng hũ thủy tinh trong tuần này!"
+              />
+              <span className={helperClass}>Nên viết ngắn gọn, dễ hiểu. Nếu dùng banner hình ảnh, nội dung này cũng giúp mô tả ảnh tốt hơn.</span>
+            </label>
+
+            <label className="block">
+              <span className={labelClass}>Đường dẫn khi bấm vào banner</span>
+              <input
+                name="link_url"
+                type="text"
+                value={linkUrl}
+                onChange={(event) => setLinkUrl(event.target.value)}
+                className={fieldClass}
+                placeholder="VD: /danh-muc/hu-yen-chung hoặc https://..."
+              />
+              <span className={helperClass}>Để trống nếu banner chỉ dùng để thông báo và không cần chuyển trang.</span>
+            </label>
+          </section>
+
+          <section className="space-y-4 rounded-2xl border border-[#EEF2F6] bg-white p-4">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#1B3A6B]">
+                <LayoutGrid className="h-4 w-4 text-slate-400" /> Vị trí và thứ tự
+              </h3>
+              <p className="mt-1 text-[11px] text-slate-400">Chọn nơi banner xuất hiện. Không cần nhớ mã kỹ thuật.</p>
+            </div>
+
+            <label className="block">
+              <span className={labelClass}>Vị trí hiển thị</span>
+              <select
+                name="position"
+                value={position}
+                onChange={(event) => setPosition(event.target.value)}
+                className={fieldClass}
+              >
+                {POSITION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <span className={helperClass}>{selectedPosition.description}</span>
+            </label>
+
+            <label className="block">
+              <span className={labelClass}>
+                <ListOrdered className="h-3.5 w-3.5" /> Thứ tự hiển thị
+              </span>
+              <input
+                name="sort_order"
+                type="number"
+                min={0}
+                step={1}
+                defaultValue={banner?.sort_order ?? 0}
+                className={fieldClass}
+              />
+              <span className={helperClass}>Số nhỏ hơn sẽ được ưu tiên hiển thị trước. Nếu chưa chắc, hãy để mặc định là 0.</span>
+            </label>
+          </section>
+
+          <section className="space-y-4 rounded-2xl border border-[#EEF2F6] bg-white p-4">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#1B3A6B]">
+                <ImageIcon className="h-4 w-4 text-slate-400" /> Ảnh banner
+              </h3>
+              <p className="mt-1 text-[11px] text-slate-400">Dán đường dẫn ảnh đã upload. Nếu chưa có ảnh, hệ thống sẽ tự hiển thị banner dạng chữ.</p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className={labelClass}>Ảnh banner máy tính</span>
+                <input
+                  name="image_desktop_url"
+                  type="url"
+                  value={imageDesktopUrl}
+                  onChange={(event) => setImageDesktopUrl(event.target.value)}
+                  className={fieldClass}
+                  placeholder="https://..."
+                />
+                <span className={helperClass}>Khuyến nghị 1600×500 hoặc 1920×600, ảnh ngang, dung lượng nhẹ.</span>
+              </label>
+
+              <label className="block">
+                <span className={labelClass}>Ảnh banner điện thoại</span>
+                <input
+                  name="image_mobile_url"
+                  type="url"
+                  value={imageMobileUrl}
+                  onChange={(event) => setImageMobileUrl(event.target.value)}
+                  className={fieldClass}
+                  placeholder="https://..."
+                />
+                <span className={helperClass}>Khuyến nghị 800×600 hoặc tỉ lệ gần vuông để hiển thị tốt trên mobile.</span>
+              </label>
+            </div>
+          </section>
+
+          <section className="space-y-4 rounded-2xl border border-[#EEF2F6] bg-white p-4">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#1B3A6B]">
+                <CalendarClock className="h-4 w-4 text-slate-400" /> Lịch hiển thị
+              </h3>
+              <p className="mt-1 text-[11px] text-slate-400">Có thể để trống cả hai ô nếu muốn banner luôn hiển thị khi đang bật trạng thái.</p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className={labelClass}>Bắt đầu hiển thị</span>
+                <input
+                  name="start_at"
+                  type="datetime-local"
+                  value={startAt}
+                  onChange={(event) => setStartAt(event.target.value)}
+                  className={fieldClass}
+                />
+                <span className={helperClass}>Để trống nếu muốn banner có thể hiển thị ngay sau khi lưu.</span>
+              </label>
+
+              <label className="block">
+                <span className={labelClass}>Ngừng hiển thị</span>
+                <input
+                  name="end_at"
+                  type="datetime-local"
+                  value={endAt}
+                  onChange={(event) => setEndAt(event.target.value)}
+                  className={fieldClass}
+                />
+                <span className={helperClass}>Để trống nếu không muốn đặt ngày kết thúc tự động.</span>
+              </label>
+            </div>
+          </section>
+
+          <div className="admin-soft-panel px-4 py-3">
+            <AdminToggle
+              name="is_active"
+              defaultChecked={banner?.is_active ?? true}
+              label="Bật banner trên website"
+              description="Tắt lựa chọn này nếu muốn lưu nháp hoặc tạm ẩn banner khỏi website."
+            />
+          </div>
+        </div>
+
+        <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+          <div className="rounded-2xl border border-[#EEF2F6] bg-white p-4 shadow-sm">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#1B3A6B]">
+                  <Eye className="h-4 w-4 text-slate-400" /> Xem trước banner
+                </h3>
+                <p className="mt-1 text-[11px] text-slate-400">Preview giúp kiểm tra nhanh trước khi lưu. Giao diện thực tế có thể thay đổi nhẹ theo từng khu vực.</p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">
+                {getPositionLabel(position)}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <BannerPreview
+                title={name}
+                content={content}
+                linkUrl={linkUrl}
+                imageUrl={imageDesktopUrl}
+                mode="desktop"
+              />
+              <BannerPreview
+                title={name}
+                content={content}
+                linkUrl={linkUrl}
+                imageUrl={imageMobileUrl || imageDesktopUrl}
+                mode="mobile"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4 text-[11px] leading-relaxed text-amber-800">
+            <p className="font-bold">Lưu ý khi dùng ảnh</p>
+            <p className="mt-1">Ảnh nên rõ chữ, không đặt quá nhiều nội dung nhỏ. Nếu ảnh chưa đúng tỉ lệ, hãy chỉnh lại trước khi đưa lên website để tránh bị cắt mất thông tin quan trọng.</p>
+          </div>
+        </aside>
       </div>
     </form>
   );
