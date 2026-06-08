@@ -2,7 +2,7 @@ import 'server-only';
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts, Tables, Updates } from '@/lib/types/database';
-import { generateKeyBetween } from 'fractional-indexing';
+import { getRankBefore, getRankBetween } from '@/lib/services/admin/rank-key';
 
 import { buildAuditMetadata, type RequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
@@ -230,7 +230,7 @@ export async function createAdminSalesContact(payload: SalesContactPayload, requ
     .limit(1);
 
   const firstRank = firstContacts?.[0]?.rank_key ?? null;
-  const newRank = generateKeyBetween(null, firstRank);
+  const newRank = getRankBefore(firstRank);
 
   const { data, error } = await supabase
     .from('sales_contacts')
@@ -411,7 +411,7 @@ export async function moveAdminSalesContact(
 
     let newRank: string;
     try {
-      newRank = generateKeyBetween(beforeRank, afterRank);
+      newRank = getRankBetween(beforeRank, afterRank);
     } catch (err) {
       return { data: null, error: 'Không thể tính toán thứ tự: ' + (err instanceof Error ? err.message : String(err)) };
     }

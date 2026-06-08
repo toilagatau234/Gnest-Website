@@ -54,6 +54,60 @@ interface AdminSortableListDialogProps {
   ) => Promise<{ ok: boolean; error?: string }>;
 }
 
+export function getEffectiveMoves(
+  originalIds: string[],
+  finalIds: string[]
+): Array<{ itemId: string; beforeId: string | null; afterId: string | null }> {
+  if (originalIds.length !== finalIds.length) {
+    return [];
+  }
+  const isSame = originalIds.every((id, idx) => id === finalIds[idx]);
+  if (isSame) {
+    return [];
+  }
+
+  const m = originalIds.length;
+  const n = finalIds.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+
+  for (let i = 1; i <= m; i += 1) {
+    for (let j = 1; j <= n; j += 1) {
+      if (originalIds[i - 1] === finalIds[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+
+  const lcsSet = new Set<string>();
+  let i = m, j = n;
+  while (i > 0 && j > 0) {
+    if (originalIds[i - 1] === finalIds[j - 1]) {
+      lcsSet.add(originalIds[i - 1]);
+      i -= 1;
+      j -= 1;
+    } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+      i -= 1;
+    } else {
+      j -= 1;
+    }
+  }
+
+  const moves: Array<{ itemId: string; beforeId: string | null; afterId: string | null }> = [];
+
+  for (let idx = 0; idx < finalIds.length; idx += 1) {
+    const id = finalIds[idx];
+    if (!lcsSet.has(id)) {
+      const beforeId = idx > 0 ? finalIds[idx - 1] : null;
+      const afterId = idx < finalIds.length - 1 ? finalIds[idx + 1] : null;
+      moves.push({ itemId: id, beforeId, afterId });
+    }
+  }
+
+  return moves;
+}
+
 function SortableRow({ item }: { item: AdminSortableListItem }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -129,7 +183,6 @@ export function AdminSortableListDialog({
   const [isPending, startTransition] = useTransition();
   const [selectedScopeId, setSelectedScopeId] = useState(scopes[0]?.id ?? '');
   const [draftItems, setDraftItems] = useState<AdminSortableListItem[]>([]);
-  const [moves, setMoves] = useState<Array<{ itemId: string; beforeId: string | null; afterId: string | null }>>([]);
 
   const scopeMap = useMemo(() => new Map(scopes.map((scope) => [scope.id, scope])), [scopes]);
   const currentScopeId = scopeMap.has(selectedScopeId) ? selectedScopeId : (scopes[0]?.id ?? '');
@@ -155,7 +208,6 @@ export function AdminSortableListDialog({
 
     setSelectedScopeId(scopes[0].id);
     setDraftItems(scopes[0].items);
-    setMoves([]);
     setOpen(true);
   };
 
@@ -183,18 +235,7 @@ export function AdminSortableListDialog({
         return current;
       }
 
-      const updated = arrayMove(current, oldIndex, newIndex);
-
-      const updatedIndex = updated.findIndex((item) => item.id === activeId);
-      const beforeId = updatedIndex > 0 ? updated[updatedIndex - 1].id : null;
-      const afterId = updatedIndex < updated.length - 1 ? updated[updatedIndex + 1].id : null;
-
-      setMoves((prev) => {
-        const filtered = prev.filter((m) => m.itemId !== activeId);
-        return [...filtered, { itemId: activeId, beforeId, afterId }];
-      });
-
-      return updated;
+      return arrayMove(current, oldIndex, newIndex);
     });
   };
 
@@ -203,11 +244,15 @@ export function AdminSortableListDialog({
       return;
     }
 
+    const originalIds = selectedScope.items.map((item) => item.id);
+    const finalIds = draftItems.map((item) => item.id);
+    const effectiveMoves = getEffectiveMoves(originalIds, finalIds);
+
     startTransition(() => {
       void (async () => {
         const result = await onSave(
           selectedScope.id,
-          moves,
+          effectiveMoves,
         );
 
         if (!result.ok) {

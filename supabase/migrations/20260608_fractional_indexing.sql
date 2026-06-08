@@ -4,10 +4,32 @@ ALTER TABLE public.categories ADD COLUMN rank_key text;
 ALTER TABLE public.job_vacancies ADD COLUMN rank_key text;
 ALTER TABLE public.sales_contacts ADD COLUMN rank_key text;
 
+-- PL/pgSQL function to generate canonical base62 fractional keys
+CREATE OR REPLACE FUNCTION public.get_fractional_rank(idx integer)
+RETURNS text
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  chars text := '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+BEGIN
+  IF idx < 62 THEN
+    RETURN 'a' || substring(chars from (idx + 1) for 1);
+  ELSIF idx < 3906 THEN
+    RETURN 'b' || substring(chars from ((idx - 62) / 62 + 1) for 1)
+               || substring(chars from ((idx - 62) % 62 + 1) for 1);
+  ELSE
+    RETURN 'c' || substring(chars from ((idx - 3906) / 3844 + 1) for 1)
+               || substring(chars from (((idx - 3906) % 3844) / 62 + 1) for 1)
+               || substring(chars from (((idx - 3906) % 3844) % 62 + 1) for 1);
+  END IF;
+END;
+$$;
+
 -- Backfill categories (partition by type, parent_id order by sort_order, name)
 WITH ordered_categories AS (
   SELECT id,
-         'a' || lpad((row_number() OVER (PARTITION BY type, parent_id ORDER BY sort_order ASC, name ASC))::text, 6, '0') as calculated_rank
+         public.get_fractional_rank((row_number() OVER (PARTITION BY type, parent_id ORDER BY sort_order ASC, name ASC))::integer - 1) as calculated_rank
   FROM public.categories
 )
 UPDATE public.categories c
@@ -18,7 +40,7 @@ WHERE c.id = oc.id;
 -- Backfill job_vacancies (global order by sort_order, created_at desc)
 WITH ordered_jobs AS (
   SELECT id,
-         'a' || lpad((row_number() OVER (ORDER BY sort_order ASC, created_at DESC))::text, 6, '0') as calculated_rank
+         public.get_fractional_rank((row_number() OVER (ORDER BY sort_order ASC, created_at DESC))::integer - 1) as calculated_rank
   FROM public.job_vacancies
 )
 UPDATE public.job_vacancies j
@@ -29,13 +51,16 @@ WHERE j.id = oj.id;
 -- Backfill sales_contacts (global order by sort_order, name)
 WITH ordered_contacts AS (
   SELECT id,
-         'a' || lpad((row_number() OVER (ORDER BY sort_order ASC, name ASC))::text, 6, '0') as calculated_rank
+         public.get_fractional_rank((row_number() OVER (ORDER BY sort_order ASC, name ASC))::integer - 1) as calculated_rank
   FROM public.sales_contacts
 )
 UPDATE public.sales_contacts s
 SET rank_key = oc.calculated_rank
 FROM ordered_contacts oc
 WHERE s.id = oc.id;
+
+-- Clean up helper function
+DROP FUNCTION IF EXISTS public.get_fractional_rank(integer);
 
 -- Set rank_key as NOT NULL
 ALTER TABLE public.categories ALTER COLUMN rank_key SET NOT NULL;
