@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, ChevronLeft, ChevronRight, ImageIcon, ListFilter, Package, Search } from 'lucide-react';
 import Image from 'next/image';
@@ -76,8 +76,6 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
     e.preventDefault();
     navigate(buildUrl({ q: searchRef.current?.value ?? '' }));
   }
-
-  const visibleItems = items;
 
   const { page, pageSize, total, pageCount } = pagination;
 
@@ -215,7 +213,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
           </div>
         </div>
 
-        {visibleItems.length === 0 ? (
+        {items.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-20 text-center">
             <AlertTriangle className="mx-auto mb-3 h-12 w-12 text-slate-300" />
             <p className="text-sm font-bold text-slate-600">Không tìm thấy sản phẩm nào khớp bộ lọc</p>
@@ -238,7 +236,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
-                {visibleItems.map((item, index) => {
+                {items.map((item, index) => {
                   const thumbnail = item.thumbnailUrl;
                   const imageCount = item.imageCount;
                   const isOutOfStock = item.stock === 0;
