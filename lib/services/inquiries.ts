@@ -9,6 +9,52 @@ export type CreateInquiryInput = Pick<
 export async function createInquiry(input: CreateInquiryInput) {
   const supabase = await createClient();
 
+  // Find active sale/admin to assign the inquiry (round-robin / least active new inquiry strategy)
+  let assignedTo: string | null = null;
+  try {
+    const { data: adminUsers } = await supabase
+      .from('admin_users')
+      .select('id')
+      .eq('is_active', true)
+      .in('role', ['super_admin', 'admin', 'editor']);
+
+    if (adminUsers && adminUsers.length > 0) {
+      // Find count of new/active inquiries assigned to each active admin
+      const { data: counts } = await supabase
+        .from('inquiries')
+        .select('assigned_to')
+        .in('status', ['new', 'contacted', 'quoted'])
+        .not('assigned_to', 'is', null);
+
+      const countMap: Record<string, number> = {};
+      adminUsers.forEach((u) => {
+        countMap[u.id] = 0;
+      });
+
+      if (counts) {
+        counts.forEach((c) => {
+          if (c.assigned_to && countMap[c.assigned_to] !== undefined) {
+            countMap[c.assigned_to]++;
+          }
+        });
+      }
+
+      // Find the admin user with the lowest active inquiry count
+      let minCount = Infinity;
+      let minAdminId = adminUsers[0].id;
+      for (const admin of adminUsers) {
+        const c = countMap[admin.id];
+        if (c < minCount) {
+          minCount = c;
+          minAdminId = admin.id;
+        }
+      }
+      assignedTo = minAdminId;
+    }
+  } catch (err) {
+    console.error('[createInquiry] failed to assign agent', err);
+  }
+
   const { data, error } = await supabase
     .from('inquiries')
     .insert({
@@ -17,6 +63,7 @@ export async function createInquiry(input: CreateInquiryInput) {
       email: input.email ?? null,
       product_id: input.product_id ?? null,
       message: input.message ?? null,
+      assigned_to: assignedTo,
       metadata: input.metadata ?? {},
     })
     .select('*')
@@ -28,3 +75,4 @@ export async function createInquiry(input: CreateInquiryInput) {
 
   return data;
 }
+

@@ -132,11 +132,15 @@ function buildProductInterestMetrics(
     .slice(0, 6);
 }
 
-export async function getDashboardData(): Promise<DashboardData> {
+export async function getDashboardData(filterDays: number = 30): Promise<DashboardData> {
   try {
     await requireAdminAuth();
     const supabase = createServiceRoleClient();
     const t0 = SHOULD_LOG_TIMINGS ? performance.now() : 0;
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - filterDays);
+    const startDateStr = startDate.toISOString();
 
     // --- Phase 1: Parallel queries — all COUNTs plus minimal row fetches ---
     // Full product table scan is eliminated:
@@ -181,7 +185,9 @@ export async function getDashboardData(): Promise<DashboardData> {
         .from('inquiries')
         .select('product_id, status')
         .not('product_id', 'is', null)
-        .limit(250)
+        .neq('status', 'spam')
+        .gte('created_at', startDateStr)
+        .limit(1000)
         .returns<ProductInquiryRow[]>(),
     ]);
 

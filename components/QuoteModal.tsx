@@ -44,6 +44,9 @@ function QuoteForm({
 
   return (
     <form ref={formRef} action={formAction} noValidate className="space-y-4">
+      {/* Honeypot field for spam prevention */}
+      <input type="text" name="website_hp" className="hidden" tabIndex={-1} autoComplete="off" />
+
       {context && (
         <input type="hidden" name="product_id" value={context.productId} />
       )}
