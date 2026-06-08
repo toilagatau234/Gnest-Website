@@ -318,7 +318,6 @@ export function AdminSortableListDialog({
                   const nextScopeId = event.target.value;
                   setSelectedScopeId(nextScopeId);
                   setDraftItems(scopeMap.get(nextScopeId)?.items ?? []);
-                  setMoves([]);
                 }}
                 className="admin-select text-xs"
               >
