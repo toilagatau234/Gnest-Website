@@ -239,6 +239,8 @@ function revalidateBanners() {
   revalidatePath('/admin/banners');
   revalidatePath('/admin/dashboard');
   revalidatePath('/');
+  revalidatePath('/danh-muc');
+  revalidatePath('/tuyen-dung');
 }
 
 export async function createBannerAction(
