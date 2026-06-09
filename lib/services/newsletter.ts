@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts } from '@/lib/types/database';
 
 export type CreateNewsletterInput = Pick<
@@ -7,7 +7,7 @@ export type CreateNewsletterInput = Pick<
 >;
 
 export async function createNewsletterLead(input: CreateNewsletterInput) {
-  const supabase = await createClient();
+  const supabase = createServiceRoleClient();
 
   const { data, error } = await supabase
     .from('newsletter_leads')

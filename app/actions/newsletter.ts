@@ -63,35 +63,50 @@ export async function submitNewsletterAction(
     }
 
     if (phoneClean && isRateLimited('phone', phoneClean)) {
-      return { status: 'error', message: 'Số điện thoại này đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau.' };
+      return { status: 'error', message: 'Bạn gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.' };
     }
 
-    // 5. Anti-spam: check database for duplicate submissions in last 5 minutes
-    const adminSupabase = createServiceRoleClient();
-    const queryParts: string[] = [];
-    if (email) queryParts.push(`email.eq.${email}`);
-    if (phoneClean) queryParts.push(`phone.eq.${phoneClean}`);
+    if (!phoneClean && email && isRateLimited('phone', email)) {
+      return { status: 'error', message: 'Bạn gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.' };
+    }
 
-    if (queryParts.length > 0) {
-      const { data: existing } = await adminSupabase
+    // 5. Anti-spam: check database for duplicate submissions in last 5 minutes using safe queries
+    const adminSupabase = createServiceRoleClient();
+    const cutoffTime = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+    if (email) {
+      const { data: existingEmail } = await adminSupabase
         .from('newsletter_leads')
         .select('id')
-        .or(queryParts.join(','))
-        .gt('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+        .eq('email', email)
+        .gt('created_at', cutoffTime)
         .limit(1);
 
-      if (existing && existing.length > 0) {
+      if (existingEmail && existingEmail.length > 0) {
         return { status: 'error', message: 'Thông tin này đã được đăng ký nhận ưu đãi gần đây.' };
       }
     }
 
-    // 6. DB Write
+    if (phoneClean) {
+      const { data: existingPhone } = await adminSupabase
+        .from('newsletter_leads')
+        .select('id')
+        .eq('phone', phoneClean)
+        .gt('created_at', cutoffTime)
+        .limit(1);
+
+      if (existingPhone && existingPhone.length > 0) {
+        return { status: 'error', message: 'Thông tin này đã được đăng ký nhận ưu đãi gần đây.' };
+      }
+    }
+
+    // 6. DB Write - IP is omitted for privacy compliance
     await createNewsletterLead({
       name,
       email,
       phone: phoneClean,
       source: 'popup',
-      metadata: { ip_address: ip },
+      metadata: {},
     });
 
     return { status: 'success' };

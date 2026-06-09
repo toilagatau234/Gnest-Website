@@ -73,13 +73,14 @@ function BannerPreview({
   title: string;
   content: string;
   linkUrl: string;
-  imageUrl: string;
+  imageUrl?: string | null;
   mode: 'desktop' | 'mobile';
 }) {
-  const hasImage = imageUrl.trim().length > 0 && validateImageUrl(imageUrl) && !imageUrl.includes('drive.google.com');
+  const safeImageUrl = imageUrl ?? '';
+  const hasImage = safeImageUrl.trim().length > 0 && validateImageUrl(safeImageUrl) && !safeImageUrl.includes('drive.google.com');
   const previewStyle = hasImage
     ? {
-        backgroundImage: `linear-gradient(90deg, rgba(27, 58, 107, 0.82), rgba(27, 58, 107, 0.34)), url(${imageUrl.trim()})`,
+        backgroundImage: `linear-gradient(90deg, rgba(27, 58, 107, 0.82), rgba(27, 58, 107, 0.34)), url(${safeImageUrl.trim()})`,
       }
     : undefined;
 
@@ -119,8 +120,8 @@ function BannerPreview({
   );
 }
 
-function validateImageUrl(url: string): boolean {
-  if (!url.trim()) return true;
+function validateImageUrl(url?: string | null): boolean {
+  if (!url || !url.trim()) return true;
   try {
     const u = new URL(url.trim());
     return u.protocol === 'http:' || u.protocol === 'https:';

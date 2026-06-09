@@ -12,12 +12,6 @@ CREATE TABLE IF NOT EXISTS public.newsletter_leads (
 -- Enable RLS
 ALTER TABLE public.newsletter_leads ENABLE ROW LEVEL SECURITY;
 
--- Public can insert leads, but cannot read them
-DROP POLICY IF EXISTS "Public insert newsletter_leads" ON public.newsletter_leads;
-CREATE POLICY "Public insert newsletter_leads"
-ON public.newsletter_leads FOR INSERT
-WITH CHECK (true);
-
 -- Admins can read/manage leads
 DROP POLICY IF EXISTS "Admin manage newsletter_leads" ON public.newsletter_leads;
 CREATE POLICY "Admin manage newsletter_leads"
@@ -26,8 +20,10 @@ TO authenticated
 USING (app_private.is_admin())
 WITH CHECK (app_private.is_admin());
 
--- Grants
-GRANT INSERT ON public.newsletter_leads TO anon, authenticated;
+-- Remove any public insert policies
+DROP POLICY IF EXISTS "Public insert newsletter_leads" ON public.newsletter_leads;
+
+-- Grants: Only authenticated admin can read. Anon/authenticated has no direct insert.
 GRANT SELECT ON public.newsletter_leads TO authenticated;
 
 -- Create index on email and phone for spam checks

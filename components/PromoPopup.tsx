@@ -135,7 +135,7 @@ export function PromoPopup() {
 
               <div>
                 <label htmlFor="pp-phone" className="block text-xs font-semibold text-slate-600 mb-1">
-                  Số điện thoại <span className="text-red-500">*</span>
+                  Số điện thoại
                 </label>
                 <input
                   id="pp-phone"
@@ -149,7 +149,7 @@ export function PromoPopup() {
 
               <div>
                 <label htmlFor="pp-email" className="block text-xs font-semibold text-slate-600 mb-1">
-                  Email <span className="text-red-500">*</span>
+                  Email
                 </label>
                 <input
                   id="pp-email"
@@ -160,7 +160,7 @@ export function PromoPopup() {
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/15 bg-white transition"
                 />
                 <span className="text-[10px] text-slate-400 mt-1 block leading-normal">
-                  * Vui lòng điền ít nhất Số điện thoại hoặc Email để nhận thông tin ưu đãi.
+                  * Điền số điện thoại hoặc email để nhận ưu đãi.
                 </span>
               </div>
 
