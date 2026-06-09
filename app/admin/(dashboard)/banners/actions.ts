@@ -240,6 +240,7 @@ function revalidateBanners() {
   revalidatePath('/admin/dashboard');
   revalidatePath('/');
   revalidatePath('/danh-muc');
+  revalidatePath('/danh-muc/[slug]', 'page');
   revalidatePath('/tuyen-dung');
 }
 
