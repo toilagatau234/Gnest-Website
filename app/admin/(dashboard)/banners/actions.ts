@@ -74,8 +74,8 @@ function readBannerPayload(formData: FormData): BannerPayload {
         if (url.includes('drive.google.com')) {
           throw new Error(`Đường dẫn ${fieldName} từ Google Drive không phải là link ảnh trực tiếp. Vui lòng chuyển thành direct link hoặc sử dụng host khác.`);
         }
-      } catch (e: any) {
-        if (e.message.includes('Google Drive') || e.message.includes('bắt đầu bằng')) {
+      } catch (e: unknown) {
+        if (e instanceof Error && (e.message.includes('Google Drive') || e.message.includes('bắt đầu bằng'))) {
           throw e;
         }
         throw new Error(`Đường dẫn ${fieldName} không đúng định dạng URL.`);

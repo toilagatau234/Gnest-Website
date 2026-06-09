@@ -8,7 +8,6 @@ import {
   ImageIcon,
   LayoutGrid,
   Link2,
-  ListOrdered,
   Megaphone,
   Monitor,
   Smartphone,
