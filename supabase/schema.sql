@@ -196,6 +196,23 @@ create table if not exists public.audit_logs (
   created_at timestamptz not null default now()
 );
 
+-- 12. Promotional Banners Table
+create table if not exists public.promotional_banners (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  content text not null,
+  link_url text,
+  position text not null default 'site_top',
+  image_desktop_url text,
+  image_mobile_url text,
+  start_at timestamptz,
+  end_at timestamptz,
+  sort_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 -- Idempotent Indexes
 create index if not exists categories_parent_id_idx on public.categories(parent_id);
 create index if not exists categories_slug_idx on public.categories(slug);
@@ -252,6 +269,11 @@ create trigger set_site_contents_updated_at
 before update on public.site_contents
 for each row execute function public.set_updated_at();
 
+drop trigger if exists set_promotional_banners_updated_at on public.promotional_banners;
+create trigger set_promotional_banners_updated_at
+before update on public.promotional_banners
+for each row execute function public.set_updated_at();
+
 -- RLS Enforcement
 alter table public.profiles enable row level security;
 alter table public.admin_users enable row level security;
@@ -264,6 +286,7 @@ alter table public.job_vacancies enable row level security;
 alter table public.inquiries enable row level security;
 alter table public.site_contents enable row level security;
 alter table public.audit_logs enable row level security;
+alter table public.promotional_banners enable row level security;
 
 -- Base Schema Grants
 grant usage on schema public to anon, authenticated;
@@ -273,6 +296,8 @@ grant execute on function app_private.is_super_admin() to anon, authenticated;
 grant select on public.categories, public.products, public.product_images, public.product_bulk_discounts, public.sales_contacts, public.job_vacancies, public.site_contents to anon, authenticated;
 grant insert on public.inquiries to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
+grant select on public.promotional_banners to anon, authenticated;
+grant select, insert, update, delete on public.promotional_banners to authenticated;
 
 -- Safe Idempotent Row-Level Security Policies (DROP before CREATE)
 
@@ -448,33 +473,7 @@ on public.audit_logs for insert
 to authenticated
 with check (app_private.is_admin());
 
--- 12. Promotional Banners Table
-create table if not exists public.promotional_banners (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  content text not null,
-  link_url text,
-  position text not null default 'site_top',
-  image_desktop_url text,
-  image_mobile_url text,
-  start_at timestamptz,
-  end_at timestamptz,
-  is_active boolean not null default true,
-  sort_order integer not null default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
--- Trigger for updated_at
-drop trigger if exists set_promotional_banners_updated_at on public.promotional_banners;
-create trigger set_promotional_banners_updated_at
-before update on public.promotional_banners
-for each row execute function public.set_updated_at();
-
--- Enable RLS
-alter table public.promotional_banners enable row level security;
-
--- RLS Policies
+-- Promotional Banners
 drop policy if exists "Public read active promotional banners" on public.promotional_banners;
 create policy "Public read active promotional banners"
 on public.promotional_banners for select
@@ -486,7 +485,4 @@ on public.promotional_banners for all
 to authenticated
 using (app_private.is_admin())
 with check (app_private.is_admin());
-
--- Grants
-grant select on public.promotional_banners to anon, authenticated;
 
