@@ -17,12 +17,18 @@ const QuoteModal = dynamic(
   { ssr: false, loading: () => null }
 );
 
+const PromoPopup = dynamic(
+  () => import('@/components/PromoPopup').then((mod) => mod.PromoPopup),
+  { ssr: false, loading: () => null }
+);
+
 export function SiteOverlays() {
   return (
     <>
       <ProductModal />
       <ContactModal />
       <QuoteModal />
+      <PromoPopup />
     </>
   );
 }
