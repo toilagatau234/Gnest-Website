@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { USER_MANAGER_ROLES } from '@/lib/services/admin/permissions';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { AdminRole, Tables } from '@/lib/types/database';
 
@@ -140,7 +141,7 @@ export async function inviteAdminUser(
   input: CreateAdminUserInput,
 ): Promise<AdminUserActionResult<CreatedAdminUserPayload>> {
   try {
-    const actor = await requireAdminAuth(['super_admin']);
+    const actor = await requireAdminAuth(USER_MANAGER_ROLES);
     const supabase = createServiceRoleClient();
 
     const displayName = input.displayName.trim();
@@ -253,7 +254,7 @@ export async function updateAdminUserRole(
   input: UpdateAdminUserRoleInput,
 ): Promise<AdminUserActionResult<AdminUserListItem>> {
   try {
-    const actor = await requireAdminAuth(['super_admin']);
+    const actor = await requireAdminAuth(USER_MANAGER_ROLES);
     const supabase = createServiceRoleClient();
 
     if (input.userId === input.currentAdminId) {
@@ -332,7 +333,7 @@ export async function setAdminUserActive(
   currentAdminId: string,
 ): Promise<AdminUserActionResult<AdminUserListItem>> {
   try {
-    const actor = await requireAdminAuth(['super_admin']);
+    const actor = await requireAdminAuth(USER_MANAGER_ROLES);
     const supabase = createServiceRoleClient();
 
     if (userId === currentAdminId) {
@@ -407,7 +408,7 @@ export async function removeAdminUserAccess(
   currentAdminId: string,
 ): Promise<AdminUserActionResult<AdminUserListItem>> {
   try {
-    const actor = await requireAdminAuth(['super_admin']);
+    const actor = await requireAdminAuth(USER_MANAGER_ROLES);
     const supabase = createServiceRoleClient();
 
     if (userId === currentAdminId) {
@@ -476,7 +477,7 @@ export async function resetAdminUserPassword(
   currentAdminId: string
 ): Promise<AdminUserActionResult<{ temporaryPassword: string; user: AdminUserListItem }>> {
   try {
-    const actor = await requireAdminAuth(['super_admin']);
+    const actor = await requireAdminAuth(USER_MANAGER_ROLES);
     const supabase = createServiceRoleClient();
 
     if (userId === currentAdminId) {
