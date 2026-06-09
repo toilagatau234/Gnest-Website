@@ -1,21 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import {
   AlertCircle,
   CalendarClock,
+  CheckCircle2,
   Eye,
   ImageIcon,
   LayoutGrid,
   Link2,
+  Loader2,
   Megaphone,
   Monitor,
   Smartphone,
+  Upload,
 } from 'lucide-react';
 
 import { AdminToggle } from '@/components/admin/AdminToggle';
 import type { AdminBanner } from '@/lib/services/admin/banners';
 import type { AdminFormState } from '@/app/admin/(dashboard)/banners/actions';
+import { uploadBannerImageAction } from '@/app/admin/(dashboard)/banners/actions';
 
 interface BannerFormProps {
   formId: string;
@@ -143,6 +147,46 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
   const [mobileUrlError, setMobileUrlError] = useState('');
   const selectedPosition = POSITION_OPTIONS.find((option) => option.value === position) ?? POSITION_OPTIONS[0];
 
+  // Image upload state
+  const desktopFileRef = useRef<HTMLInputElement>(null);
+  const mobileFileRef = useRef<HTMLInputElement>(null);
+  const [isPending, startTransition] = useTransition();
+  const [uploadingSlot, setUploadingSlot] = useState<'desktop' | 'mobile' | null>(null);
+  const [uploadErrors, setUploadErrors] = useState<{ desktop?: string; mobile?: string }>({});
+  const [uploadSuccess, setUploadSuccess] = useState<{ desktop?: boolean; mobile?: boolean }>({});
+
+  const canUpload = Boolean(banner?.id) && position !== 'site_top';
+
+  function handleFileUpload(file: File, slot: 'desktop' | 'mobile') {
+    setUploadingSlot(slot);
+    setUploadErrors((prev) => ({ ...prev, [slot]: undefined }));
+    setUploadSuccess((prev) => ({ ...prev, [slot]: false }));
+
+    const fd = new FormData();
+    fd.append('banner_id', banner!.id);
+    fd.append('slot', slot);
+    fd.append('file', file);
+
+    startTransition(async () => {
+      const result = await uploadBannerImageAction({ ok: false }, fd);
+      setUploadingSlot(null);
+      if (result.ok && result.url) {
+        if (slot === 'desktop') {
+          setImageDesktopUrl(result.url);
+          setDesktopUrlError('');
+        } else {
+          setImageMobileUrl(result.url);
+          setMobileUrlError('');
+        }
+        setUploadSuccess((prev) => ({ ...prev, [slot]: true }));
+        // Clear success badge after 4 s
+        setTimeout(() => setUploadSuccess((prev) => ({ ...prev, [slot]: false })), 4000);
+      } else {
+        setUploadErrors((prev) => ({ ...prev, [slot]: result.error ?? 'Tải ảnh thất bại.' }));
+      }
+    });
+  }
+
   const handleDesktopUrlChange = (value: string) => {
     setImageDesktopUrl(value);
     if (value.trim()) {
@@ -150,7 +194,7 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
         setDesktopUrlError('Đường dẫn ảnh không hợp lệ. Vui lòng bắt đầu bằng http:// hoặc https://');
       } else if (value.includes('drive.google.com')) {
         setDesktopUrlError('Cảnh báo: Link Google Drive không phải là link ảnh trực tiếp và có thể không hiển thị được.');
-      } else {  
+      } else {
         setDesktopUrlError('');
       }
     } else {
@@ -281,43 +325,153 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
                 <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#1B3A6B]">
                   <ImageIcon className="h-4 w-4 text-slate-400" /> Ảnh banner
                 </h3>
-                <p className="mt-1 text-[11px] text-slate-400">Dán đường dẫn ảnh đã upload. Nếu chưa có ảnh, hệ thống sẽ tự hiển thị banner dạng chữ.</p>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  {canUpload
+                    ? 'Tải ảnh lên trực tiếp hoặc dán đường dẫn ảnh bên ngoài. Nếu chưa có ảnh, hệ thống sẽ tự hiển thị banner dạng chữ.'
+                    : 'Lưu banner trước để mở khoá tính năng tải ảnh lên. Hoặc dán đường dẫn ảnh bên ngoài ngay bây giờ.'}
+                </p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className={labelClass}>Ảnh banner máy tính</span>
-                  <input
-                    name="image_desktop_url"
-                    type="text"
-                    value={imageDesktopUrl}
-                    onChange={(event) => handleDesktopUrlChange(event.target.value)}
-                    className={`${fieldClass} ${desktopUrlError ? 'border-rose-300 bg-rose-50/50' : ''}`}
-                    placeholder="https://..."
-                  />
-                  {desktopUrlError ? (
-                    <span className="mt-1.5 block text-[10px] font-medium text-rose-600">{desktopUrlError}</span>
-                  ) : (
-                    <span className={helperClass}>Khuyến nghị 1600×500 hoặc 1920×600, ảnh ngang, dung lượng nhẹ.</span>
-                  )}
-                </label>
+              {/* Hidden file inputs — programmatically triggered by buttons below */}
+              <input
+                ref={desktopFileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                tabIndex={-1}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file, 'desktop');
+                  e.target.value = '';
+                }}
+              />
+              <input
+                ref={mobileFileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                tabIndex={-1}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file, 'mobile');
+                  e.target.value = '';
+                }}
+              />
 
-                <label className="block">
-                  <span className={labelClass}>Ảnh banner điện thoại</span>
-                  <input
-                    name="image_mobile_url"
-                    type="text"
-                    value={imageMobileUrl}
-                    onChange={(event) => handleMobileUrlChange(event.target.value)}
-                    className={`${fieldClass} ${mobileUrlError ? 'border-rose-300 bg-rose-50/50' : ''}`}
-                    placeholder="https://..."
-                  />
-                  {mobileUrlError ? (
-                    <span className="mt-1.5 block text-[10px] font-medium text-rose-600">{mobileUrlError}</span>
-                  ) : (
-                    <span className={helperClass}>Khuyến nghị 800×600 hoặc tỉ lệ gần vuông để hiển thị tốt trên mobile.</span>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* ── Desktop image slot ── */}
+                <div className="space-y-2">
+                  <span className={labelClass}>
+                    <Monitor className="h-3.5 w-3.5" /> Ảnh banner máy tính
+                  </span>
+
+                  {/* Upload button — only in edit mode */}
+                  {canUpload && (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => desktopFileRef.current?.click()}
+                      className={`flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed px-3 py-2.5 text-xs font-semibold transition-colors
+                        ${uploadingSlot === 'desktop'
+                          ? 'cursor-wait border-blue-200 bg-blue-50/60 text-blue-500'
+                          : uploadSuccess.desktop
+                            ? 'border-emerald-300 bg-emerald-50/60 text-emerald-600'
+                            : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-600'
+                        }`}
+                    >
+                      {uploadingSlot === 'desktop' ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tải lên...</>
+                      ) : uploadSuccess.desktop ? (
+                        <><CheckCircle2 className="h-3.5 w-3.5" /> Đã tải lên thành công!</>
+                      ) : (
+                        <><Upload className="h-3.5 w-3.5" /> {imageDesktopUrl ? 'Thay ảnh máy tính' : 'Tải ảnh máy tính lên'}</>
+                      )}
+                    </button>
                   )}
-                </label>
+
+                  {uploadErrors.desktop ? (
+                    <p className="flex items-start gap-1 text-[10px] font-medium text-rose-600">
+                      <AlertCircle className="mt-0.5 h-3 w-3 flex-shrink-0" />
+                      {uploadErrors.desktop}
+                    </p>
+                  ) : null}
+
+                  {/* URL fallback input */}
+                  <div>
+                    {canUpload && (
+                      <p className="mb-1.5 text-[10px] font-medium text-slate-400">hoặc dán URL ảnh trực tiếp</p>
+                    )}
+                    <input
+                      name="image_desktop_url"
+                      type="text"
+                      value={imageDesktopUrl}
+                      onChange={(event) => handleDesktopUrlChange(event.target.value)}
+                      className={`${fieldClass} ${desktopUrlError ? 'border-rose-300 bg-rose-50/50' : ''}`}
+                      placeholder="https://..."
+                    />
+                    {desktopUrlError ? (
+                      <span className="mt-1.5 block text-[10px] font-medium text-rose-600">{desktopUrlError}</span>
+                    ) : (
+                      <span className={helperClass}>Khuyến nghị 1600×500 hoặc 1920×600, ảnh ngang, dung lượng nhẹ.</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Mobile image slot ── */}
+                <div className="space-y-2">
+                  <span className={labelClass}>
+                    <Smartphone className="h-3.5 w-3.5" /> Ảnh banner điện thoại
+                  </span>
+
+                  {canUpload && (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => mobileFileRef.current?.click()}
+                      className={`flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed px-3 py-2.5 text-xs font-semibold transition-colors
+                        ${uploadingSlot === 'mobile'
+                          ? 'cursor-wait border-blue-200 bg-blue-50/60 text-blue-500'
+                          : uploadSuccess.mobile
+                            ? 'border-emerald-300 bg-emerald-50/60 text-emerald-600'
+                            : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-600'
+                        }`}
+                    >
+                      {uploadingSlot === 'mobile' ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tải lên...</>
+                      ) : uploadSuccess.mobile ? (
+                        <><CheckCircle2 className="h-3.5 w-3.5" /> Đã tải lên thành công!</>
+                      ) : (
+                        <><Upload className="h-3.5 w-3.5" /> {imageMobileUrl ? 'Thay ảnh điện thoại' : 'Tải ảnh điện thoại lên'}</>
+                      )}
+                    </button>
+                  )}
+
+                  {uploadErrors.mobile ? (
+                    <p className="flex items-start gap-1 text-[10px] font-medium text-rose-600">
+                      <AlertCircle className="mt-0.5 h-3 w-3 flex-shrink-0" />
+                      {uploadErrors.mobile}
+                    </p>
+                  ) : null}
+
+                  <div>
+                    {canUpload && (
+                      <p className="mb-1.5 text-[10px] font-medium text-slate-400">hoặc dán URL ảnh trực tiếp</p>
+                    )}
+                    <input
+                      name="image_mobile_url"
+                      type="text"
+                      value={imageMobileUrl}
+                      onChange={(event) => handleMobileUrlChange(event.target.value)}
+                      className={`${fieldClass} ${mobileUrlError ? 'border-rose-300 bg-rose-50/50' : ''}`}
+                      placeholder="https://..."
+                    />
+                    {mobileUrlError ? (
+                      <span className="mt-1.5 block text-[10px] font-medium text-rose-600">{mobileUrlError}</span>
+                    ) : (
+                      <span className={helperClass}>Khuyến nghị 800×600 hoặc tỉ lệ gần vuông để hiển thị tốt trên mobile.</span>
+                    )}
+                  </div>
+                </div>
               </div>
             </section>
           )}

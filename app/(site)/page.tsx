@@ -17,6 +17,8 @@ export default async function Home() {
 
   return (
     <>
+      <BannerSlot position="home_after_products" />
+
       <HeroSection content={siteContents.hero} />
 
       <ScrollReveal direction="up" delay={0.1}>
@@ -30,8 +32,6 @@ export default async function Home() {
       <ScrollReveal direction="up" delay={0.1}>
         <ProductsRender overviewProducts={overviewProducts} />
       </ScrollReveal>
-
-      <BannerSlot position="home_after_products" />
 
       <ScrollReveal direction="up" delay={0.1}>
         <StaffSection />
