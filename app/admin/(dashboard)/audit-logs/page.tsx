@@ -3,6 +3,8 @@ import Link from 'next/link';
 
 import { getAuditLogs, getAuditLogStats } from '@/lib/services/admin/audit-logs';
 import { getAdminUsers } from '@/lib/services/admin/admin-users';
+import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { SYSTEM_VIEWER_ROLES } from '@/lib/services/admin/permissions';
 import { AuditLogsFilterBar } from '@/components/admin/AuditLogsFilterBar';
 import { AuditLogsTable } from '@/components/admin/AuditLogsTable';
 
@@ -21,6 +23,9 @@ interface PageProps {
 }
 
 export default async function AuditLogsPage({ searchParams }: PageProps) {
+  // Only super_admin and admin may read sensitive audit logs.
+  await requireAdminAuth(SYSTEM_VIEWER_ROLES);
+
   // eslint-disable-next-line react-hooks/purity
   const _t0 = Date.now();
   const resolvedSearchParams = await searchParams;

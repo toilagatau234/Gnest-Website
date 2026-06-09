@@ -11,6 +11,8 @@ import {
   type SalesContactPayload,
 } from '@/lib/services/admin/sales-contacts';
 import { getRequestContext } from '@/lib/services/admin/audit-metadata';
+import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 
 export type AdminFormState = { ok: boolean; error?: string };
 
@@ -55,6 +57,7 @@ export async function createSalesContactAction(
   _prevState: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
     const payload = readSalesContactPayload(formData);
     const requestContext = await getRequestContext();
@@ -75,6 +78,7 @@ export async function updateSalesContactAction(
   _prevState: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
     const contactId = readString(formData, 'id');
 
@@ -98,6 +102,8 @@ export async function updateSalesContactAction(
 }
 
 export async function deleteSalesContactAction(contactId: string): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!contactId) {
     return { ok: false, error: 'Thiếu ID liên hệ bán hàng.' };
   }
@@ -118,6 +124,8 @@ export async function deleteSalesContactAction(contactId: string): Promise<Admin
 }
 
 export async function toggleSalesContactActiveAction(formData: FormData) {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const contactId = readString(formData, 'id');
   const isActive = readString(formData, 'next_is_active') === 'true';
 
@@ -140,6 +148,8 @@ export async function moveSalesContactAction(input: {
   beforeId: string | null;
   afterId: string | null;
 }): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!input.itemId) {
     return { ok: false, error: 'Dữ liệu di chuyển không hợp lệ.' };
   }

@@ -11,6 +11,8 @@ import {
   type JobVacancyPayload,
 } from '@/lib/services/admin/jobs';
 import { getRequestContext } from '@/lib/services/admin/audit-metadata';
+import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 
 export type AdminFormState = { ok: boolean; error?: string };
 
@@ -52,6 +54,7 @@ export async function createJobAction(
   _prevState: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
     const payload = readJobVacancyPayload(formData);
     const requestContext = await getRequestContext();
@@ -75,6 +78,7 @@ export async function updateJobAction(
   _prevState: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
     const jobId = readString(formData, 'id');
 
@@ -101,6 +105,8 @@ export async function updateJobAction(
 }
 
 export async function deleteJobAction(jobId: string): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!jobId) {
     return { ok: false, error: 'Thiếu ID tin tuyển dụng.' };
   }
@@ -121,6 +127,8 @@ export async function deleteJobAction(jobId: string): Promise<AdminFormState> {
 }
 
 export async function toggleJobActiveAction(formData: FormData) {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const jobId = readString(formData, 'id');
   const isActive = readString(formData, 'next_is_active') === 'true';
 
@@ -143,6 +151,8 @@ export async function moveJobAction(input: {
   beforeId: string | null;
   afterId: string | null;
 }): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!input.itemId) {
     return { ok: false, error: 'Dữ liệu di chuyển không hợp lệ.' };
   }

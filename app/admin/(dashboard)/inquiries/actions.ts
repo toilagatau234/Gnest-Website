@@ -11,6 +11,7 @@ import {
 } from '@/lib/services/admin/inquiries';
 import type { InquiryStatus, Updates } from '@/lib/types/database';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 
 export type InquiryActionState = { ok: boolean; error?: string };
 
@@ -28,6 +29,8 @@ function revalidateInquiries() {
 }
 
 export async function updateInquiryStatusAction(formData: FormData): Promise<InquiryActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const inquiryId = readString(formData, 'inquiry_id');
   const status = readString(formData, 'status') as InquiryStatus;
 
@@ -50,6 +53,8 @@ export async function updateInquiryStatusAction(formData: FormData): Promise<Inq
 }
 
 export async function assignInquiryAction(formData: FormData): Promise<InquiryActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const inquiryId = readString(formData, 'inquiry_id');
   const assigneeId = readString(formData, 'assigned_to') || null;
 
@@ -68,6 +73,8 @@ export async function assignInquiryAction(formData: FormData): Promise<InquiryAc
 }
 
 export async function addInquiryInternalNoteAction(formData: FormData): Promise<InquiryActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const inquiryId = readString(formData, 'inquiry_id');
   const note = readString(formData, 'note');
 
@@ -86,6 +93,8 @@ export async function addInquiryInternalNoteAction(formData: FormData): Promise<
 }
 
 export async function updateInquiryPriorityAction(formData: FormData): Promise<InquiryActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const inquiryId = readString(formData, 'inquiry_id');
   const priority = readString(formData, 'priority') as InquiryPriority;
 

@@ -10,6 +10,8 @@ import {
   type BannerPayload,
 } from '@/lib/services/admin/banners';
 import { getRequestContext } from '@/lib/services/admin/audit-metadata';
+import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 import { ALLOWED_POSITIONS } from '@/lib/services/banners';
 
 export type AdminFormState = { ok: boolean; error?: string };
@@ -109,6 +111,7 @@ export async function createBannerAction(
   _prevState: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
     const payload = readBannerPayload(formData);
     const requestContext = await getRequestContext();
@@ -129,6 +132,7 @@ export async function updateBannerAction(
   _prevState: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
     const bannerId = readString(formData, 'id');
 
@@ -152,6 +156,8 @@ export async function updateBannerAction(
 }
 
 export async function deleteBannerAction(bannerId: string): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!bannerId) {
     return { ok: false, error: 'Thiếu ID banner quảng cáo.' };
   }
@@ -172,6 +178,8 @@ export async function deleteBannerAction(bannerId: string): Promise<AdminFormSta
 }
 
 export async function toggleBannerActiveAction(formData: FormData) {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const bannerId = readString(formData, 'id');
   const isActive = readString(formData, 'next_is_active') === 'true';
 

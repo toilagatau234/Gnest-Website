@@ -11,6 +11,8 @@ import {
   type ProductPayload,
 } from '@/lib/services/admin/products';
 import { getRequestContext } from '@/lib/services/admin/audit-metadata';
+import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 import type { Json } from '@/lib/types/database';
 
 export type AdminFormState = { ok: boolean; error?: string; productId?: string };
@@ -94,6 +96,7 @@ export async function createProductAction(
   _prevState: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
     const payload = readProductPayload(formData);
     const requestContext = await getRequestContext();
@@ -115,6 +118,7 @@ export async function updateProductAction(
   _prevState: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
     const productId = readString(formData, 'id');
 
@@ -140,6 +144,8 @@ export async function updateProductAction(
 }
 
 export async function deleteProductAction(productId: string): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!productId) {
     return { ok: false, error: 'Thiếu ID sản phẩm.' };
   }
@@ -166,6 +172,8 @@ export async function fetchProductDetailAction(productId: string): Promise<{ dat
 }
 
 export async function toggleProductActiveAction(formData: FormData) {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const productId = readString(formData, 'id');
   const isActive = readString(formData, 'next_is_active') === 'true';
 
@@ -211,6 +219,8 @@ export type BulkRowResult = {
 const MAX_BULK_ROWS = 50;
 
 export async function bulkCreateProductsAction(rows: BulkRowPayload[]): Promise<BulkRowResult[]> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!Array.isArray(rows) || rows.length === 0 || rows.length > MAX_BULK_ROWS) {
     return [{ clientId: '', ok: false, error: `Tối đa ${MAX_BULK_ROWS} sản phẩm mỗi lần.` }];
   }
