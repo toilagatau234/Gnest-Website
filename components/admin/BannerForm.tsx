@@ -77,7 +77,7 @@ function BannerPreview({
   imageUrl: string;
   mode: 'desktop' | 'mobile';
 }) {
-  const hasImage = imageUrl.trim().length > 0;
+  const hasImage = imageUrl.trim().length > 0 && validateImageUrl(imageUrl) && !imageUrl.includes('drive.google.com');
   const previewStyle = hasImage
     ? {
         backgroundImage: `linear-gradient(90deg, rgba(27, 58, 107, 0.82), rgba(27, 58, 107, 0.34)), url(${imageUrl.trim()})`,
@@ -145,8 +145,14 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
 
   const handleDesktopUrlChange = (value: string) => {
     setImageDesktopUrl(value);
-    if (value.trim() && !validateImageUrl(value)) {
-      setDesktopUrlError('URL ảnh không hợp lệ. Vui lòng sử dụng URL đầy đủ (https://...)');
+    if (value.trim()) {
+      if (!validateImageUrl(value)) {
+        setDesktopUrlError('Đường dẫn ảnh không hợp lệ. Vui lòng bắt đầu bằng http:// hoặc https://');
+      } else if (value.includes('drive.google.com')) {
+        setDesktopUrlError('Cảnh báo: Link Google Drive không phải là link ảnh trực tiếp và có thể không hiển thị được.');
+      } else {  
+        setDesktopUrlError('');
+      }
     } else {
       setDesktopUrlError('');
     }
@@ -154,8 +160,14 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
 
   const handleMobileUrlChange = (value: string) => {
     setImageMobileUrl(value);
-    if (value.trim() && !validateImageUrl(value)) {
-      setMobileUrlError('URL ảnh không hợp lệ. Vui lòng sử dụng URL đầy đủ (https://...)');
+    if (value.trim()) {
+      if (!validateImageUrl(value)) {
+        setMobileUrlError('Đường dẫn ảnh không hợp lệ. Vui lòng bắt đầu bằng http:// hoặc https://');
+      } else if (value.includes('drive.google.com')) {
+        setMobileUrlError('Cảnh báo: Link Google Drive không phải là link ảnh trực tiếp và có thể không hiển thị được.');
+      } else {
+        setMobileUrlError('');
+      }
     } else {
       setMobileUrlError('');
     }
@@ -263,50 +275,52 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
             <input type="hidden" name="sort_order" value={banner?.sort_order ?? 0} />
           </section>
 
-          <section className="space-y-4 rounded-2xl border border-[#EEF2F6] bg-white p-4">
-            <div>
-              <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#1B3A6B]">
-                <ImageIcon className="h-4 w-4 text-slate-400" /> Ảnh banner
-              </h3>
-              <p className="mt-1 text-[11px] text-slate-400">Dán đường dẫn ảnh đã upload. Nếu chưa có ảnh, hệ thống sẽ tự hiển thị banner dạng chữ.</p>
-            </div>
+          {position !== 'site_top' && (
+            <section className="space-y-4 rounded-2xl border border-[#EEF2F6] bg-white p-4">
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#1B3A6B]">
+                  <ImageIcon className="h-4 w-4 text-slate-400" /> Ảnh banner
+                </h3>
+                <p className="mt-1 text-[11px] text-slate-400">Dán đường dẫn ảnh đã upload. Nếu chưa có ảnh, hệ thống sẽ tự hiển thị banner dạng chữ.</p>
+              </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className={labelClass}>Ảnh banner máy tính</span>
-                <input
-                  name="image_desktop_url"
-                  type="text"
-                  value={imageDesktopUrl}
-                  onChange={(event) => handleDesktopUrlChange(event.target.value)}
-                  className={`${fieldClass} ${desktopUrlError ? 'border-rose-300 bg-rose-50/50' : ''}`}
-                  placeholder="https://..."
-                />
-                {desktopUrlError ? (
-                  <span className="mt-1.5 block text-[10px] font-medium text-rose-600">{desktopUrlError}</span>
-                ) : (
-                  <span className={helperClass}>Khuyến nghị 1600×500 hoặc 1920×600, ảnh ngang, dung lượng nhẹ.</span>
-                )}
-              </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className={labelClass}>Ảnh banner máy tính</span>
+                  <input
+                    name="image_desktop_url"
+                    type="text"
+                    value={imageDesktopUrl}
+                    onChange={(event) => handleDesktopUrlChange(event.target.value)}
+                    className={`${fieldClass} ${desktopUrlError ? 'border-rose-300 bg-rose-50/50' : ''}`}
+                    placeholder="https://..."
+                  />
+                  {desktopUrlError ? (
+                    <span className="mt-1.5 block text-[10px] font-medium text-rose-600">{desktopUrlError}</span>
+                  ) : (
+                    <span className={helperClass}>Khuyến nghị 1600×500 hoặc 1920×600, ảnh ngang, dung lượng nhẹ.</span>
+                  )}
+                </label>
 
-              <label className="block">
-                <span className={labelClass}>Ảnh banner điện thoại</span>
-                <input
-                  name="image_mobile_url"
-                  type="text"
-                  value={imageMobileUrl}
-                  onChange={(event) => handleMobileUrlChange(event.target.value)}
-                  className={`${fieldClass} ${mobileUrlError ? 'border-rose-300 bg-rose-50/50' : ''}`}
-                  placeholder="https://..."
-                />
-                {mobileUrlError ? (
-                  <span className="mt-1.5 block text-[10px] font-medium text-rose-600">{mobileUrlError}</span>
-                ) : (
-                  <span className={helperClass}>Khuyến nghị 800×600 hoặc tỉ lệ gần vuông để hiển thị tốt trên mobile.</span>
-                )}
-              </label>
-            </div>
-          </section>
+                <label className="block">
+                  <span className={labelClass}>Ảnh banner điện thoại</span>
+                  <input
+                    name="image_mobile_url"
+                    type="text"
+                    value={imageMobileUrl}
+                    onChange={(event) => handleMobileUrlChange(event.target.value)}
+                    className={`${fieldClass} ${mobileUrlError ? 'border-rose-300 bg-rose-50/50' : ''}`}
+                    placeholder="https://..."
+                  />
+                  {mobileUrlError ? (
+                    <span className="mt-1.5 block text-[10px] font-medium text-rose-600">{mobileUrlError}</span>
+                  ) : (
+                    <span className={helperClass}>Khuyến nghị 800×600 hoặc tỉ lệ gần vuông để hiển thị tốt trên mobile.</span>
+                  )}
+                </label>
+              </div>
+            </section>
+          )}
 
           <section className="space-y-4 rounded-2xl border border-[#EEF2F6] bg-white p-4">
             <div>
@@ -368,20 +382,41 @@ export function BannerForm({ formId, formAction, state, banner }: BannerFormProp
             </div>
 
             <div className="space-y-4">
-              <BannerPreview
-                title={name}
-                content={content}
-                linkUrl={linkUrl}
-                imageUrl={imageDesktopUrl}
-                mode="desktop"
-              />
-              <BannerPreview
-                title={name}
-                content={content}
-                linkUrl={linkUrl}
-                imageUrl={imageMobileUrl || imageDesktopUrl}
-                mode="mobile"
-              />
+              {position === 'site_top' ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <Megaphone className="h-3.5 w-3.5" />
+                    Thanh thông báo đầu trang
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm bg-[#1B3A6B] text-white py-2.5 px-4 text-center text-xs font-semibold leading-snug tracking-wide">
+                    <div className="inline-flex flex-wrap items-center justify-center gap-2">
+                      <span>{content.trim() || 'Nội dung thông báo đầu trang (site_top)...'}</span>
+                      {linkUrl.trim() ? (
+                        <span className="inline-flex items-center gap-0.5 underline text-white/90 hover:text-white text-[10px] font-bold">
+                          <Link2 className="h-3 w-3" /> Chi tiết
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <BannerPreview
+                    title={name}
+                    content={content}
+                    linkUrl={linkUrl}
+                    imageUrl={imageDesktopUrl}
+                    mode="desktop"
+                  />
+                  <BannerPreview
+                    title={name}
+                    content={content}
+                    linkUrl={linkUrl}
+                    imageUrl={imageMobileUrl || imageDesktopUrl}
+                    mode="mobile"
+                  />
+                </>
+              )}
             </div>
           </div>
 

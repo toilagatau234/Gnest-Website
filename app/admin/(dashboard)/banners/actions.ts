@@ -60,13 +60,38 @@ function readBannerPayload(formData: FormData): BannerPayload {
     throw new Error('Thời gian kết thúc phải sau thời gian bắt đầu.');
   }
 
+  const imageDesktopUrl = readString(formData, 'image_desktop_url') || null;
+  const imageMobileUrl = readString(formData, 'image_mobile_url') || null;
+
+  if (position !== 'site_top') {
+    const validateUrl = (url: string | null, fieldName: string) => {
+      if (!url) return;
+      try {
+        const u = new URL(url);
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+          throw new Error(`Đường dẫn ${fieldName} phải bắt đầu bằng http:// hoặc https://`);
+        }
+        if (url.includes('drive.google.com')) {
+          throw new Error(`Đường dẫn ${fieldName} từ Google Drive không phải là link ảnh trực tiếp. Vui lòng chuyển thành direct link hoặc sử dụng host khác.`);
+        }
+      } catch (e: any) {
+        if (e.message.includes('Google Drive') || e.message.includes('bắt đầu bằng')) {
+          throw e;
+        }
+        throw new Error(`Đường dẫn ${fieldName} không đúng định dạng URL.`);
+      }
+    };
+    validateUrl(imageDesktopUrl, 'ảnh máy tính');
+    validateUrl(imageMobileUrl, 'ảnh điện thoại');
+  }
+
   return {
     name,
     content,
     link_url: readString(formData, 'link_url') || null,
     position,
-    image_desktop_url: readString(formData, 'image_desktop_url') || null,
-    image_mobile_url: readString(formData, 'image_mobile_url') || null,
+    image_desktop_url: imageDesktopUrl,
+    image_mobile_url: imageMobileUrl,
     start_at: startAt,
     end_at: endAt,
     sort_order: sortOrder,
