@@ -10,6 +10,7 @@ import type { AdminBanner } from '@/lib/services/admin/banners';
 interface BannersTableProps {
   banners: AdminBanner[];
   page: number;
+  pageSize: number;
   pageCount: number;
   total: number;
 }
@@ -110,7 +111,7 @@ function ScheduleStatus({ banner }: { banner: AdminBanner }) {
   );
 }
 
-export function BannersTable({ banners, page, pageCount, total }: BannersTableProps) {
+export function BannersTable({ banners, page, pageSize, pageCount, total }: BannersTableProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -167,7 +168,7 @@ export function BannersTable({ banners, page, pageCount, total }: BannersTablePr
                 <th className="p-4 max-w-[240px]">Nội dung / ALT</th>
                 <th className="p-4">Đường dẫn (Link)</th>
                 <th className="p-4">Lịch trình</th>
-                <th className="p-4 whitespace-nowrap">Thứ tự</th>
+                <th className="p-4 whitespace-nowrap">STT</th>
                 <th className="p-4 whitespace-nowrap">Trạng thái</th>
                 <th className="p-4 whitespace-nowrap text-right">Thao tác</th>
               </tr>
@@ -175,6 +176,7 @@ export function BannersTable({ banners, page, pageCount, total }: BannersTablePr
             <tbody className="divide-y divide-slate-100/80">
               {filteredBanners.map((banner, index) => {
                 const isEven = index % 2 === 0;
+                const displayIndex = (page - 1) * pageSize + index + 1;
 
                 return (
                   <tr
@@ -223,7 +225,7 @@ export function BannersTable({ banners, page, pageCount, total }: BannersTablePr
                     </td>
 
                     <td className="p-4 whitespace-nowrap font-bold text-slate-700">
-                      #{banner.sort_order}
+                      #{displayIndex}
                     </td>
 
                     <td className="p-4 whitespace-nowrap">

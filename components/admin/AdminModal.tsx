@@ -27,7 +27,7 @@ const sizeStyles: Record<ModalSize, string> = {
   md: 'sm:max-w-lg',
   lg: 'sm:max-w-2xl',
   xl: 'sm:max-w-4xl',
-  '2xl': 'sm:max-w-[1100px]',
+  '2xl': 'sm:max-w-[1400px]',
 };
 
 const FOCUSABLE_SELECTOR =

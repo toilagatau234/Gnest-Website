@@ -1,5 +1,5 @@
--- Gnest Website - Supabase foundation schema (idempotent baseline)
--- Kept in sync with supabase/migrations/20260606000000_initial_schema.sql.
+-- Gnest Website - initial foundation schema for clean Supabase Preview resets.
+-- Source of truth: supabase/schema.sql.
 
 create extension if not exists "pgcrypto";
 
@@ -27,7 +27,6 @@ exception
 end
 $$;
 
--- Common updated_at helper function
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -38,7 +37,6 @@ begin
 end;
 $$;
 
--- 1. Profiles Table
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
@@ -48,7 +46,6 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
--- 2. Admin Users Table
 create table if not exists public.admin_users (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
@@ -58,10 +55,8 @@ create table if not exists public.admin_users (
   updated_at timestamptz not null default now()
 );
 
--- Internal Private Schema
 create schema if not exists app_private;
 
--- Is Admin Verification Function
 create or replace function app_private.is_admin()
 returns boolean
 language sql
@@ -78,7 +73,6 @@ as $$
   );
 $$;
 
--- Is Super Admin Verification Function
 create or replace function app_private.is_super_admin()
 returns boolean
 language sql
@@ -95,7 +89,6 @@ as $$
   );
 $$;
 
--- 3. Categories Table
 create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -109,7 +102,6 @@ create table if not exists public.categories (
   updated_at timestamptz not null default now()
 );
 
--- 4. Products Table
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
   category_id uuid references public.categories(id) on delete set null,
@@ -124,7 +116,6 @@ create table if not exists public.products (
   updated_at timestamptz not null default now()
 );
 
--- 5. Product Images Table
 create table if not exists public.product_images (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references public.products(id) on delete cascade,
@@ -137,7 +128,6 @@ create table if not exists public.product_images (
   created_at timestamptz not null default now()
 );
 
--- 6. Product Bulk Discounts Table
 create table if not exists public.product_bulk_discounts (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references public.products(id) on delete cascade,
@@ -148,7 +138,6 @@ create table if not exists public.product_bulk_discounts (
   constraint product_bulk_discounts_min_quantity_check check (min_quantity > 0)
 );
 
--- 7. Sales Contacts Table
 create table if not exists public.sales_contacts (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -162,7 +151,6 @@ create table if not exists public.sales_contacts (
   updated_at timestamptz not null default now()
 );
 
--- 8. Job Vacancies Table
 create table if not exists public.job_vacancies (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -176,7 +164,6 @@ create table if not exists public.job_vacancies (
   updated_at timestamptz not null default now()
 );
 
--- 9. Inquiries Table
 create table if not exists public.inquiries (
   id uuid primary key default gen_random_uuid(),
   customer_name text not null,
@@ -191,7 +178,6 @@ create table if not exists public.inquiries (
   updated_at timestamptz not null default now()
 );
 
--- 10. Site Contents Table
 create table if not exists public.site_contents (
   id uuid primary key default gen_random_uuid(),
   key text not null unique,
@@ -201,7 +187,6 @@ create table if not exists public.site_contents (
   updated_at timestamptz not null default now()
 );
 
--- 11. Audit Logs Table
 create table if not exists public.audit_logs (
   id uuid primary key default gen_random_uuid(),
   actor_id uuid references auth.users(id) on delete set null,
@@ -212,7 +197,6 @@ create table if not exists public.audit_logs (
   created_at timestamptz not null default now()
 );
 
--- 12. Promotional Banners Table
 create table if not exists public.promotional_banners (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -229,7 +213,6 @@ create table if not exists public.promotional_banners (
   updated_at timestamptz not null default now()
 );
 
--- Idempotent Indexes
 create index if not exists categories_parent_id_idx on public.categories(parent_id);
 create index if not exists categories_slug_idx on public.categories(slug);
 create index if not exists products_category_id_idx on public.products(category_id);
@@ -243,8 +226,6 @@ create index if not exists inquiries_status_idx on public.inquiries(status);
 create index if not exists promotional_banners_position_idx on public.promotional_banners(position);
 create index if not exists promotional_banners_active_position_idx on public.promotional_banners(is_active, position, sort_order);
 
-
--- Idempotent Triggers Setup (DROP before CREATE ensures no errors)
 drop trigger if exists set_profiles_updated_at on public.profiles;
 create trigger set_profiles_updated_at
 before update on public.profiles
@@ -290,7 +271,6 @@ create trigger set_promotional_banners_updated_at
 before update on public.promotional_banners
 for each row execute function public.set_updated_at();
 
--- RLS Enforcement
 alter table public.profiles enable row level security;
 alter table public.admin_users enable row level security;
 alter table public.categories enable row level security;
@@ -304,7 +284,6 @@ alter table public.site_contents enable row level security;
 alter table public.audit_logs enable row level security;
 alter table public.promotional_banners enable row level security;
 
--- Base Schema Grants
 grant usage on schema public to anon, authenticated;
 grant usage on schema app_private to anon, authenticated;
 grant execute on function app_private.is_admin() to anon, authenticated;
@@ -315,9 +294,6 @@ grant select, insert, update, delete on all tables in schema public to authentic
 grant select on public.promotional_banners to anon, authenticated;
 grant select, insert, update, delete on public.promotional_banners to authenticated;
 
--- Safe Idempotent Row-Level Security Policies (DROP before CREATE)
-
--- Categories
 drop policy if exists "Public read active categories" on public.categories;
 create policy "Public read active categories"
 on public.categories for select
@@ -330,7 +306,6 @@ to authenticated
 using (app_private.is_admin())
 with check (app_private.is_admin());
 
--- Products
 drop policy if exists "Public read active products" on public.products;
 create policy "Public read active products"
 on public.products for select
@@ -343,7 +318,6 @@ to authenticated
 using (app_private.is_admin())
 with check (app_private.is_admin());
 
--- Product Images
 drop policy if exists "Public read active product images" on public.product_images;
 create policy "Public read active product images"
 on public.product_images for select
@@ -363,7 +337,6 @@ to authenticated
 using (app_private.is_admin())
 with check (app_private.is_admin());
 
--- Bulk Discounts
 drop policy if exists "Public read active bulk discounts" on public.product_bulk_discounts;
 create policy "Public read active bulk discounts"
 on public.product_bulk_discounts for select
@@ -383,7 +356,6 @@ to authenticated
 using (app_private.is_admin())
 with check (app_private.is_admin());
 
--- Sales Contacts
 drop policy if exists "Public read active sales contacts" on public.sales_contacts;
 create policy "Public read active sales contacts"
 on public.sales_contacts for select
@@ -396,7 +368,6 @@ to authenticated
 using (app_private.is_admin())
 with check (app_private.is_admin());
 
--- Job Vacancies
 drop policy if exists "Public read active job vacancies" on public.job_vacancies;
 create policy "Public read active job vacancies"
 on public.job_vacancies for select
@@ -409,7 +380,6 @@ to authenticated
 using (app_private.is_admin())
 with check (app_private.is_admin());
 
--- Inquiries
 drop policy if exists "Public insert inquiries" on public.inquiries;
 create policy "Public insert inquiries"
 on public.inquiries for insert
@@ -428,7 +398,6 @@ to authenticated
 using (app_private.is_admin())
 with check (app_private.is_admin());
 
--- Site Contents
 drop policy if exists "Public read active site contents" on public.site_contents;
 create policy "Public read active site contents"
 on public.site_contents for select
@@ -441,7 +410,6 @@ to authenticated
 using (app_private.is_admin())
 with check (app_private.is_admin());
 
--- Profiles
 drop policy if exists "Users read own profile" on public.profiles;
 create policy "Users read own profile"
 on public.profiles for select
@@ -462,7 +430,6 @@ to authenticated
 using (app_private.is_admin())
 with check (app_private.is_admin());
 
--- Admin Users
 drop policy if exists "Admin read admin users" on public.admin_users;
 create policy "Admin read admin users"
 on public.admin_users for select
@@ -476,7 +443,6 @@ to authenticated
 using (app_private.is_super_admin())
 with check (app_private.is_super_admin());
 
--- Audit Logs
 drop policy if exists "Admin read audit logs" on public.audit_logs;
 create policy "Admin read audit logs"
 on public.audit_logs for select
@@ -489,7 +455,6 @@ on public.audit_logs for insert
 to authenticated
 with check (app_private.is_admin());
 
--- Promotional Banners
 drop policy if exists "Public read active promotional banners" on public.promotional_banners;
 create policy "Public read active promotional banners"
 on public.promotional_banners for select
@@ -501,4 +466,3 @@ on public.promotional_banners for all
 to authenticated
 using (app_private.is_admin())
 with check (app_private.is_admin());
-

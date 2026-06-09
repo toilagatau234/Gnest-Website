@@ -48,13 +48,14 @@ function normalizeNullableText(value: string | null) {
 function normalizeBannerPayload(payload: BannerPayload): Inserts<'promotional_banners'> {
   const position = payload.position.trim();
   const validPosition = ALLOWED_POSITIONS.includes(position as any) ? position : 'site_top';
+  const isSiteTop = validPosition === 'site_top';
   return {
     name: payload.name.trim(),
     content: payload.content.trim(),
     link_url: normalizeNullableText(payload.link_url),
     position: validPosition,
-    image_desktop_url: normalizeNullableText(payload.image_desktop_url),
-    image_mobile_url: normalizeNullableText(payload.image_mobile_url),
+    image_desktop_url: isSiteTop ? null : normalizeNullableText(payload.image_desktop_url),
+    image_mobile_url: isSiteTop ? null : normalizeNullableText(payload.image_mobile_url),
     start_at: normalizeNullableText(payload.start_at),
     end_at: normalizeNullableText(payload.end_at),
     sort_order: payload.sort_order,

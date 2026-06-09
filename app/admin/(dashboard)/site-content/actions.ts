@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { saveSiteContents, type SiteContentsPayload } from '@/lib/services/admin/site-content';
+import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { SYSTEM_CONFIG_ROLES } from '@/lib/services/admin/permissions';
 
 export type SiteContentFormState = { ok: boolean; error?: string };
 
@@ -46,6 +48,7 @@ export async function saveSiteContentAction(
   _prevState: SiteContentFormState,
   formData: FormData,
 ): Promise<SiteContentFormState> {
+  await requireAdminAuth(SYSTEM_CONFIG_ROLES);
   try {
     const payload = buildPayload(formData);
 

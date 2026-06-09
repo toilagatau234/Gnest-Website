@@ -13,6 +13,7 @@ interface SalesContactsTableProps {
   contacts: AdminSalesContact[];
   allContacts: AdminSalesContact[];
   page: number;
+  pageSize: number;
   pageCount: number;
   total: number;
 }
@@ -39,7 +40,7 @@ function getZaloLink(contact: AdminSalesContact) {
   return digits ? `https://zalo.me/${digits}` : '#';
 }
 
-export function SalesContactsTable({ contacts, allContacts, page, pageCount, total }: SalesContactsTableProps) {
+export function SalesContactsTable({ contacts, allContacts, page, pageSize, pageCount, total }: SalesContactsTableProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -82,7 +83,7 @@ export function SalesContactsTable({ contacts, allContacts, page, pageCount, tot
         <div className="min-w-0">
           <h2 className="text-base font-extrabold text-[#202224]">Danh sách nhân sự tư vấn</h2>
           <p className="mt-1 max-w-3xl text-xs font-medium leading-relaxed text-[#646464]">
-            Quản lý hotline, Zalo và thứ tự hiển thị cho các điểm chạm tư vấn trên website.
+            Quản lý hotline, Zalo và thứ tự hiển thị cho các điểm chạm tư vấn trên website. {"Sắp xếp thứ tự bằng cách bấm nút 'Tùy chỉnh sắp xếp' ở góc trên."}
           </p>
         </div>
 
@@ -130,7 +131,9 @@ export function SalesContactsTable({ contacts, allContacts, page, pageCount, tot
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {filteredContacts.map((contact) => (
+          {filteredContacts.map((contact, index) => {
+            const displayIndex = (page - 1) * pageSize + index + 1;
+            return (
             <article key={contact.id} className="rounded-2xl border border-[#E5E7EF] bg-white p-4 shadow-sm transition hover:border-[#D8DEEC] hover:shadow-admin">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 gap-3">
@@ -178,7 +181,7 @@ export function SalesContactsTable({ contacts, allContacts, page, pageCount, tot
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge active={contact.is_active} />
                   <span className="admin-badge border-[#E5E7EF] bg-[#F7F9FB] text-[#646464]">
-                    Thứ tự #{contact.sort_order}
+                    STT #{displayIndex}
                   </span>
                 </div>
                 <span className="inline-flex items-center gap-1.5 font-bold uppercase tracking-[0.12em] text-[#3749A6]">
@@ -186,7 +189,8 @@ export function SalesContactsTable({ contacts, allContacts, page, pageCount, tot
                 </span>
               </div>
             </article>
-          ))}
+          );
+        })}
         </div>
       )}
 

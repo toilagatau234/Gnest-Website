@@ -81,6 +81,7 @@ export default async function BannersPage({
         <BannersTable
           banners={safeBanners}
           page={page}
+          pageSize={pageSize}
           pageCount={pageCount}
           total={total}
         />

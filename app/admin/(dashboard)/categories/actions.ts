@@ -12,6 +12,8 @@ import {
   type CategoryReorderScope,
 } from '@/lib/services/admin/categories';
 import { getRequestContext } from '@/lib/services/admin/audit-metadata';
+import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 import type { CategoryType } from '@/lib/types/database';
 
 export type AdminFormState = { ok: boolean; error?: string };
@@ -62,6 +64,7 @@ export async function createCategoryAction(
   _prevState: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
     const payload = readCategoryPayload(formData);
     const requestContext = await getRequestContext();
@@ -82,6 +85,7 @@ export async function updateCategoryAction(
   _prevState: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
     const categoryId = readString(formData, 'id');
 
@@ -105,6 +109,8 @@ export async function updateCategoryAction(
 }
 
 export async function deleteCategoryAction(categoryId: string): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!categoryId) {
     return { ok: false, error: 'Thiếu ID danh mục.' };
   }
@@ -125,6 +131,8 @@ export async function deleteCategoryAction(categoryId: string): Promise<AdminFor
 }
 
 export async function toggleCategoryActiveAction(formData: FormData) {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const categoryId = readString(formData, 'id');
   const isActive = readString(formData, 'next_is_active') === 'true';
 
@@ -148,6 +156,8 @@ export async function moveCategoryAction(input: {
   beforeId: string | null;
   afterId: string | null;
 }): Promise<AdminFormState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!input.itemId || !input.scope) {
     return { ok: false, error: 'Dữ liệu di chuyển không hợp lệ.' };
   }

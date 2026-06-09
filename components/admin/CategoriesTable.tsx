@@ -176,7 +176,7 @@ function CategoryTreeView({
 }: CategoryTreeViewProps) {
   return (
     <div className="space-y-3">
-      {parentCategories.map((parent) => {
+      {parentCategories.map((parent, parentIndex) => {
         const children = childrenByParentId.get(parent.id) ?? [];
         const isExpanded = Boolean(expandedParents[parent.id]);
         const hasChildren = children.length > 0;
@@ -219,7 +219,7 @@ function CategoryTreeView({
               <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                 {!fixedType && <CategoryTypeBadge type={parent.type} />}
                 <span className="admin-badge border-[#E5E7EF] bg-white text-[#646464]">
-                  #{parent.sort_order}
+                  STT #{parentIndex + 1}
                 </span>
                 <span className="admin-badge border-[#E5E7EF] bg-white text-[#646464]">
                   {children.length} mục con
@@ -232,7 +232,7 @@ function CategoryTreeView({
             {isExpanded ? (
               <div className="divide-y divide-[#EEF2F6] bg-white">
                 {hasChildren ? (
-                  children.map((child) => (
+                  children.map((child, childIndex) => (
                     <div
                       key={child.id}
                       className="relative flex flex-col gap-3 py-3 pl-12 pr-4 transition-colors before:absolute before:left-8 before:top-0 before:h-full before:w-px before:bg-[#E5E7EF] hover:bg-[#F7F9FB] lg:flex-row lg:items-center lg:justify-between"
@@ -255,7 +255,7 @@ function CategoryTreeView({
                       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                         {!fixedType && <CategoryTypeBadge type={child.type} />}
                         <span className="admin-badge border-[#E5E7EF] bg-[#F7F9FB] text-[#646464]">
-                          #{child.sort_order}
+                          STT #{childIndex + 1}
                         </span>
                         <CategoryStatusBadge active={child.is_active} />
                         <CategoryRowActions categories={categories} category={child} compact fixedType={fixedType} />
@@ -286,13 +286,13 @@ function CategoryTableView({ categories, allCategories, categoryById, fixedType 
             <th className="p-3.5">Slug</th>
             {!fixedType && <th className="p-3.5">Loại</th>}
             {fixedType !== 'service' && <th className="p-3.5">Danh mục cha</th>}
-            <th className="p-3.5">Thứ tự</th>
+            <th className="p-3.5">STT</th>
             <th className="p-3.5">Trạng thái</th>
             <th className="p-3.5 text-right">Thao tác</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#EEF2F6]">
-          {categories.map((category) => {
+          {categories.map((category, rowIndex) => {
             const parent = category.parent_id ? categoryById.get(category.parent_id) : null;
 
             return (
@@ -312,7 +312,7 @@ function CategoryTableView({ categories, allCategories, categoryById, fixedType 
                   </td>
                 )}
                 {fixedType !== 'service' && <td className="p-3.5 text-[#646464]">{parent ? parent.name : '—'}</td>}
-                <td className="p-3.5 font-mono font-semibold text-[#646464]">{category.sort_order}</td>
+                <td className="p-3.5 font-mono font-semibold text-[#646464]">{rowIndex + 1}</td>
                 <td className="p-3.5">
                   <CategoryStatusBadge active={category.is_active} />
                 </td>
@@ -480,8 +480,8 @@ export function CategoriesTable({ categories, fixedType }: CategoriesTableProps)
             </h2>
             <p className="mt-1 max-w-3xl text-xs font-medium leading-relaxed text-[#646464]">
               {fixedType === 'service'
-                ? 'Quản lý các dịch vụ chuyên nghiệp hiển thị giới thiệu trên trang chủ.'
-                : 'Quản lý cây danh mục sản phẩm đang hiển thị trong catalog và menu website.'}
+                ? 'Quản lý các dịch vụ chuyên nghiệp hiển thị giới thiệu trên trang chủ. Sắp xếp thứ tự bằng cách bấm nút \'Tùy chỉnh sắp xếp\' ở góc trên.'
+                : 'Quản lý cây danh mục sản phẩm đang hiển thị trong catalog và menu website. Sắp xếp thứ tự bằng cách bấm nút \'Tùy chỉnh sắp xếp\' ở góc trên.'}
             </p>
           </div>
 

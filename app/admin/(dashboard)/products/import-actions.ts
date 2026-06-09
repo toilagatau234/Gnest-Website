@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 
 import { getRequestContext } from '@/lib/services/admin/audit-metadata';
+import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 import {
   bulkImportProducts,
   validateProductImportRows,
@@ -16,6 +18,8 @@ import {
 export type { ImportResult, ImportRow, ImportRowError, ImportRowWarning, ValidationResult };
 
 export async function validateProductsImportAction(rows: ImportRow[]): Promise<ValidationResult> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!Array.isArray(rows) || rows.length === 0) {
     return {
       ok: false,
@@ -47,6 +51,8 @@ export async function importProductsAction(
   _prev: ImportResult,
   formData: FormData,
 ): Promise<ImportResult> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const raw = formData.get('rows');
   if (!raw || typeof raw !== 'string') {
     return { ok: false, error: 'Dữ liệu không hợp lệ.' };

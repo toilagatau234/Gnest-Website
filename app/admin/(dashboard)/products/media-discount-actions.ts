@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 import {
   createAdminProductImage,
   deleteAdminProductImage,
@@ -161,6 +162,8 @@ export async function updateProductImageAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const imageId = formData.get('id') as string;
   const alt = (formData.get('alt') as string) || '';
   const sortOrder = Number(formData.get('sort_order') || '0');
@@ -185,6 +188,8 @@ export async function updateProductImageAction(
 }
 
 export async function deleteProductImageAction(imageId: string): Promise<ActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!imageId) {
     return { ok: false, error: 'Thiếu ID hình ảnh.' };
   }
@@ -200,6 +205,8 @@ export async function deleteProductImageAction(imageId: string): Promise<ActionS
 }
 
 export async function toggleProductImageActiveAction(imageId: string, isActive: boolean): Promise<ActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!imageId) {
     return { ok: false, error: 'Thiếu ID hình ảnh.' };
   }
@@ -215,6 +222,8 @@ export async function toggleProductImageActiveAction(imageId: string, isActive: 
 }
 
 export async function setProductPrimaryImageAction(productId: string, imageId: string): Promise<ActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!productId || !imageId) {
     return { ok: false, error: 'Thiếu ID sản phẩm hoặc ID hình ảnh.' };
   }
@@ -230,6 +239,8 @@ export async function setProductPrimaryImageAction(productId: string, imageId: s
 }
 
 export async function reorderProductImagesAction(productId: string, orderedIds: string[]): Promise<ActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!productId || !orderedIds || orderedIds.length === 0) {
     return { ok: false, error: 'Dữ liệu sắp xếp không hợp lệ.' };
   }
@@ -252,6 +263,8 @@ export async function addProductDiscountAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const productId = formData.get('product_id') as string;
   const minQuantity = Number(formData.get('min_quantity') || '0');
   const pricePerUnit = parseDiscountPrice(formData.get('price_per_unit') as string | null);
@@ -286,6 +299,8 @@ export async function updateProductDiscountAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   const discountId = formData.get('id') as string;
   const minQuantity = Number(formData.get('min_quantity') || '0');
   const pricePerUnit = parseDiscountPrice(formData.get('price_per_unit') as string | null);
@@ -316,6 +331,8 @@ export async function updateProductDiscountAction(
 }
 
 export async function deleteProductDiscountAction(discountId: string): Promise<ActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!discountId) {
     return { ok: false, error: 'Thiếu ID bậc giá sỉ.' };
   }
@@ -331,6 +348,8 @@ export async function deleteProductDiscountAction(discountId: string): Promise<A
 }
 
 export async function toggleProductDiscountActiveAction(discountId: string, isActive: boolean): Promise<ActionState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
   if (!discountId) {
     return { ok: false, error: 'Thiếu ID bậc giá sỉ.' };
   }

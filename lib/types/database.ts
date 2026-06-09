@@ -424,6 +424,35 @@ export interface Database {
         };
         Relationships: [];
       };
+      newsletter_leads: {
+        Row: {
+          id: string;
+          name: string | null;
+          email: string | null;
+          phone: string | null;
+          source: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          source?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          name?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          source?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
 
     Views: Record<string, never>;

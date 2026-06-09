@@ -21,18 +21,24 @@ import {
 } from 'lucide-react';
 
 import { ADMIN_ROLE_LABELS, type AdminUser } from '@/lib/types/admin';
+import type { AdminRole } from '@/lib/types/database';
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
+  /** If set, the item is only shown to users whose role is in this list. */
+  allowedRoles?: readonly AdminRole[];
 }
 
 interface NavSection {
   title: string;
   items: NavItem[];
 }
+
+/** Roles that may access system-level pages (site content, user mgmt, audit logs). */
+const SYSTEM_NAV_ROLES: readonly AdminRole[] = ['super_admin', 'admin'];
 
 const navSections: NavSection[] = [
   {
@@ -55,10 +61,10 @@ const navSections: NavSection[] = [
     title: 'CẤU HÌNH HỆ THỐNG',
     items: [
       { label: 'Tuyển dụng', href: '/admin/jobs', icon: Briefcase },
-      { label: 'Nội dung website', href: '/admin/site-content', icon: Globe },
+      { label: 'Nội dung website', href: '/admin/site-content', icon: Globe, allowedRoles: SYSTEM_NAV_ROLES },
       { label: 'Banners quảng cáo', href: '/admin/banners', icon: Megaphone },
-      { label: 'Người dùng quản trị', href: '/admin/admin-users', icon: Users },
-      { label: 'Nhật ký hoạt động', href: '/admin/audit-logs', icon: History },
+      { label: 'Người dùng quản trị', href: '/admin/admin-users', icon: Users, allowedRoles: SYSTEM_NAV_ROLES },
+      { label: 'Nhật ký hoạt động', href: '/admin/audit-logs', icon: History, allowedRoles: SYSTEM_NAV_ROLES },
     ],
   },
 ];
@@ -149,62 +155,70 @@ export function AdminSidebar({
           </button>
         </div>
 
-        <nav className="admin-scrollbar relative min-h-0 flex-1 space-y-7 overflow-y-auto px-3 py-5">
-          {navSections.map((section) => (
-            <div key={section.title}>
-              {isExpanded ? (
-                <p className="mb-2.5 px-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 transition-opacity duration-200">
-                  {section.title}
-                </p>
-              ) : (
-                <div className="mb-2.5 border-t border-white/10 my-2" />
-              )}
-              <ul className="space-y-1">
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const active = isActive(item.href);
+        <nav className="admin-scrollbar-dark relative min-h-0 flex-1 space-y-7 overflow-y-auto px-3 py-5">
+          {navSections.map((section) => {
+            const visibleItems = section.items.filter(
+              (item) => !item.allowedRoles || item.allowedRoles.includes(adminUser.role),
+            );
 
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={onNavigate}
-                        title={!isExpanded ? item.label : undefined}
-                        aria-current={active ? 'page' : undefined}
-                        className={`
-                          group flex h-[46px] min-w-0 items-center justify-between gap-3 rounded-[10px] px-3.5 text-sm
-                          transition-[transform,background-color,color,box-shadow,padding-left,padding-right] duration-200
-                          ${
-                            active
-                              ? 'bg-[#4C61CC] font-bold text-white shadow-lg shadow-[#0B1534]/20'
-                              : 'text-white/70 hover:translate-x-1 hover:bg-white/10 hover:text-white'
-                          }
-                          ${!isExpanded ? 'justify-center px-0' : ''}
-                        `}
-                      >
-                        <span className="flex min-w-0 items-center gap-3">
-                          <span
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                              active ? 'bg-white/15 text-white' : 'bg-white/5 text-white/60 group-hover:text-white'
-                            }`}
-                          >
-                            <Icon className="h-4 w-4" />
-                          </span>
-                          {isExpanded && <span className="truncate">{item.label}</span>}
-                        </span>
+            if (visibleItems.length === 0) return null;
 
-                        {isExpanded && item.badge ? (
-                          <span className="ml-2 shrink-0 rounded-full border border-white/20 bg-white/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white">
-                            {item.badge}
+            return (
+              <div key={section.title}>
+                {isExpanded ? (
+                  <p className="mb-2.5 px-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 transition-opacity duration-200">
+                    {section.title}
+                  </p>
+                ) : (
+                  <div className="mb-2.5 border-t border-white/10 my-2" />
+                )}
+                <ul className="space-y-1">
+                  {visibleItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          onClick={onNavigate}
+                          title={!isExpanded ? item.label : undefined}
+                          aria-current={active ? 'page' : undefined}
+                          className={`
+                            group flex h-[46px] min-w-0 items-center justify-between gap-3 rounded-[10px] px-3.5 text-sm
+                            transition-[transform,background-color,color,box-shadow,padding-left,padding-right] duration-200
+                            ${
+                              active
+                                ? 'bg-[#4C61CC] font-bold text-white shadow-lg shadow-[#0B1534]/20'
+                                : 'text-white/70 hover:translate-x-1 hover:bg-white/10 hover:text-white'
+                            }
+                            ${!isExpanded ? 'justify-center px-0' : ''}
+                          `}
+                        >
+                          <span className="flex min-w-0 items-center gap-3">
+                            <span
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                                active ? 'bg-white/15 text-white' : 'bg-white/5 text-white/60 group-hover:text-white'
+                              }`}
+                            >
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            {isExpanded && <span className="truncate">{item.label}</span>}
                           </span>
-                        ) : null}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+
+                          {isExpanded && item.badge ? (
+                            <span className="ml-2 shrink-0 rounded-full border border-white/20 bg-white/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white">
+                              {item.badge}
+                            </span>
+                          ) : null}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
         </nav>
 
         {/* Collapse Toggle Button */}

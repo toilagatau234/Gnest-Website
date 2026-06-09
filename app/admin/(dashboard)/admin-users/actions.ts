@@ -11,6 +11,7 @@ import {
   type CreatedAdminUserPayload,
 } from '@/lib/services/admin/admin-users';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { USER_MANAGER_ROLES } from '@/lib/services/admin/permissions';
 import type { AdminRole } from '@/lib/types/database';
 
 export type AdminFormState = {
@@ -29,11 +30,31 @@ function revalidateAdminUsers() {
   revalidatePath('/admin/dashboard');
 }
 
+function validateUsername(username: string): string | null {
+  if (username.length < 3 || username.length > 32) {
+    return 'Tên đăng nhập phải có độ dài từ 3 đến 32 ký tự.';
+  }
+  if (!/^[a-z0-9._-]+$/.test(username)) {
+    return 'Tên đăng nhập chỉ được chứa chữ cái thường (a-z), chữ số (0-9), dấu chấm (.), dấu gạch ngang (-) và dấu gạch dưới (_).';
+  }
+  if (/^[._-]/.test(username)) {
+    return 'Tên đăng nhập không được bắt đầu bằng dấu chấm, dấu gạch ngang hoặc dấu gạch dưới.';
+  }
+  if (/[._-]$/.test(username)) {
+    return 'Tên đăng nhập không được kết thúc bằng dấu chấm, dấu gạch ngang hoặc dấu gạch dưới.';
+  }
+  if (/\.{2,}/.test(username)) {
+    return 'Tên đăng nhập không được chứa các dấu chấm liên tiếp.';
+  }
+  return null;
+}
+
 export async function inviteAdminUserAction(
   _prevState: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
   try {
+    await requireAdminAuth(USER_MANAGER_ROLES);
     const displayName = readString(formData, 'display_name');
     const username = readString(formData, 'username');
     const contactEmail = readString(formData, 'contact_email');
@@ -45,6 +66,11 @@ export async function inviteAdminUserAction(
 
     if (!username) {
       return { ok: false, error: 'Tên email là bắt buộc.' };
+    }
+
+    const usernameError = validateUsername(username);
+    if (usernameError) {
+      return { ok: false, error: usernameError };
     }
 
     if (contactEmail) {
@@ -84,6 +110,7 @@ export async function updateAdminUserRoleAction(
   formData: FormData,
 ): Promise<AdminFormState> {
   try {
+    const actor = await requireAdminAuth(USER_MANAGER_ROLES);
     const userId = readString(formData, 'userId');
     const role = readString(formData, 'role') as AdminRole;
 
@@ -94,8 +121,6 @@ export async function updateAdminUserRoleAction(
     if (!role) {
       return { ok: false, error: 'Vai trò là bắt buộc.' };
     }
-
-    const actor = await requireAdminAuth(['super_admin']);
     const { ok, error } = await updateAdminUserRole({
       userId,
       role,
@@ -114,6 +139,7 @@ export async function updateAdminUserRoleAction(
 }
 
 export async function toggleAdminUserActiveAction(formData: FormData): Promise<void> {
+  const actor = await requireAdminAuth(USER_MANAGER_ROLES);
   const userId = readString(formData, 'id');
   const isActive = readString(formData, 'next_is_active') === 'true';
 
@@ -121,7 +147,6 @@ export async function toggleAdminUserActiveAction(formData: FormData): Promise<v
     throw new Error('Thiếu ID người dùng.');
   }
 
-  const actor = await requireAdminAuth(['super_admin']);
   const { ok, error } = await setAdminUserActive(userId, isActive, actor.id);
 
   if (!ok || error) {
@@ -132,12 +157,11 @@ export async function toggleAdminUserActiveAction(formData: FormData): Promise<v
 }
 
 export async function removeAdminUserAccessAction(userId: string): Promise<AdminFormState> {
-  if (!userId) {
-    return { ok: false, error: 'Thiếu ID người dùng.' };
-  }
-
   try {
-    const actor = await requireAdminAuth(['super_admin']);
+    const actor = await requireAdminAuth(USER_MANAGER_ROLES);
+    if (!userId) {
+      return { ok: false, error: 'Thiếu ID người dùng.' };
+    }
     const { ok, error } = await removeAdminUserAccess(userId, actor.id);
 
     if (!ok || error) {
@@ -157,12 +181,11 @@ export async function removeAdminUserAccessAction(userId: string): Promise<Admin
 export async function resetAdminUserPasswordAction(
   userId: string
 ): Promise<AdminFormState & { temporaryPassword?: string }> {
-  if (!userId) {
-    return { ok: false, error: 'Thiếu ID người dùng.' };
-  }
-
   try {
-    const actor = await requireAdminAuth(['super_admin']);
+    const actor = await requireAdminAuth(USER_MANAGER_ROLES);
+    if (!userId) {
+      return { ok: false, error: 'Thiếu ID người dùng.' };
+    }
     const { ok, data, error } = await resetAdminUserPassword(userId, actor.id);
 
     if (!ok || error || !data) {

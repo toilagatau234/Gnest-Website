@@ -164,7 +164,7 @@ function PriorityItem({
   );
 }
 
-function ProductInterestChart({ products }: { products: ProductInterestMetric[] }) {
+function ProductInterestChart({ products, currentDays = 30 }: { products: ProductInterestMetric[]; currentDays?: number }) {
   const maxValue = Math.max(...products.map((product) => product.inquiryCount), 1);
 
   return (
@@ -176,9 +176,26 @@ function ProductInterestChart({ products }: { products: ProductInterestMetric[] 
             Xếp hạng theo yêu cầu báo giá có gắn sản phẩm.
           </p>
         </div>
-        <Link href="/admin/inquiries" className="text-xs font-bold text-[#3749A6] hover:underline">
-          Xem yêu cầu
-        </Link>
+        <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg p-1">
+          {[
+            { label: '7 ngày', value: 7 },
+            { label: '30 ngày', value: 30 },
+            { label: '90 ngày', value: 90 },
+          ].map((opt) => {
+            const active = currentDays === opt.value;
+            return (
+              <Link
+                key={opt.value}
+                href={`/admin/dashboard?days=${opt.value}`}
+                className={`text-[11px] font-bold px-2 py-1 rounded transition-colors ${
+                  active ? 'bg-white text-[#3749A6] shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                {opt.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       {products.length === 0 ? (
@@ -293,8 +310,8 @@ function ProductOverviewPanel({ counts }: { counts: DashboardData['counts'] }) {
   );
 }
 
-async function DashboardDataPanels() {
-  const data = await getDashboardData();
+async function DashboardDataPanels({ days = 30 }: { days?: number }) {
+  const data = await getDashboardData(days);
   const { counts, attention, recentInquiries, recentActivity, hasSupabase, productInterest } = data;
 
   return (
@@ -383,7 +400,7 @@ async function DashboardDataPanels() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <ProductInterestChart products={productInterest} />
+        <ProductInterestChart products={productInterest} currentDays={days} />
         <div className="space-y-6">
           <ProductOverviewPanel counts={counts} />
           <QuickHealthCard hasSupabase={hasSupabase} />
@@ -544,7 +561,14 @@ function RecentActivityCard({ data }: { data: DashboardData }) {
   );
 }
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const days = Math.max(1, Number(sp.days) || 30);
+
   return (
     <div className="space-y-6">
       <div className="min-w-0">
@@ -563,8 +587,9 @@ export default function AdminDashboardPage() {
           />
         }
       >
-        <DashboardDataPanels />
+        <DashboardDataPanels days={days} />
       </Suspense>
     </div>
   );
 }
+

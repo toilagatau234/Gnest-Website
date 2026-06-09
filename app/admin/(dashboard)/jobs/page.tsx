@@ -90,6 +90,7 @@ export default async function JobsPage({
           jobs={safeJobs}
           allJobs={allJobs}
           page={page}
+          pageSize={pageSize}
           pageCount={pageCount}
           total={total}
         />

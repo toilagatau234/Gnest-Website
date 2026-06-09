@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { CatalogPage } from "@/components/CatalogPage";
+import { BannerSlot } from "@/components/BannerSlot";
 
 export default async function CategoryPage({
   params,
@@ -8,8 +9,11 @@ export default async function CategoryPage({
 }) {
   const resolvedParams = await params;
   return (
-    <Suspense>
-      <CatalogPage slug={resolvedParams.slug} />
-    </Suspense>
+    <>
+      <BannerSlot position="catalog_top" />
+      <Suspense>
+        <CatalogPage slug={resolvedParams.slug} />
+      </Suspense>
+    </>
   );
 }

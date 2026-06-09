@@ -7,17 +7,14 @@ import {
   Clock,
   Eye,
   Mail,
-  MessageCircle,
   Phone,
   Send,
   UserCheck,
 } from 'lucide-react';
 
 import {
+  updateInquiryWorkflowAction,
   addInquiryInternalNoteAction,
-  assignInquiryAction,
-  updateInquiryPriorityAction,
-  updateInquiryStatusAction,
 } from '@/app/admin/(dashboard)/inquiries/actions';
 import { AdminFilterBar } from '@/components/admin/AdminFilterBar';
 import { AdminModal } from '@/components/admin/AdminModal';
@@ -103,10 +100,6 @@ function formatDateTime(value: string) {
   });
 }
 
-function zaloLink(phone: string) {
-  return `https://zalo.me/${phone.replace(/\D/g, '')}`;
-}
-
 function statusMeta(status: string) {
   return STATUS_META[status as InquiryStatus] ?? STATUS_META.new;
 }
@@ -172,16 +165,6 @@ function QuickActions({ inquiry, compact = false }: { inquiry: AdminInquiry; com
         className={`admin-focus flex ${size} items-center justify-center rounded-lg border border-[#E5E7EF] text-slate-500 transition-colors hover:border-[#4880FF] hover:text-[#3749A6]`}
       >
         <Phone className="h-4 w-4" />
-      </a>
-      <a
-        href={zaloLink(inquiry.phone)}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Nhắn Zalo"
-        aria-label="Nhắn Zalo"
-        className={`admin-focus flex ${size} items-center justify-center rounded-lg border border-[#E5E7EF] text-slate-500 transition-colors hover:border-[#4880FF] hover:text-[#3749A6]`}
-      >
-        <MessageCircle className="h-4 w-4" />
       </a>
       {inquiry.email ? (
         <a
@@ -263,54 +246,6 @@ export function InquiriesTable({
     searchTimerRef.current = setTimeout(() => {
       router.push(buildInquiriesUrl({ q: value || undefined, status: currentStatus }));
     }, 400);
-  };
-
-  const runAction = (formData: FormData, action: (formData: FormData) => Promise<{ ok: boolean; error?: string }>) => {
-    setError(null);
-    startTransition(async () => {
-      const result = await action(formData);
-      if (!result.ok) {
-        setError(result.error ?? 'Không thể cập nhật yêu cầu.');
-        toast(result.error ?? 'Không thể cập nhật yêu cầu.', 'error');
-        return;
-      }
-
-      toast('Đã cập nhật yêu cầu báo giá.', 'success');
-      router.refresh();
-    });
-  };
-
-  const updateStatus = (inquiryId: string, status: InquiryStatus) => {
-    const formData = new FormData();
-    formData.set('inquiry_id', inquiryId);
-    formData.set('status', status);
-    runAction(formData, updateInquiryStatusAction);
-  };
-
-  const updateAssignee = (inquiryId: string, assignedTo: string) => {
-    const formData = new FormData();
-    formData.set('inquiry_id', inquiryId);
-    formData.set('assigned_to', assignedTo);
-    runAction(formData, assignInquiryAction);
-  };
-
-  const updatePriority = (inquiryId: string, priority: InquiryPriority) => {
-    const formData = new FormData();
-    formData.set('inquiry_id', inquiryId);
-    formData.set('priority', priority);
-    runAction(formData, updateInquiryPriorityAction);
-  };
-
-  const submitNote = () => {
-    if (!selected || !note.trim()) {
-      return;
-    }
-
-    const formData = new FormData();
-    formData.set('inquiry_id', selected.id);
-    formData.set('note', note);
-    setNote('');
-    runAction(formData, addInquiryInternalNoteAction);
   };
 
   return (
@@ -483,24 +418,20 @@ export function InquiriesTable({
 
       <AdminModal
         open={selected !== null}
-        onClose={() => setSelectedId(null)}
+        onClose={() => {
+          if (!isPending) {
+            setSelectedId(null);
+          }
+        }}
         title="Chi tiết yêu cầu"
         description={selected ? formatDateTime(selected.created_at) : undefined}
         size="xl"
-        footer={selected ? <QuickActions inquiry={selected} /> : undefined}
       >
         {selected ? (
           <InquiryWorkflowPanel
             adminUsers={adminUsers}
-            error={error}
             inquiry={selected}
-            isPending={isPending}
-            note={note}
-            onAssigneeChange={updateAssignee}
-            onNoteChange={setNote}
-            onNoteSubmit={submitNote}
-            onPriorityChange={updatePriority}
-            onStatusChange={updateStatus}
+            onClose={() => setSelectedId(null)}
             canMutateWorkflow={canMutateWorkflow}
           />
         ) : null}
@@ -512,32 +443,112 @@ export function InquiriesTable({
 function InquiryWorkflowPanel({
   inquiry,
   adminUsers,
-  isPending,
-  error,
-  note,
-  onStatusChange,
-  onAssigneeChange,
-  onPriorityChange,
-  onNoteChange,
-  onNoteSubmit,
+  onClose,
   canMutateWorkflow = true,
 }: {
   inquiry: AdminInquiry;
   adminUsers: AdminUserListItem[];
-  isPending: boolean;
-  error: string | null;
-  note: string;
-  onStatusChange: (inquiryId: string, status: InquiryStatus) => void;
-  onAssigneeChange: (inquiryId: string, assignedTo: string) => void;
-  onPriorityChange: (inquiryId: string, priority: InquiryPriority) => void;
-  onNoteChange: (value: string) => void;
-  onNoteSubmit: () => void;
+  onClose: () => void;
   canMutateWorkflow?: boolean;
 }) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
+
   const workflow = getWorkflowMetadata(inquiry);
-  const priority = workflow.priority ?? 'normal';
   const notes = workflow.internal_notes ?? [];
   const timeline = workflow.timeline ?? [];
+
+  // Local state for edits
+  const [status, setStatus] = useState<InquiryStatus>(inquiry.status);
+  const [priority, setPriority] = useState<InquiryPriority>(workflow.priority ?? 'normal');
+  const [assignedTo, setAssignedTo] = useState<string>(inquiry.assigned_to ?? '');
+
+  // Note local state
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  // Check if dirty
+  const originalPriority = workflow.priority ?? 'normal';
+  const originalAssignedTo = inquiry.assigned_to ?? '';
+  const isDirty = status !== inquiry.status || priority !== originalPriority || assignedTo !== originalAssignedTo;
+
+  const handleSave = () => {
+    if (!isDirty || isPending) return;
+
+    // Optional confirmation dialog/step when status shifts to terminal state
+    if ((status === 'closed' || status === 'spam') && inquiry.status !== status) {
+      const confirmed = window.confirm(
+        `Bạn có chắc chắn muốn chuyển trạng thái yêu cầu này sang "${status === 'closed' ? 'Đã đóng' : 'Spam'}"?`
+      );
+      if (!confirmed) return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set('inquiry_id', inquiry.id);
+      formData.set('status', status);
+      formData.set('priority', priority);
+      formData.set('assigned_to', assignedTo);
+
+      const result = await updateInquiryWorkflowAction(formData);
+      
+      if (!result.ok) {
+        setError(result.error ?? 'Không thể cập nhật yêu cầu.');
+        toast(result.error ?? 'Không thể cập nhật yêu cầu.', 'error');
+        return;
+      }
+
+      toast('Đã cập nhật yêu cầu báo giá.', 'success');
+      router.refresh();
+      onClose();
+    });
+  };
+
+  const handleNoteSubmit = () => {
+    if (!note.trim() || isPending) return;
+
+    setError(null);
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set('inquiry_id', inquiry.id);
+      formData.set('note', note);
+
+      const result = await addInquiryInternalNoteAction(formData);
+
+      if (!result.ok) {
+        setError(result.error ?? 'Không thể thêm ghi chú.');
+        toast(result.error ?? 'Không thể thêm ghi chú.', 'error');
+        return;
+      }
+
+      toast('Đã thêm ghi chú nội bộ.', 'success');
+      setNote('');
+      router.refresh();
+    });
+  };
+
+  // Copy Zalo contents format helper
+  const handleCopyZalo = () => {
+    const productName = inquiry.products ? inquiry.products.name : 'Không rõ';
+    const messageContent = inquiry.message || 'Không có nội dung tin nhắn';
+    const textToCopy = `[YÊU CẦU BÁO GIÁ GNEST]
+- Khách hàng: ${inquiry.customer_name}
+- SĐT: ${inquiry.phone}
+- Email: ${inquiry.email || '—'}
+- Sản phẩm quan tâm: ${productName}
+- Nội dung: ${messageContent}`;
+
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        toast('Đã copy nội dung gửi Zalo.', 'success');
+      })
+      .catch((err) => {
+        console.error('Failed to copy to clipboard', err);
+        toast('Không thể copy nội dung vào clipboard.', 'error');
+      });
+  };
 
   return (
     <div className="space-y-5">
@@ -558,9 +569,16 @@ function InquiryWorkflowPanel({
               </a>
               {inquiry.email ? <p className="text-sm text-slate-500">{inquiry.email}</p> : null}
             </div>
-            <AdminStatusChip tone={statusMeta(inquiry.status).tone} dot>
-              {statusMeta(inquiry.status).label}
-            </AdminStatusChip>
+            <div className="flex flex-col items-end gap-1.5">
+              <AdminStatusChip tone={statusMeta(inquiry.status).tone} dot>
+                {statusMeta(inquiry.status).label}
+              </AdminStatusChip>
+              {isDirty && (
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                  Chưa lưu thay đổi
+                </span>
+              )}
+            </div>
           </div>
 
           <dl className="space-y-3 rounded-2xl border border-[#EEF2F6] bg-slate-50/60 p-4 text-sm">
@@ -596,7 +614,7 @@ function InquiryWorkflowPanel({
               <>
                 <textarea
                   value={note}
-                  onChange={(event) => onNoteChange(event.target.value)}
+                  onChange={(event) => setNote(event.target.value)}
                   rows={3}
                   maxLength={1000}
                   className="admin-input min-h-24 py-2 text-sm leading-relaxed"
@@ -606,7 +624,7 @@ function InquiryWorkflowPanel({
                   <span className="text-xs text-slate-400">{note.length}/1000</span>
                   <button
                     type="button"
-                    onClick={onNoteSubmit}
+                    onClick={handleNoteSubmit}
                     disabled={isPending || !note.trim()}
                     className="admin-button-primary h-9 px-4 text-xs"
                   >
@@ -646,20 +664,20 @@ function InquiryWorkflowPanel({
               <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Trạng thái</span>
               {canMutateWorkflow ? (
                 <select
-                  value={inquiry.status}
-                  onChange={(event) => onStatusChange(inquiry.id, event.target.value as InquiryStatus)}
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value as InquiryStatus)}
                   disabled={isPending}
                   className="admin-select text-sm"
                 >
-                  {STATUS_FLOW.map((status) => (
-                    <option key={status} value={status}>
-                      {STATUS_META[status].label}
+                  {STATUS_FLOW.map((s) => (
+                    <option key={s} value={s}>
+                      {STATUS_META[s].label}
                     </option>
                   ))}
                 </select>
               ) : (
                 <div className="rounded-lg border border-[#E5E7EF] bg-slate-50 px-3 py-2 text-sm text-slate-700 font-medium">
-                  {STATUS_META[inquiry.status].label}
+                  {STATUS_META[status].label}
                 </div>
               )}
             </label>
@@ -668,8 +686,8 @@ function InquiryWorkflowPanel({
               <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Phụ trách</span>
               {canMutateWorkflow ? (
                 <select
-                  value={inquiry.assigned_to ?? ''}
-                  onChange={(event) => onAssigneeChange(inquiry.id, event.target.value)}
+                  value={assignedTo}
+                  onChange={(event) => setAssignedTo(event.target.value)}
                   disabled={isPending}
                   className="admin-select text-sm"
                 >
@@ -682,8 +700,8 @@ function InquiryWorkflowPanel({
                 </select>
               ) : (
                 <div className="rounded-lg border border-[#E5E7EF] bg-slate-50 px-3 py-2 text-sm text-slate-700 font-medium">
-                  {inquiry.assigned_to
-                    ? adminUsers.find((u) => u.id === inquiry.assigned_to)?.email ?? 'Chưa gán'
+                  {assignedTo
+                    ? adminUsers.find((u) => u.id === assignedTo)?.email ?? 'Chưa gán'
                     : 'Chưa gán'}
                 </div>
               )}
@@ -694,7 +712,7 @@ function InquiryWorkflowPanel({
               {canMutateWorkflow ? (
                 <select
                   value={priority}
-                  onChange={(event) => onPriorityChange(inquiry.id, event.target.value as InquiryPriority)}
+                  onChange={(event) => setPriority(event.target.value as InquiryPriority)}
                   disabled={isPending}
                   className="admin-select text-sm"
                 >
@@ -708,6 +726,49 @@ function InquiryWorkflowPanel({
                 </div>
               )}
             </label>
+
+            {canMutateWorkflow && (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={!isDirty || isPending}
+                className="w-full mt-4 flex items-center justify-center gap-1.5 bg-[#4880FF] hover:bg-[#3749A6] text-white text-xs font-bold py-2 px-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isPending ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : null}
+                Lưu thay đổi
+              </button>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-[#EEF2F6] bg-white p-4 space-y-3">
+            <h3 className="text-sm font-extrabold text-[#202224]">Công cụ chăm sóc</h3>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleCopyZalo}
+                className="w-full flex items-center justify-center gap-1.5 border border-dashed border-[#4880FF] hover:bg-[#4880FF]/5 text-[#3749A6] text-xs font-bold py-2 px-3 rounded-lg transition-colors"
+              >
+                Copy nội dung gửi Zalo
+              </button>
+              <p className="text-[10px] text-slate-400 text-center">
+                Copy nội dung để gửi thủ công qua Zalo OA/sale phụ trách.
+              </p>
+
+              <div className="relative group">
+                <button
+                  type="button"
+                  disabled
+                  className="w-full flex items-center justify-center gap-1.5 bg-slate-100 text-slate-400 text-xs font-bold py-2 px-3 rounded-lg cursor-not-allowed"
+                >
+                  Gửi email — Coming soon
+                </button>
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                  Tính năng đang được phát triển
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-[#EEF2F6] bg-white p-4">
@@ -735,3 +796,4 @@ function InquiryWorkflowPanel({
     </div>
   );
 }
+

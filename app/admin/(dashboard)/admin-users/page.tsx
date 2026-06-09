@@ -1,13 +1,19 @@
 import { Info, ShieldCheck, UserCog, UserCheck, ShieldAlert } from 'lucide-react';
 
 import { getAdminUsers } from '@/lib/services/admin/admin-users';
+import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { getAdminSessionState } from '@/lib/services/admin/auth';
+import { SYSTEM_VIEWER_ROLES } from '@/lib/services/admin/permissions';
 import { AdminUsersTable } from '@/components/admin/AdminUsersTable';
 import { AdminUserInviteDialog } from '@/components/admin/AdminUserInviteDialog';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminUsersPage() {
+  // Only super_admin and admin may access the user directory.
+  // editor and viewer are redirected to /admin/access-denied.
+  await requireAdminAuth(SYSTEM_VIEWER_ROLES);
+
   const { data: adminUsers, error } = await getAdminUsers();
   const session = await getAdminSessionState();
 
