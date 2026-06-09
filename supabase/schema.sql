@@ -207,6 +207,9 @@ create index if not exists products_category_status_created_at_idx on public.pro
 create index if not exists product_images_product_id_idx on public.product_images(product_id);
 create index if not exists product_bulk_discounts_product_id_idx on public.product_bulk_discounts(product_id);
 create index if not exists inquiries_status_idx on public.inquiries(status);
+create index if not exists promotional_banners_position_idx on public.promotional_banners(position);
+create index if not exists promotional_banners_active_position_idx on public.promotional_banners(is_active, position, sort_order);
+
 
 -- Idempotent Triggers Setup (DROP before CREATE ensures no errors)
 drop trigger if exists set_profiles_updated_at on public.profiles;
