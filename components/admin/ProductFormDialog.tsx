@@ -10,6 +10,7 @@ import { ProductForm, type ExistingProductImage, type QueuedImageFile } from '@/
 import { useToast } from '@/components/admin/AdminToast';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { ProductFormData } from '@/lib/services/admin/products';
+import type { ProductDiscount } from '@/components/admin/ProductBulkDiscountManager';
 import {
   createProductAction,
   fetchProductDetailAction,
@@ -71,6 +72,7 @@ function ProductFormDialogSession({ categories, product, onClose }: ProductFormD
   const [loadingForm, setLoadingForm] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [existingImages, setExistingImages] = useState<ExistingProductImage[]>([]);
+  const [existingDiscounts, setExistingDiscounts] = useState<ProductDiscount[]>([]);
   const [imageQueue, setImageQueue] = useState<QueuedImageFile[]>([]);
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>('idle');
   const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
@@ -154,40 +156,53 @@ function ProductFormDialogSession({ categories, product, onClose }: ProductFormD
     router.refresh();
   }, [isEdit, onClose, router, runImageUploads, state.ok, state.productId, toast]);
 
-  useEffect(() => {
-    async function loadProductDetail() {
-      if (!isEdit || !product?.id) {
-        return;
-      }
+  const loadProductDetail = useCallback(async (silent = false) => {
+    if (!isEdit || !product?.id) {
+      return;
+    }
 
+    if (!silent) {
       setLoadingForm(true);
-      setFetchError(null);
+    }
+    setFetchError(null);
 
-      const result = await fetchProductDetailAction(product.id);
-      if (result.error || !result.data) {
-        setFetchError(result.error ?? 'Không tìm thấy sản phẩm');
-      } else {
-        const d = result.data;
-        setFormData({
-          id: d.id,
-          name: d.name,
-          slug: d.slug,
-          category_id: d.category_id,
-          price: d.price,
-          stock: d.stock,
-          is_active: d.is_active,
-          is_featured: d.is_featured,
-          description: d.description,
-          specs: d.specs,
-        });
-        setExistingImages(d.product_images ?? []);
-      }
-
+    const result = await fetchProductDetailAction(product.id);
+    if (!silent) {
       setLoadingForm(false);
     }
 
-    void loadProductDetail();
+    if (result.error || !result.data) {
+      setFetchError(result.error ?? 'Không tìm thấy sản phẩm');
+    } else {
+      const d = result.data;
+      setFormData({
+        id: d.id,
+        name: d.name,
+        slug: d.slug,
+        category_id: d.category_id,
+        price: d.price,
+        stock: d.stock,
+        is_active: d.is_active,
+        is_featured: d.is_featured,
+        description: d.description,
+        specs: d.specs,
+      });
+      setExistingImages(d.product_images ?? []);
+      setExistingDiscounts(d.product_bulk_discounts ?? []);
+    }
   }, [isEdit, product?.id]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    async function init() {
+      if (!isCurrent) return;
+      await loadProductDetail();
+    }
+    void init();
+    return () => {
+      isCurrent = false;
+    };
+  }, [loadProductDetail]);
 
   function handleFilesAdd(files: File[]) {
     setImageQueue((prev) => {
@@ -347,6 +362,8 @@ function ProductFormDialogSession({ categories, product, onClose }: ProductFormD
             onTogglePrimaryQueuedImage={handleTogglePrimary}
             onClearQueue={cleanupQueue}
             existingImages={existingImages}
+            existingDiscounts={existingDiscounts}
+            onMutated={() => loadProductDetail(true)}
           />
         </div>
       )}

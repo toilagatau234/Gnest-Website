@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { AlertCircle, ImageIcon, Star, Upload, X } from 'lucide-react';
+import { AlertCircle, ImageIcon, Star, Upload, X, Percent } from 'lucide-react';
 
 import { SpecsEditor } from '@/components/admin/SpecsEditor';
 import { AdminToggle } from '@/components/admin/AdminToggle';
@@ -9,6 +9,8 @@ import { formatCurrencyInput } from '@/lib/utils/currency';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { ProductFormData } from '@/lib/services/admin/products';
 import type { AdminFormState } from '@/app/admin/(dashboard)/products/actions';
+import { ProductMediaManager } from '@/components/admin/ProductMediaManager';
+import { ProductBulkDiscountManager, type ProductDiscount } from '@/components/admin/ProductBulkDiscountManager';
 
 // ---------------------------------------------------------------------------
 // Types exported so ProductFormDialog can share them
@@ -43,8 +45,10 @@ interface ProductFormProps {
   onRemoveQueuedImage?: (localId: string) => void;
   onTogglePrimaryQueuedImage?: (localId: string) => void;
   onClearQueue?: () => void;
-  // Edit mode: existing images (read-only preview)
+  // Edit mode: existing images & discounts
   existingImages?: ExistingProductImage[];
+  existingDiscounts?: ProductDiscount[];
+  onMutated?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,7 +63,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'basic', label: 'Thông tin cơ bản' },
   { id: 'pricing', label: 'Giá & kho sỉ' },
   { id: 'specs', label: 'Thông số kỹ thuật' },
-  { id: 'media', label: 'Hình ảnh' },
+  { id: 'media', label: 'Media & Giá sỉ' },
 ];
 
 const fieldClass = 'admin-input text-xs';
@@ -106,8 +110,11 @@ export function ProductForm({
   onTogglePrimaryQueuedImage,
   onClearQueue,
   existingImages,
+  existingDiscounts = [],
+  onMutated,
 }: ProductFormProps) {
   const [activeTab, setActiveTab] = useState<TabId>('basic');
+  const [activeMediaTab, setActiveMediaTab] = useState<'images' | 'discounts'>('images');
   const [name, setName] = useState(product?.name ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
   const [slugTouched, setSlugTouched] = useState(Boolean(product));
@@ -291,60 +298,58 @@ export function ProductForm({
       {/* ── Media ──────────────────────────────────────────────────────────── */}
       <div className={visibleTab === 'media' ? 'animate-fade-in flex-1 space-y-4' : 'hidden'}>
         {product ? (
-          /* Edit mode: read-only grid + redirect note */
+          /* Edit mode: reusable Media & Bulk Discount Manager */
           <div className="space-y-4">
-            {existingImages && existingImages.length > 0 ? (
-              <>
-                <p className="text-xs font-semibold text-slate-600">
-                  {existingImages.length} hình ảnh hiện có
-                </p>
-                <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-5">
-                  {[...existingImages]
-                    .sort((a, b) => a.sort_order - b.sort_order)
-                    .map((img) => (
-                      <div
-                        key={img.id}
-                        className={`relative aspect-square overflow-hidden rounded-xl border bg-slate-50 ${
-                          img.is_primary
-                            ? 'border-[#1B3A6B] ring-2 ring-[#1B3A6B]/20'
-                            : 'border-slate-200'
-                        } ${!img.is_active ? 'opacity-50' : ''}`}
-                      >
-                        {img.public_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={img.public_url}
-                            alt={img.alt ?? 'Ảnh sản phẩm'}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <ImageIcon className="h-5 w-5 text-slate-300" />
-                          </div>
-                        )}
-                        {img.is_primary ? (
-                          <div className="absolute bottom-0 left-0 right-0 bg-[#1B3A6B]/90 py-0.5 text-center text-[8px] font-bold uppercase tracking-wide text-white">
-                            Ảnh chính
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
-                </div>
-              </>
-            ) : (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/40 px-4 py-10 text-center">
-                <ImageIcon className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                <p className="text-xs font-bold text-slate-500">Chưa có hình ảnh nào.</p>
-              </div>
-            )}
-            <div className="rounded-xl border border-blue-100 bg-blue-50/40 px-4 py-3 text-xs text-blue-700">
-              Để tải lên, sắp xếp hoặc xóa ảnh, hãy dùng nút{' '}
-              <strong>Media &amp; Giá sỉ</strong> bên dưới sản phẩm trong danh sách.
+            <div className="flex border-b border-slate-200">
+              <button
+                type="button"
+                onClick={() => setActiveMediaTab('images')}
+                className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+                  activeMediaTab === 'images'
+                    ? 'border-[#1B3A6B] text-[#1B3A6B]'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <ImageIcon className="w-4 h-4" />
+                <span>Media & Hình ảnh sỉ ({existingImages?.length ?? 0})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveMediaTab('discounts')}
+                className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+                  activeMediaTab === 'discounts'
+                    ? 'border-[#1B3A6B] text-[#1B3A6B]'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <Percent className="w-4 h-4" />
+                <span>Bậc chiết khấu giá sỉ ({existingDiscounts?.length ?? 0})</span>
+              </button>
+            </div>
+
+            <div className="pt-2">
+              {activeMediaTab === 'images' ? (
+                <ProductMediaManager
+                  productId={product.id}
+                  images={existingImages ?? []}
+                  onMutated={onMutated}
+                />
+              ) : (
+                <ProductBulkDiscountManager
+                  productId={product.id}
+                  discounts={existingDiscounts ?? []}
+                  retailPrice={product.price ?? null}
+                  onMutated={onMutated}
+                />
+              )}
             </div>
           </div>
         ) : (
           /* Create mode: queue-based file picker with individual removal */
           <div className="space-y-3">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/40 px-4 py-3 text-xs text-blue-700">
+              Bạn đang tạo sản phẩm mới. Vui lòng hoàn tất đăng sản phẩm trước khi thiết lập bậc giá sỉ hoặc quản lý hình ảnh nâng cao.
+            </div>
             {/* Drop zone */}
             <label
               className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-6 py-8 text-center transition hover:border-[#1B3A6B]/50 hover:bg-slate-50"

@@ -15,7 +15,7 @@ import {
 } from '@/app/admin/(dashboard)/products/media-discount-actions';
 import { formatCurrencyInput, parseCurrencyInput } from '@/lib/utils/currency';
 
-interface ProductDiscount {
+export interface ProductDiscount {
   id: string;
   product_id: string;
   min_quantity: number;
