@@ -29,7 +29,7 @@ export async function createAdminProductBulkDiscount(payload: BulkDiscountPayloa
     // 2. Validate product existence
     const { data: product, error: pError } = await supabase
       .from('products')
-      .select('id, name')
+      .select('id, name, slug')
       .eq('id', payload.product_id)
       .maybeSingle();
 
@@ -83,7 +83,7 @@ export async function createAdminProductBulkDiscount(payload: BulkDiscountPayloa
       },
     });
 
-    return { data, error: null };
+    return { data, product_slug: product?.slug, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Không thể tạo bậc giá sỉ';
     return { data: null, error: message };
@@ -115,6 +115,12 @@ export async function updateAdminProductBulkDiscount(
     if (fetchError || !currentDiscount) {
       return { data: null, error: 'Không tìm thấy bậc giá sỉ cần cập nhật.' };
     }
+
+    const { data: product } = await supabase
+      .from('products')
+      .select('slug')
+      .eq('id', currentDiscount.product_id)
+      .maybeSingle();
 
     // 2. Prevent duplicate min_quantity tiers for the same product
     const { data: dupDiscount } = await supabase
@@ -163,7 +169,7 @@ export async function updateAdminProductBulkDiscount(
       },
     });
 
-    return { data, error: null };
+    return { data, product_slug: product?.slug, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Không thể cập nhật bậc giá sỉ';
     return { data: null, error: message };
@@ -184,6 +190,12 @@ export async function deleteAdminProductBulkDiscount(discountId: string) {
     if (fetchError || !discount) {
       return { data: null, error: 'Không tìm thấy bậc giá sỉ cần xóa.' };
     }
+
+    const { data: product } = await supabase
+      .from('products')
+      .select('slug')
+      .eq('id', discount.product_id)
+      .maybeSingle();
 
     const { error } = await supabase
       .from('product_bulk_discounts')
@@ -207,7 +219,7 @@ export async function deleteAdminProductBulkDiscount(discountId: string) {
       },
     });
 
-    return { data: discount, error: null };
+    return { data: discount, product_slug: product?.slug, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Không thể xóa bậc giá sỉ';
     return { data: null, error: message };
@@ -218,6 +230,16 @@ export async function setAdminProductBulkDiscountActive(discountId: string, isAc
   try {
     const adminUser = await requireAdminAuth(PRODUCT_MUTATION_ROLES);
     const supabase = createServiceRoleClient();
+
+    const { data: currentDiscount } = await supabase
+      .from('product_bulk_discounts')
+      .select('product_id')
+      .eq('id', discountId)
+      .maybeSingle();
+
+    const { data: product } = currentDiscount
+      ? await supabase.from('products').select('slug').eq('id', currentDiscount.product_id).maybeSingle()
+      : { data: null };
 
     const { data, error } = await supabase
       .from('product_bulk_discounts')
@@ -239,7 +261,7 @@ export async function setAdminProductBulkDiscountActive(discountId: string, isAc
       metadata: { product_id: data.product_id, min_quantity: data.min_quantity },
     });
 
-    return { data, error: null };
+    return { data, product_slug: product?.slug, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Không thể thay đổi trạng thái bậc giá sỉ';
     return { data: null, error: message };

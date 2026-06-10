@@ -23,11 +23,15 @@ export function ProductMediaAndDiscountDialog({ productId, productName, productP
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  async function loadDetail() {
-    setLoading(true);
+  async function loadDetail(silent = false) {
+    if (!silent) {
+      setLoading(true);
+    }
     setFetchError(null);
     const result = await fetchProductDetailAction(productId);
-    setLoading(false);
+    if (!silent) {
+      setLoading(false);
+    }
     if (result.error || !result.data) {
       setFetchError(result.error ?? 'Không thể tải dữ liệu sản phẩm.');
     } else {
@@ -77,7 +81,7 @@ export function ProductMediaAndDiscountDialog({ productId, productName, productP
             </div>
             <button
               type="button"
-              onClick={loadDetail}
+              onClick={() => loadDetail()}
               className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
             >
               Thử lại
@@ -114,13 +118,14 @@ export function ProductMediaAndDiscountDialog({ productId, productName, productP
 
             <div className="min-h-[300px]">
               {activeTab === 'media' ? (
-                <ProductMediaManager productId={productId} images={images} />
+                <ProductMediaManager productId={productId} images={images} onMutated={() => loadDetail(true)} />
               ) : (
                 <ProductBulkDiscountManager
                   key={`${productId}:${discountSessionKey}`}
                   productId={productId}
                   discounts={discounts}
                   retailPrice={productPrice}
+                  onMutated={() => loadDetail(true)}
                 />
               )}
             </div>

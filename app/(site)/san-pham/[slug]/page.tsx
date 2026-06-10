@@ -134,7 +134,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
             {/* Short description */}
             {product.description && (
-              <p className="text-[14px] text-dtl-gray leading-relaxed border-l-2 border-dtl-red pl-3">
+              <p className="whitespace-pre-line text-[14px] text-dtl-gray leading-relaxed border-l-2 border-dtl-red pl-3">
                 {product.description}
               </p>
             )}
