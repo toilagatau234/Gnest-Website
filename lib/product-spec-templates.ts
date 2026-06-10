@@ -44,31 +44,41 @@ export function isKnownTemplate(value: unknown): value is TemplateKey {
  * Throws a user-facing Error on any violation.
  * Safe to call from server actions — never touches the DOM.
  *
+ * Pass a TemplateRegistry (from getActiveSpecTemplates) to validate against
+ * live DB-loaded templates and fields. Omit to fall back to code templates.
+ *
  * Rules:
  *  - No _template key → legacy/custom, always allowed.
  *  - _template === "other" → custom object, always allowed.
- *  - _template is an unknown string → rejected.
+ *  - _template not in active registry keys → rejected.
  *  - Known template → required fields must be non-empty; number/select/
  *    multi_select/boolean fields are type-checked against the field config.
  */
-export function validateSpecs(specs: Record<string, unknown>): void {
+export function validateSpecs(specs: Record<string, unknown>, registry?: TemplateRegistry): void {
   const templateValue = specs._template;
 
   // No _template: legacy or custom — nothing to validate.
   if (templateValue === undefined || templateValue === null) return;
 
-  // _template present but not a recognised key.
-  if (!isKnownTemplate(templateValue)) {
-    const allowed = TEMPLATE_KEYS.filter((k) => k !== 'other').join(', ');
+  // "other" = free-form custom object, nothing to type-check.
+  if (templateValue === 'other') return;
+
+  // Resolve active template set from registry or fall back to code templates.
+  const activeKeys: string[] = registry ? registry.keys : [...TEMPLATE_KEYS];
+  const activeTemplates: Record<string, SpecTemplate> = registry
+    ? registry.templates
+    : (SPEC_TEMPLATES as Record<string, SpecTemplate>);
+
+  // _template present but not in the active registry.
+  if (typeof templateValue !== 'string' || !activeKeys.includes(templateValue)) {
+    const allowed = activeKeys.filter((k) => k !== 'other').join(', ');
     throw new Error(
       `Mẫu thông số không hợp lệ: "${String(templateValue)}". Giá trị cho phép: ${allowed}, other.`,
     );
   }
 
-  // "other" = free-form custom object, nothing to type-check.
-  if (templateValue === 'other') return;
-
-  const template = SPEC_TEMPLATES[templateValue];
+  const template = activeTemplates[templateValue];
+  if (!template) return;
 
   for (const field of template.fields) {
     const raw = specs[field.key];

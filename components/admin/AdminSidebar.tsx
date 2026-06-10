@@ -18,6 +18,7 @@ import {
   Megaphone,
   ChevronLeft,
   ChevronRight,
+  Sliders,
 } from 'lucide-react';
 
 import { ADMIN_ROLE_LABELS, type AdminUser } from '@/lib/types/admin';
@@ -62,6 +63,7 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Tuyển dụng', href: '/admin/jobs', icon: Briefcase },
       { label: 'Nội dung website', href: '/admin/site-content', icon: Globe, allowedRoles: SYSTEM_NAV_ROLES },
+      { label: 'Mẫu thông số kỹ thuật', href: '/admin/product-spec-templates', icon: Sliders, allowedRoles: SYSTEM_NAV_ROLES },
       { label: 'Banners quảng cáo', href: '/admin/banners', icon: Megaphone },
       { label: 'Người dùng quản trị', href: '/admin/admin-users', icon: Users, allowedRoles: SYSTEM_NAV_ROLES },
       { label: 'Nhật ký hoạt động', href: '/admin/audit-logs', icon: History, allowedRoles: SYSTEM_NAV_ROLES },

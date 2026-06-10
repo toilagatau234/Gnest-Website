@@ -14,7 +14,8 @@ import { getRequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 import type { Json } from '@/lib/types/database';
-import { validateSpecs } from '@/lib/product-spec-templates';
+import { validateSpecs, type TemplateRegistry } from '@/lib/product-spec-templates';
+import { getActiveSpecTemplates } from '@/lib/services/admin/product-spec-templates';
 
 export type AdminFormState = { ok: boolean; error?: string; productId?: string };
 
@@ -41,7 +42,7 @@ function parseNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parseSpecs(value: string): Json {
+function parseSpecs(value: string, registry: TemplateRegistry): Json {
   if (!value) return {};
 
   // Step 1: parse JSON — give a clear syntax error.
@@ -57,14 +58,14 @@ function parseSpecs(value: string): Json {
     throw new Error('Specs phải là object JSON, không phải mảng hay giá trị đơn.');
   }
 
-  // Step 3: template-aware field validation (throws with user-facing message).
-  validateSpecs(parsed as Record<string, unknown>);
+  // Step 3: template-aware field validation against the active DB registry.
+  validateSpecs(parsed as Record<string, unknown>, registry);
 
   return parsed;
 }
 
 
-function readProductPayload(formData: FormData): ProductPayload {
+async function readProductPayload(formData: FormData, registry: TemplateRegistry): Promise<ProductPayload> {
   const name = readString(formData, 'name');
   const slug = readString(formData, 'slug');
   const categoryId = readString(formData, 'category_id');
@@ -91,7 +92,7 @@ function readProductPayload(formData: FormData): ProductPayload {
     description: readString(formData, 'description') || null,
     price,
     stock,
-    specs: parseSpecs(readString(formData, 'specs')),
+    specs: parseSpecs(readString(formData, 'specs'), registry),
     is_active: readBoolean(formData, 'is_active'),
     is_featured: isFeatured,
   };
@@ -103,7 +104,8 @@ export async function createProductAction(
 ): Promise<AdminFormState> {
   await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
-    const payload = readProductPayload(formData);
+    const activeRegistry = await getActiveSpecTemplates();
+    const payload = await readProductPayload(formData, activeRegistry);
     const requestContext = await getRequestContext();
     const { data, error } = await createAdminProduct(payload, requestContext);
 
@@ -131,7 +133,8 @@ export async function updateProductAction(
       return { ok: false, error: 'Thiếu ID sản phẩm.' };
     }
 
-    const payload = readProductPayload(formData);
+    const activeRegistry = await getActiveSpecTemplates();
+    const payload = await readProductPayload(formData, activeRegistry);
     const requestContext = await getRequestContext();
     const { error } = await updateAdminProduct(productId, payload, requestContext);
 
