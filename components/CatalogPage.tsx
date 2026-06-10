@@ -101,7 +101,7 @@ function ProductGridSkeleton() {
   );
 }
 
-export function CatalogPage({ slug }: { slug: string }) {
+export function CatalogPage({ slug, banner }: { slug: string; banner?: React.ReactNode }) {
   const { openProductDetail } = useModal();
   const { catalog, categories, loading } = useCategories();
   const searchParams = useSearchParams();
@@ -541,6 +541,8 @@ export function CatalogPage({ slug }: { slug: string }) {
             </div>
           </div>
         </div>
+
+        {banner}
 
         {/* ─── Layout Grid (Sidebar + Product Grid) ─────────────────── */}
         <div className="flex flex-col lg:flex-row gap-8 items-start mt-6">

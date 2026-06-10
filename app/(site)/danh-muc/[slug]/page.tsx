@@ -9,11 +9,11 @@ export default async function CategoryPage({
 }) {
   const resolvedParams = await params;
   return (
-    <>
-      <BannerSlot position="catalog_top" />
-      <Suspense>
-        <CatalogPage slug={resolvedParams.slug} />
-      </Suspense>
-    </>
+    <Suspense>
+      <CatalogPage
+        slug={resolvedParams.slug}
+        banner={<BannerSlot position="catalog_top" variant="compact" />}
+      />
+    </Suspense>
   );
 }

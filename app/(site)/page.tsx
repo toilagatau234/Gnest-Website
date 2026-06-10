@@ -17,9 +17,9 @@ export default async function Home() {
 
   return (
     <>
-      <BannerSlot position="home_after_products" />
-
       <HeroSection content={siteContents.hero} />
+
+      <BannerSlot position="home_after_products" variant="compact" />
 
       <ScrollReveal direction="up" delay={0.1}>
         <WhyUsSection />

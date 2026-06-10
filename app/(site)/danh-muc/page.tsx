@@ -4,11 +4,11 @@ import { BannerSlot } from "@/components/BannerSlot";
 
 export default function DanhMucIndex() {
   return (
-    <>
-      <BannerSlot position="catalog_top" />
-      <Suspense>
-        <CatalogPage slug="all" />
-      </Suspense>
-    </>
+    <Suspense>
+      <CatalogPage
+        slug="all"
+        banner={<BannerSlot position="catalog_top" variant="compact" />}
+      />
+    </Suspense>
   );
 }

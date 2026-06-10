@@ -8,9 +8,10 @@ import type { PublicBanner } from '@/lib/services/banners';
 
 interface BannerCarouselProps {
   banners: PublicBanner[];
+  variant?: 'default' | 'compact';
 }
 
-export function BannerCarousel({ banners }: BannerCarouselProps) {
+export function BannerCarousel({ banners, variant = 'default' }: BannerCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -25,7 +26,10 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   if (!banners || banners.length === 0) return null;
 
   const renderImageContainer = (src: string, alt: string, isMobile: boolean) => {
-    const aspectClass = isMobile ? 'aspect-[2/1]' : 'aspect-[3.2/1]';
+    const isCompact = variant === 'compact';
+    const aspectClass = isCompact
+      ? (isMobile ? 'aspect-[3/1] max-h-[120px]' : 'aspect-[7/1] max-h-[170px]')
+      : (isMobile ? 'aspect-[2/1]' : 'aspect-[3.2/1]');
     const displayClass = isMobile ? 'block md:hidden' : 'hidden md:block';
 
     return (
@@ -57,6 +61,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     const hasImage = Boolean(banner.image_desktop_url);
     const desktopImg = banner.image_desktop_url || '';
     const mobileImg = banner.image_mobile_url || desktopImg;
+    const isCompact = variant === 'compact';
 
     const contentElement = hasImage ? (
       <div className="w-full relative">
@@ -64,23 +69,23 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         {renderImageContainer(mobileImg, banner.content, true)}
       </div>
     ) : (
-      <div className={`w-full ${isCarouselItem ? 'h-full' : ''} rounded-xl p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-r from-[#1B3A6B] to-[#0d1f3c] text-white border border-[#e2e5ea] shadow-sm relative overflow-hidden before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_left,rgba(227,30,36,0.18),transparent_50%)]`}>
+      <div className={`w-full ${isCarouselItem ? 'h-full' : ''} rounded-xl ${isCompact ? 'p-4 md:py-4 md:px-8 min-h-[90px] md:min-h-[130px]' : 'p-8 md:p-10'} flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-r from-[#1B3A6B] to-[#0d1f3c] text-white border border-[#e2e5ea] shadow-sm relative overflow-hidden before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_left,rgba(227,30,36,0.18),transparent_50%)]`}>
         <div className="flex items-start gap-4 min-w-0 flex-1 text-left">
-          <div className="p-3 bg-[#E31E24] text-white rounded-xl shrink-0 animate-pulse mt-0.5">
-            <Sparkles className="w-5 h-5" />
+          <div className={`p-3 bg-[#E31E24] text-white rounded-xl shrink-0 animate-pulse mt-0.5 ${isCompact ? 'p-2' : 'p-3'}`}>
+            <Sparkles className={isCompact ? 'w-4 h-4' : 'w-5 h-5'} />
           </div>
           <div className="min-w-0">
             <span className="block text-[11px] font-extrabold uppercase tracking-[0.15em] text-[#E31E24] mb-1">
               Khuyến mãi đặc biệt
             </span>
-            <p className="text-base md:text-lg font-bold leading-relaxed text-white text-wrap balance max-w-3xl">
+            <p className={`font-bold leading-relaxed text-white text-wrap balance max-w-3xl ${isCompact ? 'text-sm md:text-base' : 'text-base md:text-lg'}`}>
               {banner.content}
             </p>
           </div>
         </div>
 
         {banner.link_url ? (
-          <span className="inline-flex items-center gap-2 bg-[#E31E24] hover:bg-[#C01519] text-white font-bold text-sm px-6 h-11 rounded-[6px] shrink-0 transition-all shadow-sm shadow-[#E31E24]/20">
+          <span className={`inline-flex items-center gap-2 bg-[#E31E24] hover:bg-[#C01519] text-white font-bold text-sm px-6 rounded-[6px] shrink-0 transition-all shadow-sm shadow-[#E31E24]/20 ${isCompact ? 'h-9 text-xs px-4' : 'h-11 px-6'}`}>
             Khám phá ngay <ArrowRight className="w-4 h-4" />
           </span>
         ) : null}
@@ -110,7 +115,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   // Case 1: Single banner -> static rendering
   if (banners.length === 1) {
     return (
-      <div className="max-w-[1220px] mx-auto px-5 my-10 md:my-16">
+      <div className={`max-w-[1220px] mx-auto px-5 ${variant === 'compact' ? 'my-4 md:my-6' : 'my-10 md:my-16'}`}>
         {renderBannerContent(banners[0])}
       </div>
     );
@@ -135,7 +140,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
   return (
     <div
-      className="max-w-[1220px] mx-auto px-5 my-10 md:my-16 relative group"
+      className={`max-w-[1220px] mx-auto px-5 relative group ${variant === 'compact' ? 'my-4 md:my-6' : 'my-10 md:my-16'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       role="region"
