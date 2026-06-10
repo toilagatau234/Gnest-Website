@@ -118,7 +118,7 @@ export function ProductMediaAndDiscountDialog({ productId, productName, productP
 
             <div className="min-h-[300px]">
               {activeTab === 'media' ? (
-                <ProductMediaManager productId={productId} images={images} onMutated={() => loadDetail(true)} />
+                <ProductMediaManager productId={productId} images={images} />
               ) : (
                 <ProductBulkDiscountManager
                   key={`${productId}:${discountSessionKey}`}
