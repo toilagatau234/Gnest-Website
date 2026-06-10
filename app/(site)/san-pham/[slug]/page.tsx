@@ -36,7 +36,8 @@ function buildSpecRows(rawSpecs: unknown): SpecDisplayRow[] {
   // Template-aware display: use template field order and labels
   if (isKnownTemplate(obj._template)) {
     const template = SPEC_TEMPLATES[obj._template];
-    return template.fields
+    return [...template.fields]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
       .filter((f) => obj[f.key] != null && obj[f.key] !== '')
       .map((f) => ({ label: f.label, value: String(obj[f.key]) }));
   }
