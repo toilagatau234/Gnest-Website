@@ -27,6 +27,7 @@ interface ProductBulkDiscountManagerProps {
   productId: string;
   discounts: ProductDiscount[];
   retailPrice: number | null;
+  onMutated?: () => void | Promise<void>;
 }
 
 
@@ -34,6 +35,7 @@ export function ProductBulkDiscountManager({
   productId,
   discounts,
   retailPrice,
+  onMutated,
 }: ProductBulkDiscountManagerProps) {
   const { toast } = useToast();
   const router = useRouter();
@@ -62,6 +64,7 @@ export function ProductBulkDiscountManager({
         setAddMinQuantity('');
         setAddPricePerUnit('');
         setAddIsActive(true);
+        if (onMutated) await onMutated();
         router.refresh();
       } else {
         toast(result.error || 'Thêm bậc sỉ thất bại.', 'error');
@@ -87,6 +90,7 @@ export function ProductBulkDiscountManager({
       if (result.ok) {
         toast('Đã cập nhật bậc giá sỉ.', 'success');
         setEditingDiscountId(null);
+        if (onMutated) await onMutated();
         router.refresh();
       } else {
         toast(result.error || 'Cập nhật thất bại.', 'error');
@@ -116,6 +120,7 @@ export function ProductBulkDiscountManager({
       const result = await toggleProductDiscountActiveAction(discountId, !currentActive);
       if (result.ok) {
         toast(!currentActive ? 'Đã kích hoạt bậc giá sỉ.' : 'Đã tạm khóa bậc giá sỉ.', 'success');
+        if (onMutated) await onMutated();
         router.refresh();
       } else {
         toast(result.error || 'Không thể thay đổi trạng thái bậc sỉ.', 'error');
@@ -439,9 +444,10 @@ export function ProductBulkDiscountManager({
 
           return deleteProductDiscountAction(confirmDeleteId);
         }}
-        onSuccess={() => {
+        onSuccess={async () => {
           toast('Đã xóa bậc giá sỉ.', 'success');
           setConfirmDeleteId(null);
+          if (onMutated) await onMutated();
           router.refresh();
         }}
       />

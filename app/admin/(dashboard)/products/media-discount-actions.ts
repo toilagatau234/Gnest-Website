@@ -95,7 +95,7 @@ export async function uploadProductImageAction(
   //    never leave orphaned files for non-existent products.
   const { data: product, error: productError } = await supabase
     .from('products')
-    .select('id')
+    .select('id, slug')
     .eq('id', productId)
     .maybeSingle();
 
@@ -154,7 +154,7 @@ export async function uploadProductImageAction(
     return { ok: false, error: err instanceof Error ? err.message : 'Lỗi không xác định khi tải ảnh.' };
   }
 
-  revalidateAllPaths();
+  revalidateAllPaths(product?.slug);
   return { ok: true };
 }
 
@@ -173,6 +173,10 @@ export async function updateProductImageAction(
     return { ok: false, error: 'Thiếu ID hình ảnh.' };
   }
 
+  const supabase = createServiceRoleClient();
+  const { data: image } = await supabase.from('product_images').select('product_id').eq('id', imageId).maybeSingle();
+  const { data: product } = image ? await supabase.from('products').select('slug').eq('id', image.product_id).maybeSingle() : { data: null };
+
   const { error } = await updateAdminProductImage(imageId, {
     alt,
     sort_order: sortOrder,
@@ -183,7 +187,7 @@ export async function updateProductImageAction(
     return { ok: false, error };
   }
 
-  revalidateAllPaths();
+  revalidateAllPaths(product?.slug);
   return { ok: true };
 }
 
@@ -194,13 +198,17 @@ export async function deleteProductImageAction(imageId: string): Promise<ActionS
     return { ok: false, error: 'Thiếu ID hình ảnh.' };
   }
 
+  const supabase = createServiceRoleClient();
+  const { data: image } = await supabase.from('product_images').select('product_id').eq('id', imageId).maybeSingle();
+  const { data: product } = image ? await supabase.from('products').select('slug').eq('id', image.product_id).maybeSingle() : { data: null };
+
   const { error } = await deleteAdminProductImage(imageId);
 
   if (error) {
     return { ok: false, error };
   }
 
-  revalidateAllPaths();
+  revalidateAllPaths(product?.slug);
   return { ok: true };
 }
 
@@ -211,13 +219,17 @@ export async function toggleProductImageActiveAction(imageId: string, isActive: 
     return { ok: false, error: 'Thiếu ID hình ảnh.' };
   }
 
+  const supabase = createServiceRoleClient();
+  const { data: image } = await supabase.from('product_images').select('product_id').eq('id', imageId).maybeSingle();
+  const { data: product } = image ? await supabase.from('products').select('slug').eq('id', image.product_id).maybeSingle() : { data: null };
+
   const { error } = await setAdminProductImageActive(imageId, isActive);
 
   if (error) {
     return { ok: false, error };
   }
 
-  revalidateAllPaths();
+  revalidateAllPaths(product?.slug);
   return { ok: true };
 }
 
@@ -228,13 +240,16 @@ export async function setProductPrimaryImageAction(productId: string, imageId: s
     return { ok: false, error: 'Thiếu ID sản phẩm hoặc ID hình ảnh.' };
   }
 
+  const supabase = createServiceRoleClient();
+  const { data: product } = await supabase.from('products').select('slug').eq('id', productId).maybeSingle();
+
   const { error } = await setAdminProductPrimaryImage(productId, imageId);
 
   if (error) {
     return { ok: false, error };
   }
 
-  revalidateAllPaths();
+  revalidateAllPaths(product?.slug);
   return { ok: true };
 }
 
@@ -245,13 +260,16 @@ export async function reorderProductImagesAction(productId: string, orderedIds: 
     return { ok: false, error: 'Dữ liệu sắp xếp không hợp lệ.' };
   }
 
+  const supabase = createServiceRoleClient();
+  const { data: product } = await supabase.from('products').select('slug').eq('id', productId).maybeSingle();
+
   const { error } = await reorderAdminProductImages(productId, orderedIds);
 
   if (error) {
     return { ok: false, error };
   }
 
-  revalidateAllPaths();
+  revalidateAllPaths(product?.slug);
   return { ok: true };
 }
 
@@ -266,7 +284,7 @@ export async function addProductDiscountAction(
   await requireAdminAuth(CONTENT_EDITOR_ROLES);
 
   const productId = formData.get('product_id') as string;
-  const minQuantity = Number(formData.get('min_quantity') || '0');
+  const minQuantity = Math.floor(Number(formData.get('min_quantity') || '0'));
   const pricePerUnit = parseDiscountPrice(formData.get('price_per_unit') as string | null);
   const isActive = formData.get('is_active') === 'true' || formData.get('is_active') === 'on';
 
@@ -280,7 +298,7 @@ export async function addProductDiscountAction(
     return { ok: false, error: 'Giá sỉ phải lớn hơn hoặc bằng 0.' };
   }
 
-  const { error } = await createAdminProductBulkDiscount({
+  const { error, product_slug } = await createAdminProductBulkDiscount({
     product_id: productId,
     min_quantity: minQuantity,
     price_per_unit: pricePerUnit,
@@ -291,7 +309,7 @@ export async function addProductDiscountAction(
     return { ok: false, error };
   }
 
-  revalidateAllPaths();
+  revalidateAllPaths(product_slug);
   return { ok: true };
 }
 
@@ -302,7 +320,7 @@ export async function updateProductDiscountAction(
   await requireAdminAuth(CONTENT_EDITOR_ROLES);
 
   const discountId = formData.get('id') as string;
-  const minQuantity = Number(formData.get('min_quantity') || '0');
+  const minQuantity = Math.floor(Number(formData.get('min_quantity') || '0'));
   const pricePerUnit = parseDiscountPrice(formData.get('price_per_unit') as string | null);
   const isActive = formData.get('is_active') === 'true' || formData.get('is_active') === 'on';
 
@@ -316,7 +334,7 @@ export async function updateProductDiscountAction(
     return { ok: false, error: 'Giá sỉ phải lớn hơn hoặc bằng 0.' };
   }
 
-  const { error } = await updateAdminProductBulkDiscount(discountId, {
+  const { error, product_slug } = await updateAdminProductBulkDiscount(discountId, {
     min_quantity: minQuantity,
     price_per_unit: pricePerUnit,
     is_active: isActive,
@@ -326,7 +344,7 @@ export async function updateProductDiscountAction(
     return { ok: false, error };
   }
 
-  revalidateAllPaths();
+  revalidateAllPaths(product_slug);
   return { ok: true };
 }
 
@@ -337,13 +355,13 @@ export async function deleteProductDiscountAction(discountId: string): Promise<A
     return { ok: false, error: 'Thiếu ID bậc giá sỉ.' };
   }
 
-  const { error } = await deleteAdminProductBulkDiscount(discountId);
+  const { error, product_slug } = await deleteAdminProductBulkDiscount(discountId);
 
   if (error) {
     return { ok: false, error };
   }
 
-  revalidateAllPaths();
+  revalidateAllPaths(product_slug);
   return { ok: true };
 }
 
@@ -354,13 +372,13 @@ export async function toggleProductDiscountActiveAction(discountId: string, isAc
     return { ok: false, error: 'Thiếu ID bậc giá sỉ.' };
   }
 
-  const { error } = await setAdminProductBulkDiscountActive(discountId, isActive);
+  const { error, product_slug } = await setAdminProductBulkDiscountActive(discountId, isActive);
 
   if (error) {
     return { ok: false, error };
   }
 
-  revalidateAllPaths();
+  revalidateAllPaths(product_slug);
   return { ok: true };
 }
 
@@ -368,9 +386,12 @@ export async function toggleProductDiscountActiveAction(discountId: string, isAc
 // CACHE REVALIDATION HELPER
 // -------------------------------------------------------------
 
-function revalidateAllPaths() {
+function revalidateAllPaths(slug?: string) {
   revalidatePath('/admin/products');
   revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
   revalidatePath('/');
+  if (slug) {
+    revalidatePath(`/san-pham/${slug}`);
+  }
 }

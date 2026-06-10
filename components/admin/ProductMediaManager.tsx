@@ -43,6 +43,7 @@ interface ProductImage {
 interface ProductMediaManagerProps {
   productId: string;
   images: ProductImage[];
+  onMutated?: () => void | Promise<void>;
 }
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -236,7 +237,7 @@ function QueueCard({
   );
 }
 
-export function ProductMediaManager({ productId, images }: ProductMediaManagerProps) {
+export function ProductMediaManager({ productId, images, onMutated }: ProductMediaManagerProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -360,6 +361,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
           : `Tải lên ${successCount}/${uploadable.length} ảnh thành công.`,
         successCount === uploadable.length ? 'success' : 'error',
       );
+      if (onMutated) await onMutated();
       router.refresh();
       setTimeout(() => {
         setQueue((prev) => {
@@ -383,6 +385,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
       const result = await setProductPrimaryImageAction(productId, imageId);
       if (result.ok) {
         toast('Đã thiết lập làm ảnh chính.', 'success');
+        if (onMutated) await onMutated();
         router.refresh();
       } else {
         toast(result.error || 'Không thể thiết lập ảnh chính.', 'error');
@@ -395,6 +398,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
       const result = await toggleProductImageActiveAction(imageId, !currentActive);
       if (result.ok) {
         toast(!currentActive ? 'Đã hiển thị hình ảnh.' : 'Đã ẩn hình ảnh.', 'success');
+        if (onMutated) await onMutated();
         router.refresh();
       } else {
         toast(result.error || 'Không thể thay đổi trạng thái hình ảnh.', 'error');
@@ -417,6 +421,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
       const result = await reorderProductImagesAction(productId, reordered.map((image) => image.id));
       if (result.ok) {
         toast('Đã thay đổi thứ tự hình ảnh.', 'success');
+        if (onMutated) await onMutated();
         router.refresh();
       } else {
         toast(result.error || 'Không thể thay đổi thứ tự.', 'error');
@@ -444,6 +449,7 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
     if (result.ok) {
       toast('Đã cập nhật hình ảnh.', 'success');
       setEditingImageId(null);
+      if (onMutated) await onMutated();
       router.refresh();
     } else {
       setEditError(result.error ?? 'Cập nhật thất bại.');
@@ -768,9 +774,10 @@ export function ProductMediaManager({ productId, images }: ProductMediaManagerPr
 
           return deleteProductImageAction(confirmDeleteId);
         }}
-        onSuccess={() => {
+        onSuccess={async () => {
           toast('Đã xóa hình ảnh sản phẩm.', 'success');
           setConfirmDeleteId(null);
+          if (onMutated) await onMutated();
           router.refresh();
         }}
       />
