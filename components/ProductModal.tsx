@@ -386,10 +386,9 @@ function ProductModalContent({
             </div>
 
             {displayProduct.desc && (
-              <div
-                className="text-[13px] text-dtl-dark leading-[1.75]"
-                dangerouslySetInnerHTML={{ __html: displayProduct.desc }}
-              />
+              <p className="whitespace-pre-line text-[13px] text-dtl-dark leading-[1.75]">
+                {displayProduct.desc}
+              </p>
             )}
           </div>
         </div>

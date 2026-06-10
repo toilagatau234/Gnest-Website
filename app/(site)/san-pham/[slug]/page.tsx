@@ -254,13 +254,9 @@ export default async function ProductDetailPage({ params }: Props) {
                   <span className="w-1 h-5 bg-dtl-red rounded-full inline-block" />
                   Mô tả sản phẩm
                 </h2>
-                <div className="prose prose-sm max-w-none text-dtl-gray leading-relaxed text-[14px]">
-                  {product.description.split('\n').map((line, i) => (
-                    <p key={i} className="mb-2 last:mb-0">
-                      {line}
-                    </p>
-                  ))}
-                </div>
+                <p className="whitespace-pre-line text-dtl-gray leading-relaxed text-[14px]">
+                  {product.description}
+                </p>
               </div>
             )}
           </div>
