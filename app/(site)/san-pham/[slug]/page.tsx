@@ -6,8 +6,10 @@ import type { Metadata } from 'next';
 import { getPublicProductBySlug } from '@/lib/services/public-products';
 import { ProductGallery } from '@/components/ProductGallery';
 import { ProductDetailCTAs } from '@/components/ProductDetailCTAs';
+import { isKnownTemplate, SPEC_TEMPLATES } from '@/lib/product-spec-templates';
 
-const SPEC_LABELS: Record<string, string> = {
+// Fallback labels for legacy custom-key specs
+const LEGACY_SPEC_LABELS: Record<string, string> = {
   dungTich: 'Dung tích',
   quyCach: 'Quy cách',
   phiNap: 'Phi nắp',
@@ -18,8 +20,31 @@ const SPEC_LABELS: Record<string, string> = {
   dimensions: 'Kích thước',
 };
 
-function formatSpecLabel(key: string): string {
-  return SPEC_LABELS[key] ?? key.replace(/([A-Z])/g, ' $1').trim();
+function formatLegacyLabel(key: string): string {
+  return LEGACY_SPEC_LABELS[key] ?? key.replace(/([A-Z])/g, ' $1').trim();
+}
+
+interface SpecDisplayRow {
+  label: string;
+  value: string;
+}
+
+function buildSpecRows(rawSpecs: unknown): SpecDisplayRow[] {
+  if (!rawSpecs || typeof rawSpecs !== 'object' || Array.isArray(rawSpecs)) return [];
+  const obj = rawSpecs as Record<string, unknown>;
+
+  // Template-aware display: use template field order and labels
+  if (isKnownTemplate(obj._template)) {
+    const template = SPEC_TEMPLATES[obj._template];
+    return template.fields
+      .filter((f) => obj[f.key] != null && obj[f.key] !== '')
+      .map((f) => ({ label: f.label, value: String(obj[f.key]) }));
+  }
+
+  // Legacy / custom display: keep existing behavior, skip internal keys
+  return Object.entries(obj)
+    .filter(([k, v]) => k !== '_template' && v !== null && v !== '')
+    .map(([k, v]) => ({ label: formatLegacyLabel(k), value: String(v) }));
 }
 
 interface Props {
@@ -64,7 +89,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
   if (!product) notFound();
 
-  const specs = Object.entries(product.specs).filter(([, v]) => v !== null && v !== '');
+  const specs = buildSpecRows(product.specs);
   const hasBulkDiscounts = product.bulkDiscounts.length > 0;
 
   return (
@@ -228,18 +253,18 @@ export default async function ProductDetailPage({ params }: Props) {
                   Thông số kỹ thuật
                 </h2>
                 <div className="rounded-xl border border-dtl-border overflow-hidden text-[13px]">
-                  {specs.map(([key, value], idx) => (
+                  {specs.map(({ label, value }, idx) => (
                     <div
-                      key={key}
+                      key={label}
                       className={`grid grid-cols-2 border-b border-dtl-border last:border-b-0 ${
                         idx % 2 === 0 ? 'bg-white' : 'bg-dtl-bg-alt'
                       }`}
                     >
                       <div className="px-4 py-3 font-semibold text-dtl-gray">
-                        {formatSpecLabel(key)}
+                        {label}
                       </div>
                       <div className="px-4 py-3 font-bold text-dtl-dark">
-                        {String(value)}
+                        {value}
                       </div>
                     </div>
                   ))}
