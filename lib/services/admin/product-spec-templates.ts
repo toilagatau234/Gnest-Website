@@ -41,6 +41,7 @@ export async function getActiveSpecTemplates(): Promise<TemplateRegistry> {
     const { data: fieldRows, error: fErr } = await supabase
       .from('product_spec_fields')
       .select('template_id, key, label, type, unit, options, is_required, sort_order')
+      .eq('is_active', true)
       .in(
         'template_id',
         templateRows.map((t) => t.id),
