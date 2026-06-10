@@ -14,6 +14,7 @@ import { getRequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 import type { Json } from '@/lib/types/database';
+import { validateSpecs } from '@/lib/product-spec-templates';
 
 export type AdminFormState = { ok: boolean; error?: string; productId?: string };
 
@@ -41,21 +42,25 @@ function parseNumber(value: string) {
 }
 
 function parseSpecs(value: string): Json {
-  if (!value) {
-    return {};
-  }
+  if (!value) return {};
 
+  // Step 1: parse JSON — give a clear syntax error.
+  let parsed: Json;
   try {
-    const parsed = JSON.parse(value) as Json;
-
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('Specs phải là object JSON.');
-    }
-
-    return parsed;
+    parsed = JSON.parse(value) as Json;
   } catch {
     throw new Error('Specs không đúng định dạng JSON. Ví dụ: {"dungTich":"500ml"}');
   }
+
+  // Step 2: must be a plain object.
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Specs phải là object JSON, không phải mảng hay giá trị đơn.');
+  }
+
+  // Step 3: template-aware field validation (throws with user-facing message).
+  validateSpecs(parsed as Record<string, unknown>);
+
+  return parsed;
 }
 
 

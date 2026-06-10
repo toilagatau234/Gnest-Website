@@ -30,6 +30,97 @@ export function isKnownTemplate(value: unknown): value is TemplateKey {
   return typeof value === 'string' && (TEMPLATE_KEYS as readonly string[]).includes(value);
 }
 
+// ---------------------------------------------------------------------------
+// Server-side validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Validates a parsed specs object against template rules.
+ * Throws a user-facing Error on any violation.
+ * Safe to call from server actions — never touches the DOM.
+ *
+ * Rules:
+ *  - No _template key → legacy/custom, always allowed.
+ *  - _template === "other" → custom object, always allowed.
+ *  - _template is an unknown string → rejected.
+ *  - Known template → required fields must be non-empty; number/select/
+ *    multi_select/boolean fields are type-checked against the field config.
+ */
+export function validateSpecs(specs: Record<string, unknown>): void {
+  const templateValue = specs._template;
+
+  // No _template: legacy or custom — nothing to validate.
+  if (templateValue === undefined || templateValue === null) return;
+
+  // _template present but not a recognised key.
+  if (!isKnownTemplate(templateValue)) {
+    const allowed = TEMPLATE_KEYS.filter((k) => k !== 'other').join(', ');
+    throw new Error(
+      `Mẫu thông số không hợp lệ: "${String(templateValue)}". Giá trị cho phép: ${allowed}, other.`,
+    );
+  }
+
+  // "other" = free-form custom object, nothing to type-check.
+  if (templateValue === 'other') return;
+
+  const template = SPEC_TEMPLATES[templateValue];
+
+  for (const field of template.fields) {
+    const raw = specs[field.key];
+    const strVal = raw != null ? String(raw).trim() : '';
+
+    // Required check.
+    if (field.required && !strVal) {
+      throw new Error(
+        `Thông số "${field.label}" là bắt buộc cho mẫu "${template.label}".`,
+      );
+    }
+
+    // Skip type checks for empty optional fields.
+    if (!strVal) continue;
+
+    switch (field.type) {
+      case 'number': {
+        const n = Number(strVal);
+        if (!Number.isFinite(n) || n < 0) {
+          throw new Error(
+            `Thông số "${field.label}" phải là số hợp lệ không âm (nhận được: "${strVal}").`,
+          );
+        }
+        break;
+      }
+      case 'select': {
+        if (field.options && !field.options.includes(strVal)) {
+          throw new Error(
+            `Giá trị "${strVal}" không hợp lệ cho "${field.label}". Cho phép: ${field.options.join(', ')}.`,
+          );
+        }
+        break;
+      }
+      case 'multi_select': {
+        if (field.options) {
+          const parts = strVal.split(',').map((v) => v.trim()).filter(Boolean);
+          const bad = parts.filter((v) => !field.options!.includes(v));
+          if (bad.length > 0) {
+            throw new Error(
+              `Giá trị "${bad.join(', ')}" không hợp lệ cho "${field.label}". Cho phép: ${field.options.join(', ')}.`,
+            );
+          }
+        }
+        break;
+      }
+      case 'boolean': {
+        if (strVal !== 'true' && strVal !== 'false') {
+          throw new Error(
+            `Thông số "${field.label}" phải là true hoặc false (nhận được: "${strVal}").`,
+          );
+        }
+        break;
+      }
+    }
+  }
+}
+
 export const SPEC_TEMPLATES: Record<TemplateKey, SpecTemplate> = {
   plastic: {
     label: 'Bao bì nhựa',

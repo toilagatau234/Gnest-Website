@@ -85,6 +85,8 @@ function TemplateFieldInput({
 }) {
   const placeholder = `Nhập ${field.label.toLowerCase()}${field.unit ? ` (${field.unit})` : ''}…`;
 
+  const isRequired = field.required ?? false;
+
   switch (field.type) {
     case 'textarea':
       return (
@@ -92,13 +94,19 @@ function TemplateFieldInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          required={isRequired}
           className={textareaFieldClass}
           rows={3}
         />
       );
     case 'select':
       return (
-        <select value={value} onChange={(e) => onChange(e.target.value)} className={selectFieldClass}>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={isRequired}
+          className={selectFieldClass}
+        >
           <option value="">— Chọn {field.label.toLowerCase()} —</option>
           {field.options?.map((opt) => (
             <option key={opt} value={opt}>
@@ -114,17 +122,21 @@ function TemplateFieldInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           min="0"
+          step="any"
+          required={isRequired}
           placeholder={placeholder}
           className={inputClass}
         />
       );
     case 'boolean':
+      // Boolean fields are checkboxes — required means it must be checked.
       return (
         <label className="flex h-10 cursor-pointer items-center gap-2">
           <input
             type="checkbox"
             checked={value === 'true'}
             onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
+            required={isRequired && value !== 'true'}
             className="rounded border-slate-300 text-[#1B3A6B] focus:ring-[#1B3A6B]/30"
           />
           <span className="text-xs text-slate-600">{field.label}</span>
@@ -136,6 +148,7 @@ function TemplateFieldInput({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          required={isRequired}
           placeholder={placeholder}
           className={inputClass}
         />
