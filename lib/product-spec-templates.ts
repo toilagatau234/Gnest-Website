@@ -26,6 +26,11 @@ export const TEMPLATE_KEYS = [
 
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
+export interface TemplateRegistry {
+  templates: Record<string, SpecTemplate>;
+  keys: string[];
+}
+
 export function isKnownTemplate(value: unknown): value is TemplateKey {
   return typeof value === 'string' && (TEMPLATE_KEYS as readonly string[]).includes(value);
 }

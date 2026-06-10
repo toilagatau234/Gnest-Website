@@ -453,6 +453,83 @@ export interface Database {
         };
         Relationships: [];
       };
+      product_spec_templates: {
+        Row: {
+          id: string;
+          code: string;
+          name: string;
+          description: string | null;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          name: string;
+          description?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          name?: string;
+          description?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      product_spec_fields: {
+        Row: {
+          id: string;
+          template_id: string;
+          key: string;
+          label: string;
+          type: string;
+          unit: string | null;
+          options: Json | null;
+          is_required: boolean;
+          is_filterable: boolean;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          key: string;
+          label: string;
+          type: string;
+          unit?: string | null;
+          options?: Json | null;
+          is_required?: boolean;
+          is_filterable?: boolean;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          template_id?: string;
+          key?: string;
+          label?: string;
+          type?: string;
+          unit?: string | null;
+          options?: Json | null;
+          is_required?: boolean;
+          is_filterable?: boolean;
+          is_active?: boolean;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
 
     Views: Record<string, never>;

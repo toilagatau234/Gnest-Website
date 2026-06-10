@@ -8,6 +8,7 @@ import { AdminToggle } from '@/components/admin/AdminToggle';
 import { formatCurrencyInput } from '@/lib/utils/currency';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { ProductFormData } from '@/lib/services/admin/products';
+import type { TemplateRegistry } from '@/lib/product-spec-templates';
 import type { AdminFormState } from '@/app/admin/(dashboard)/products/actions';
 import { ProductMediaManager } from '@/components/admin/ProductMediaManager';
 import { ProductBulkDiscountManager, type ProductDiscount } from '@/components/admin/ProductBulkDiscountManager';
@@ -45,6 +46,7 @@ interface ProductFormProps {
   onRemoveQueuedImage?: (localId: string) => void;
   onTogglePrimaryQueuedImage?: (localId: string) => void;
   onClearQueue?: () => void;
+  specTemplates?: TemplateRegistry;
   // Edit mode: existing images & discounts
   existingImages?: ExistingProductImage[];
   existingDiscounts?: ProductDiscount[];
@@ -103,6 +105,7 @@ export function ProductForm({
   formAction,
   state,
   categories,
+  specTemplates,
   product,
   imageQueue = [],
   onFilesAdd,
@@ -299,7 +302,7 @@ export function ProductForm({
 
         {/* ── Specs ──────────────────────────────────────────────────────────── */}
         <div className={visibleTab === 'specs' ? 'animate-fade-in flex-1' : 'hidden'}>
-          <SpecsEditor initialSpecs={product?.specs} />
+          <SpecsEditor initialSpecs={product?.specs} specTemplates={specTemplates} />
         </div>
 
         {/* ── Media (create mode only — image queue belongs to create form) ─── */}

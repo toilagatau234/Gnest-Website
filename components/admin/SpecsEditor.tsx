@@ -8,7 +8,9 @@ import {
   SPEC_TEMPLATES,
   TEMPLATE_KEYS,
   type SpecField,
+  type SpecTemplate,
   type TemplateKey,
+  type TemplateRegistry,
 } from '@/lib/product-spec-templates';
 import type { Json } from '@/lib/types/database';
 
@@ -25,10 +27,28 @@ interface SpecsEditorProps {
   /** Hidden field name submitted to the server action. */
   name?: string;
   initialSpecs?: Json;
+  /** DB-loaded template registry. Falls back to code templates if absent. */
+  specTemplates?: TemplateRegistry;
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Registry resolution helpers (module-level, no hooks)
+// ---------------------------------------------------------------------------
+
+function resolveRegistry(sr?: TemplateRegistry): TemplateRegistry {
+  if (sr && sr.keys.length > 0) return sr;
+  return {
+    templates: SPEC_TEMPLATES as Record<string, SpecTemplate>,
+    keys: [...TEMPLATE_KEYS],
+  };
+}
+
+function isValidTemplateKey(value: unknown, validKeys: string[]): boolean {
+  return typeof value === 'string' && validKeys.includes(value);
+}
+
+// ---------------------------------------------------------------------------
+// Initializers
 // ---------------------------------------------------------------------------
 
 function specsToObject(specs?: Json): Record<string, unknown> {
@@ -38,23 +58,28 @@ function specsToObject(specs?: Json): Record<string, unknown> {
   return {};
 }
 
-function initTemplate(specs?: Json): TemplateKey {
+function initTemplateKey(specs: Json | undefined, validKeys: string[]): string {
   const obj = specsToObject(specs);
-  return isKnownTemplate(obj._template) ? obj._template : 'other';
+  return isValidTemplateKey(obj._template, validKeys) ? (obj._template as string) : 'other';
 }
 
-function initTemplateValues(templateKey: TemplateKey, specs?: Json): Record<string, string> {
+function initTemplateValues(
+  templateKey: string,
+  specs: Json | undefined,
+  templates: Record<string, SpecTemplate>,
+): Record<string, string> {
   if (templateKey === 'other') return {};
   const obj = specsToObject(specs);
   const values: Record<string, string> = {};
-  for (const field of SPEC_TEMPLATES[templateKey].fields) {
+  const fields = templates[templateKey]?.fields ?? [];
+  for (const field of fields) {
     const raw = obj[field.key];
     if (raw != null && raw !== '') values[field.key] = String(raw);
   }
   return values;
 }
 
-function initCustomRows(templateKey: TemplateKey, specs?: Json): SpecRow[] {
+function initCustomRows(templateKey: string, specs?: Json): SpecRow[] {
   if (templateKey !== 'other') return [{ key: '', value: '' }];
   const obj = specsToObject(specs);
   const rows = Object.entries(obj)
@@ -163,12 +188,21 @@ function TemplateFieldInput({
 const customRowInputClass =
   'admin-focus h-10 w-full rounded-lg border border-[#E2E8F0] px-3 text-sm text-slate-700 transition-colors focus:border-[#1B3A6B] focus:outline-none';
 
-export function SpecsEditor({ name = 'specs', initialSpecs }: SpecsEditorProps) {
-  const initKey = useMemo(() => initTemplate(initialSpecs), [initialSpecs]);
+export function SpecsEditor({ name = 'specs', initialSpecs, specTemplates }: SpecsEditorProps) {
+  // Resolve registry once — DB-loaded takes precedence, code fallback if absent/empty.
+  // Stable across re-renders because specTemplates comes from a parent server load.
+  const registry = useMemo(() => resolveRegistry(specTemplates), [specTemplates]);
 
-  const [templateKey, setTemplateKey] = useState<TemplateKey>(initKey);
+  // Derive initial state from the resolved registry so DB keys are recognised.
+  const initKey = useMemo(
+    () => initTemplateKey(initialSpecs, registry.keys),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],  // intentionally stable: only used for useState initialisation below
+  );
+
+  const [templateKey, setTemplateKey] = useState<string>(initKey);
   const [templateValues, setTemplateValues] = useState<Record<string, string>>(() =>
-    initTemplateValues(initKey, initialSpecs),
+    initTemplateValues(initKey, initialSpecs, registry.templates),
   );
   const [customRows, setCustomRows] = useState<SpecRow[]>(() =>
     initCustomRows(initKey, initialSpecs),
@@ -187,21 +221,23 @@ export function SpecsEditor({ name = 'specs', initialSpecs }: SpecsEditorProps) 
     }
 
     const obj: Record<string, string> = { _template: templateKey };
-    for (const field of SPEC_TEMPLATES[templateKey].fields) {
+    const fields = registry.templates[templateKey]?.fields ?? [];
+    for (const field of fields) {
       const v = (templateValues[field.key] ?? '').trim();
       if (v) obj[field.key] = v;
     }
     return JSON.stringify(obj);
-  }, [templateKey, templateValues, customRows]);
+  }, [templateKey, templateValues, customRows, registry.templates]);
 
   // ── Template switching ────────────────────────────────────────────────────
 
-  function handleTemplateChange(newKey: TemplateKey) {
+  function handleTemplateChange(newKey: string) {
     if (newKey === templateKey) return;
 
     if (newKey === 'other' && templateKey !== 'other') {
       // Carry over filled template fields into custom rows
-      const rows = SPEC_TEMPLATES[templateKey].fields
+      const fields = registry.templates[templateKey]?.fields ?? [];
+      const rows = fields
         .filter((f) => (templateValues[f.key] ?? '').trim())
         .map((f) => ({ key: f.key, value: templateValues[f.key] }));
       setCustomRows(rows.length > 0 ? rows : [{ key: '', value: '' }]);
@@ -209,7 +245,8 @@ export function SpecsEditor({ name = 'specs', initialSpecs }: SpecsEditorProps) 
       // Preserve values for keys that exist in the new template
       setTemplateValues((prev) => {
         const next: Record<string, string> = {};
-        for (const field of SPEC_TEMPLATES[newKey].fields) {
+        const newFields = registry.templates[newKey]?.fields ?? [];
+        for (const field of newFields) {
           next[field.key] = prev[field.key] ?? '';
         }
         return next;
@@ -245,15 +282,16 @@ export function SpecsEditor({ name = 'specs', initialSpecs }: SpecsEditorProps) 
   const requiredErrors = useMemo<Record<string, string>>(() => {
     if (templateKey === 'other') return {};
     const errs: Record<string, string> = {};
-    for (const field of SPEC_TEMPLATES[templateKey].fields) {
+    const fields = registry.templates[templateKey]?.fields ?? [];
+    for (const field of fields) {
       if (field.required && !(templateValues[field.key] ?? '').trim()) {
         errs[field.key] = `${field.label} là bắt buộc.`;
       }
     }
     return errs;
-  }, [templateKey, templateValues]);
+  }, [templateKey, templateValues, registry.templates]);
 
-  const currentTemplate = SPEC_TEMPLATES[templateKey];
+  const currentTemplate = registry.templates[templateKey];
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -268,12 +306,12 @@ export function SpecsEditor({ name = 'specs', initialSpecs }: SpecsEditorProps) 
         </label>
         <select
           value={templateKey}
-          onChange={(e) => handleTemplateChange(e.target.value as TemplateKey)}
+          onChange={(e) => handleTemplateChange(e.target.value)}
           className="admin-select text-xs"
         >
-          {TEMPLATE_KEYS.map((k) => (
+          {registry.keys.map((k) => (
             <option key={k} value={k}>
-              {SPEC_TEMPLATES[k].label}
+              {registry.templates[k]?.label ?? k}
             </option>
           ))}
         </select>
@@ -336,7 +374,7 @@ export function SpecsEditor({ name = 'specs', initialSpecs }: SpecsEditorProps) 
         /* ── Template fields ────────────────────────────────────────────────── */
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            {[...currentTemplate.fields]
+            {[...(currentTemplate?.fields ?? [])]
               .sort((a, b) => a.sortOrder - b.sortOrder)
               .map((field) => (
                 <div

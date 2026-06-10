@@ -11,6 +11,7 @@ import { useToast } from '@/components/admin/AdminToast';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { ProductFormData } from '@/lib/services/admin/products';
 import type { ProductDiscount } from '@/components/admin/ProductBulkDiscountManager';
+import type { TemplateRegistry } from '@/lib/product-spec-templates';
 import {
   createProductAction,
   fetchProductDetailAction,
@@ -35,6 +36,7 @@ type UploadPhase = 'idle' | 'uploading' | 'done';
 interface ProductFormDialogProps {
   categories: AdminCategory[];
   product?: { id: string; name?: string };
+  specTemplates?: TemplateRegistry;
 }
 
 interface ProductFormDialogSessionProps extends ProductFormDialogProps {
@@ -62,7 +64,7 @@ function ensureOnePrimary(queue: QueuedImageFile[]): QueuedImageFile[] {
   );
 }
 
-function ProductFormDialogSession({ categories, product, onClose }: ProductFormDialogSessionProps) {
+function ProductFormDialogSession({ categories, product, specTemplates, onClose }: ProductFormDialogSessionProps) {
   const router = useRouter();
   const { toast } = useToast();
   const formId = useId();
@@ -355,6 +357,7 @@ function ProductFormDialogSession({ categories, product, onClose }: ProductFormD
             formAction={formAction}
             state={state}
             categories={categories}
+            specTemplates={specTemplates}
             product={formData ?? undefined}
             imageQueue={imageQueue}
             onFilesAdd={handleFilesAdd}
@@ -371,7 +374,7 @@ function ProductFormDialogSession({ categories, product, onClose }: ProductFormD
   );
 }
 
-export function ProductFormDialog({ categories, product }: ProductFormDialogProps) {
+export function ProductFormDialog({ categories, product, specTemplates }: ProductFormDialogProps) {
   const isEdit = Boolean(product?.id);
   const [open, setOpen] = useState(false);
   const [sessionKey, setSessionKey] = useState(0);
@@ -398,6 +401,7 @@ export function ProductFormDialog({ categories, product }: ProductFormDialogProp
           key={sessionKey}
           categories={categories}
           product={product}
+          specTemplates={specTemplates}
           onClose={() => setOpen(false)}
         />
       ) : null}

@@ -10,14 +10,16 @@ import { AdminConfirmDialog } from '@/components/admin/AdminConfirmDialog';
 import { useToast } from '@/components/admin/AdminToast';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { ProductListItem } from '@/lib/services/admin/products';
+import type { TemplateRegistry } from '@/lib/product-spec-templates';
 import { deleteProductAction, toggleProductActiveAction } from '@/app/admin/(dashboard)/products/actions';
 
 interface ProductRowActionsProps {
   categories: AdminCategory[];
   product: ProductListItem;
+  specTemplates: TemplateRegistry;
 }
 
-export function ProductRowActions({ categories, product }: ProductRowActionsProps) {
+export function ProductRowActions({ categories, product, specTemplates }: ProductRowActionsProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isToggling, startToggle] = useTransition();
@@ -60,7 +62,7 @@ export function ProductRowActions({ categories, product }: ProductRowActionsProp
         productPrice={product.price}
       />
 
-      <ProductFormDialog categories={categories} product={product} />
+      <ProductFormDialog categories={categories} product={product} specTemplates={specTemplates} />
 
       <button
         type="button"

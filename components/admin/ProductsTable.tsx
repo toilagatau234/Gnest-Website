@@ -9,10 +9,12 @@ import { FormattedDate } from '@/components/admin/FormattedDate';
 import { ProductRowActions } from '@/components/admin/ProductRowActions';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 import type { ImageFilter, PriceFilter, ProductListItem, ProductListResult, ProductStats, StatusFilter, StockFilter } from '@/lib/services/admin/products';
+import type { TemplateRegistry } from '@/lib/product-spec-templates';
 
 interface ProductsTableProps {
   items: ProductListItem[];
   categories: AdminCategory[];
+  specTemplates: TemplateRegistry;
   pagination: Pick<ProductListResult, 'page' | 'pageSize' | 'total' | 'pageCount'>;
   filters: {
     q: string;
@@ -30,7 +32,7 @@ function getCategoryName(categoryMap: Map<string, string>, categoryId: string | 
   return categoryMap.get(categoryId) ?? 'Chưa phân loại';
 }
 
-export function ProductsTable({ items, categories, pagination, filters, stats }: ProductsTableProps) {
+export function ProductsTable({ items, categories, specTemplates, pagination, filters, stats }: ProductsTableProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -361,7 +363,7 @@ export function ProductsTable({ items, categories, pagination, filters, stats }:
                       </td>
 
                       <td className="p-4 whitespace-nowrap text-right">
-                        <ProductRowActions categories={categories} product={item} />
+                        <ProductRowActions categories={categories} product={item} specTemplates={specTemplates} />
                       </td>
                     </tr>
                   );
