@@ -11,10 +11,7 @@ import {
   Loader2,
   Pencil,
   Plus,
-  Settings,
   Trash2,
-  CheckCircle2,
-  XCircle,
   Sliders,
 } from 'lucide-react';
 

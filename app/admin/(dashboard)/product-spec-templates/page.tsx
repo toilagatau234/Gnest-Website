@@ -1,4 +1,4 @@
-import { AlertCircle, Sliders } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { AdminSection } from '@/components/admin/AdminSection';
