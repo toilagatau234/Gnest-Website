@@ -42,8 +42,29 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const orgJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'CÔNG TY TNHH MTV ĐẠI TÀI LỢI',
+    url: siteConfig.url,
+    contactPoint: {
+      '@type': 'ContactPoint',
+      telephone: '0939.991.551',
+      contactType: 'customer service',
+      email: 'congtydaitailoi@gmail.com',
+      areaServed: 'VN',
+      availableLanguage: 'Vietnamese',
+    },
+  };
+
   return (
     <html lang="vi" className={`scroll-smooth ${beVietnamPro.variable}`} suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+        />
+      </head>
       <body className="font-sans antialiased text-gray-900 bg-white" suppressHydrationWarning>
         <Providers>
           {children}

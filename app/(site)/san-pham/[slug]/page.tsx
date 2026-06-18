@@ -4,6 +4,7 @@ import { ChevronRight, Package, Tag, Layers, CheckCircle } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import { getPublicProductBySlug } from '@/lib/services/public-products';
+import { siteConfig } from '@/lib/config/site';
 import { ProductGallery } from '@/components/ProductGallery';
 import { ProductDetailCTAs } from '@/components/ProductDetailCTAs';
 import { isKnownTemplate, SPEC_TEMPLATES } from '@/lib/product-spec-templates';
@@ -93,8 +94,67 @@ export default async function ProductDetailPage({ params }: Props) {
   const specs = buildSpecRows(product.specs);
   const hasBulkDiscounts = product.bulkDiscounts.length > 0;
 
+  const productJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.description || undefined,
+    image: product.images.map((img) => img.public_url),
+    sku: (product.specs as Record<string, any>)?.sku || product.slug,
+    category: product.category?.name || undefined,
+    brand: {
+      '@type': 'Brand',
+      name: siteConfig.name,
+    },
+    offers: product.price ? {
+      '@type': 'Offer',
+      price: product.price,
+      priceCurrency: 'VND',
+      availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      url: `${siteConfig.url}/san-pham/${product.slug}`,
+    } : undefined,
+  };
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Trang chủ',
+        item: siteConfig.url,
+      },
+      product.category ? {
+        '@type': 'ListItem',
+        position: 2,
+        name: product.category.name,
+        item: `${siteConfig.url}/danh-muc/${product.category.slug}`,
+      } : {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Danh mục',
+        item: `${siteConfig.url}/danh-muc`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: product.name,
+        item: `${siteConfig.url}/san-pham/${product.slug}`,
+      },
+    ],
+  };
+
   return (
     <div className="bg-white min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       {/* Breadcrumb */}
       <nav
         aria-label="Điều hướng"
