@@ -84,3 +84,35 @@ export async function importProductsAction(
 
   return result;
 }
+
+export async function generateTemplateColumnsAction(templateCode: string): Promise<string[]> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+  const { generateTemplateColumns } = await import('@/lib/services/admin/product-import');
+  return generateTemplateColumns(templateCode);
+}
+
+export async function importProductsExcelAction(
+  rows: any[],
+  templateCode: string,
+  dryRun: boolean
+): Promise<{ ok: boolean; importedCount: number; errors: any[]; error?: string }> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { ok: false, importedCount: 0, errors: [], error: 'File không có dữ liệu sản phẩm.' };
+  }
+  if (rows.length > 500) {
+    return { ok: false, importedCount: 0, errors: [], error: 'Tối đa 500 dòng sản phẩm mỗi lần nhập.' };
+  }
+
+  const { importProductsExcel } = await import('@/lib/services/admin/product-import');
+  const result = await importProductsExcel(rows, templateCode, dryRun);
+
+  if (result.ok && !dryRun) {
+    revalidatePath('/admin/products');
+    revalidatePath('/admin/dashboard');
+    revalidatePath('/danh-muc');
+  }
+
+  return result;
+}
+
