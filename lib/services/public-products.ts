@@ -5,6 +5,12 @@ import type { Tables } from '@/lib/types/database';
 
 import { getVisibleCategoryIds } from '@/lib/services/category-visibility';
 import { compareRankKey } from '@/lib/services/admin/rank-key';
+import {
+  getActiveFilterableFields,
+  filterProductsBySpecs,
+  buildFilterConfig,
+  type FilterDef,
+} from './catalog/spec-filters';
 
 export type PublicProductImage = Pick<
   Tables<'product_images'>,
@@ -189,6 +195,7 @@ export type PublicProductCard = {
     loaiNap?: string;
     color?: string;
   };
+  rawSpecs?: Record<string, unknown>;
 };
 
 export type PublicProductListResult = {
@@ -198,6 +205,7 @@ export type PublicProductListResult = {
   total: number;
   pageCount: number;
   hasNextPage: boolean;
+  filterDefs?: FilterDef[];
 };
 
 type PublicProductQueryRow = {
@@ -319,34 +327,30 @@ export async function getPublicProductsPage({
   // Start building query on products table
   let query = supabase
     .from('products')
-    .select('id, name, slug, price, stock, category_id, specs, is_featured, created_at, categories!products_category_id_fkey (id, name, slug, rank_key)', { count: 'exact' })
+    .select('id, name, slug, price, stock, category_id, specs, is_featured, created_at, categories!products_category_id_fkey (id, name, slug, rank_key)')
     .eq('is_active', true)
     .in('category_id', targetCategoryIds);
 
-  // Apply specs filters
-  if (filters && typeof filters === 'object') {
-    Object.entries(filters).forEach(([key, values]) => {
-      if (Array.isArray(values)) {
-        const cleanValues = values.filter((v) => typeof v === 'string' && v.trim() !== '');
-        if (cleanValues.length > 0) {
-          query = query.in(`specs->>${key}`, cleanValues);
-        }
-      }
-    });
-  }
-
-  const { data, count, error } = await query;
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(`Failed to query public products: ${error.message}`);
   }
 
   const rawProducts = (data ?? []) as unknown as PublicProductQueryRow[];
-  const rawProductIds = rawProducts.map((p) => p.id);
+  const filterableFields = await getActiveFilterableFields();
+
+  // Dynamically build filter configurations based on ALL products present in the category
+  const filterDefs = buildFilterConfig(rawProducts, filterableFields);
+
+  // Apply specs filters
+  const filteredProducts = filterProductsBySpecs(rawProducts, filters || {}, filterableFields);
+
+  const rawProductIds = filteredProducts.map((p) => p.id);
   const hotCounts = await getHotProductInquiryCounts(rawProductIds);
   
   // Sort products combined: category rank_key -> is_featured -> hot count -> created_at desc -> name asc
-  const sortedProducts = [...rawProducts].sort((a, b) => {
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
     const catA = a.categories as any;
     const catB = b.categories as any;
     const rankA = catA?.rank_key ?? '';
@@ -377,7 +381,7 @@ export async function getPublicProductsPage({
     return a.name.localeCompare(b.name);
   });
 
-  const total = count ?? sortedProducts.length;
+  const total = sortedProducts.length;
   const pageCount = Math.max(1, Math.ceil(total / safePageSize));
   const clampedPage = safePage > pageCount ? pageCount : safePage;
   const from = (clampedPage - 1) * safePageSize;
@@ -386,7 +390,7 @@ export async function getPublicProductsPage({
   const hasNextPage = clampedPage < pageCount;
 
   if (products.length === 0) {
-    return { items: [], page: clampedPage, pageSize: safePageSize, total, pageCount, hasNextPage };
+    return { items: [], page: clampedPage, pageSize: safePageSize, total, pageCount, hasNextPage, filterDefs };
   }
 
   const productIds = products.map((p) => p.id);
@@ -461,6 +465,7 @@ export async function getPublicProductsPage({
         loaiNap: specsObj.loaiNap ? String(specsObj.loaiNap) : undefined,
         color: specsObj.color ? String(specsObj.color) : undefined,
       },
+      rawSpecs: specsObj,
     };
   });
 
@@ -471,6 +476,7 @@ export async function getPublicProductsPage({
     total,
     pageCount,
     hasNextPage,
+    filterDefs,
   };
 }
 
@@ -577,6 +583,7 @@ export async function searchPublicProducts(
         loaiNap: specsObj.loaiNap ? String(specsObj.loaiNap) : undefined,
         color: specsObj.color ? String(specsObj.color) : undefined,
       },
+      rawSpecs: specsObj,
     };
   });
 }
@@ -757,6 +764,7 @@ export async function getHomepageProducts(): Promise<Record<string, PublicProduc
         loaiNap: specsObj.loaiNap ? String(specsObj.loaiNap) : undefined,
         color: specsObj.color ? String(specsObj.color) : undefined,
       },
+      rawSpecs: specsObj,
     };
   });
 
