@@ -69,14 +69,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : [];
 
   return {
-    title: `${product.name} | Đại Tài Lợi`,
+    title: product.name,
     description,
     alternates: {
       canonical: `/san-pham/${slug}`,
     },
     openGraph: {
       type: 'website',
-      title: `${product.name} | Đại Tài Lợi`,
+      title: product.name,
       description,
       url: `/san-pham/${slug}`,
       ...(ogImages.length > 0 ? { images: ogImages } : {}),

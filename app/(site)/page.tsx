@@ -8,6 +8,13 @@ import { WhyUsSection } from '@/components/WhyUsSection';
 import { getPublicSiteContents } from '@/lib/services/site-content';
 import { getHomepageProducts } from '@/lib/services/public-products';
 import { BannerSlot } from '@/components/BannerSlot';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: '/',
+  },
+};
 
 export default async function Home() {
   const [siteContents, overviewProducts] = await Promise.all([
