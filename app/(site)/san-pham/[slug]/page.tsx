@@ -58,9 +58,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await getPublicProductBySlug(slug);
   if (!product) return { title: 'Sản phẩm không tồn tại' };
 
+  const title = product.seo_title || product.name;
   const description =
-    product.description ??
+    product.seo_description ??
+    product.description?.slice(0, 160) ??
     `Xem chi tiết và báo giá sỉ sản phẩm ${product.name} tại Đại Tài Lợi.`;
+  const keywords = product.seo_keywords ?? undefined;
 
   const primaryImage =
     product.images.find((img) => img.is_primary) ?? product.images[0] ?? null;
@@ -70,14 +73,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : [];
 
   return {
-    title: product.name,
+    title,
     description,
+    ...(keywords ? { keywords } : {}),
     alternates: {
       canonical: `/san-pham/${slug}`,
     },
     openGraph: {
       type: 'website',
-      title: product.name,
+      title,
       description,
       url: `/san-pham/${slug}`,
       ...(ogImages.length > 0 ? { images: ogImages } : {}),
@@ -100,7 +104,7 @@ export default async function ProductDetailPage({ params }: Props) {
     name: product.name,
     description: product.description || undefined,
     image: product.images.map((img) => img.public_url),
-    sku: (product.specs as Record<string, any>)?.sku || product.slug,
+    sku: product.sku || product.slug,
     category: product.category?.name || undefined,
     brand: {
       '@type': 'Brand',
@@ -215,7 +219,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
             {/* SKU / slug */}
             <p className="text-[12px] text-dtl-gray font-mono">
-              SKU: <span className="text-dtl-dark font-semibold uppercase">{product.slug}</span>
+              SKU: <span className="text-dtl-dark font-semibold uppercase">{product.sku ?? product.slug}</span>
             </p>
 
             {/* Short description */}

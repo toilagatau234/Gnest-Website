@@ -68,9 +68,10 @@ export async function createTemplateAction(
     if (!name) return { ok: false, error: 'Tên mẫu thông số là bắt buộc.' };
     if (sort_order < 0) return { ok: false, error: 'Thứ tự ưu tiên không được âm.' };
 
+    const name_template = readString(formData, 'name_template') || null;
     const requestContext = await getRequestContext();
     const { error } = await createAdminSpecTemplate(
-      { code, name, description, is_active, sort_order },
+      { code, name, description, name_template, is_active, sort_order },
       requestContext,
     );
 
@@ -107,10 +108,11 @@ export async function updateTemplateAction(
     if (!name) return { ok: false, error: 'Tên mẫu thông số là bắt buộc.' };
     if (sort_order < 0) return { ok: false, error: 'Thứ tự ưu tiên không được âm.' };
 
+    const name_template = readString(formData, 'name_template') || null;
     const requestContext = await getRequestContext();
     const { error } = await updateAdminSpecTemplate(
       id,
-      { code, name, description, is_active, sort_order },
+      { code, name, description, name_template, is_active, sort_order },
       requestContext,
     );
 

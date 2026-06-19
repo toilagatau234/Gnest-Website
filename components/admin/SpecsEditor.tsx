@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { generateProductName } from '@/lib/utils/product-name-generator';
 import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 
 import {
@@ -29,6 +30,8 @@ interface SpecsEditorProps {
   initialSpecs?: Json;
   /** DB-loaded template registry. Falls back to code templates if absent. */
   specTemplates?: TemplateRegistry;
+  /** Called with the active template's nameTemplate string (or null) when template/values change. */
+  onNameSuggestion?: (suggestion: string | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,7 +191,7 @@ function TemplateFieldInput({
 const customRowInputClass =
   'admin-focus h-10 w-full rounded-lg border border-[#E2E8F0] px-3 text-sm text-slate-700 transition-colors focus:border-[#1B3A6B] focus:outline-none';
 
-export function SpecsEditor({ name = 'specs', initialSpecs, specTemplates }: SpecsEditorProps) {
+export function SpecsEditor({ name = 'specs', initialSpecs, specTemplates, onNameSuggestion }: SpecsEditorProps) {
   // Resolve registry once — DB-loaded takes precedence, code fallback if absent/empty.
   // Stable across re-renders because specTemplates comes from a parent server load.
   const registry = useMemo(() => resolveRegistry(specTemplates), [specTemplates]);
@@ -228,6 +231,19 @@ export function SpecsEditor({ name = 'specs', initialSpecs, specTemplates }: Spe
     }
     return JSON.stringify(obj);
   }, [templateKey, templateValues, customRows, registry.templates]);
+
+  // ── Name suggestion ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!onNameSuggestion) return;
+    if (templateKey === 'other') {
+      onNameSuggestion(null);
+      return;
+    }
+    const nameTemplate = registry.templates[templateKey]?.nameTemplate;
+    const suggestion = generateProductName(nameTemplate, templateValues);
+    onNameSuggestion(suggestion);
+  }, [templateKey, templateValues, registry.templates, onNameSuggestion]);
 
   // ── Template switching ────────────────────────────────────────────────────
 

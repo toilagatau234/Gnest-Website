@@ -472,6 +472,7 @@ function TemplateModalSession({ template, onClose, toast, router }: TemplateModa
   const [code, setCode] = useState(template?.code ?? '');
   const [name, setName] = useState(template?.name ?? '');
   const [description, setDescription] = useState(template?.description ?? '');
+  const [nameTemplate, setNameTemplate] = useState(template?.name_template ?? '');
   const [sortOrder, setSortOrder] = useState(template?.sort_order ?? 0);
 
   useEffect(() => {
@@ -568,6 +569,21 @@ function TemplateModalSession({ template, onClose, toast, router }: TemplateModa
             className="admin-input text-xs resize-y min-h-[72px]"
             placeholder="Mô tả công dụng hoặc phạm vi áp dụng..."
           />
+        </label>
+
+        <label className="block">
+          <span className={labelClass}>Mẫu tên tự động (name_template)</span>
+          <input
+            name="name_template"
+            type="text"
+            value={nameTemplate}
+            onChange={(e) => setNameTemplate(e.target.value)}
+            className={fieldClass}
+            placeholder="VD: {container_type} {capacity_ml}ml Phi {neck_diameter_mm}"
+          />
+          <span className="mt-1 block text-[10px] text-slate-400">
+            Dùng <code className="font-mono bg-slate-100 px-1 rounded">&#123;field_key&#125;</code> để ghép thông số thành tên. Để trống nếu không dùng tên tự động.
+          </span>
         </label>
 
         <div className="grid gap-4 sm:grid-cols-2">

@@ -118,9 +118,15 @@ export function filterProductsBySpecs(
           break;
         }
         case 'boolean': {
-          const isTrue = productVal === true || productVal === 'true';
-          const hasYes = selectedValues.some((v) => v.toLowerCase() === 'yes' || v === 'Có');
-          const hasNo = selectedValues.some((v) => v.toLowerCase() === 'no' || v === 'Không');
+          const isTrue = productVal === true || productVal === 'true' || productVal === 1 || productVal === '1';
+          const hasYes = selectedValues.some((v) => {
+            const lower = v.toLowerCase();
+            return lower === 'yes' || v === 'Có' || lower === 'true' || v === '1';
+          });
+          const hasNo = selectedValues.some((v) => {
+            const lower = v.toLowerCase();
+            return lower === 'no' || v === 'Không' || lower === 'false' || v === '0';
+          });
           if (hasYes && isTrue) matches = true;
           if (hasNo && !isTrue) matches = true;
           break;
@@ -197,7 +203,7 @@ export function buildFilterConfig(
           .filter(Boolean)
           .forEach((v) => valuesSet.add(v));
       } else if (field.type === 'boolean') {
-        const isTrue = val === true || val === 'true';
+        const isTrue = val === true || val === 'true' || val === 1 || val === '1';
         valuesSet.add(isTrue ? 'Có' : 'Không');
       } else if (field.type === 'number') {
         const num = Number(val);

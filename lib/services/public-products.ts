@@ -24,12 +24,16 @@ export type PublicBulkDiscount = Pick<
 
 export type PublicProductDetail = {
   id: string;
+  sku: string | null;
   name: string;
   slug: string;
   description: string | null;
   price: number | null;
   stock: number;
   specs: Record<string, unknown>;
+  seo_title: string | null;
+  seo_description: string | null;
+  seo_keywords: string | null;
   category: Pick<Tables<'categories'>, 'id' | 'name' | 'slug' | 'type'> | null;
   images: PublicProductImage[];
   bulkDiscounts: PublicBulkDiscount[];
@@ -37,12 +41,16 @@ export type PublicProductDetail = {
 
 const publicProductSelect = `
   id,
+  sku,
   name,
   slug,
   description,
   price,
   stock,
   specs,
+  seo_title,
+  seo_description,
+  seo_keywords,
   categories!products_category_id_fkey (
     id,
     name,
@@ -67,12 +75,16 @@ const publicProductSelect = `
 
 type RawPublicProduct = {
   id: string;
+  sku: string | null;
   name: string;
   slug: string;
   description: string | null;
   price: number | null;
   stock: number;
   specs: Record<string, unknown>;
+  seo_title: string | null;
+  seo_description: string | null;
+  seo_keywords: string | null;
   categories: Pick<Tables<'categories'>, 'id' | 'name' | 'slug' | 'type'> | null;
   product_images: (PublicProductImage & { is_active: boolean })[];
   product_bulk_discounts: (PublicBulkDiscount & { is_active: boolean })[];
@@ -91,12 +103,16 @@ function toPublicProductDetail(raw: RawPublicProduct): PublicProductDetail {
 
   return {
     id: raw.id,
+    sku: raw.sku,
     name: raw.name,
     slug: raw.slug,
     description: raw.description,
     price: raw.price,
     stock: raw.stock,
     specs: raw.specs ?? {},
+    seo_title: raw.seo_title,
+    seo_description: raw.seo_description,
+    seo_keywords: raw.seo_keywords,
     category: raw.categories ?? null,
     images,
     bulkDiscounts,

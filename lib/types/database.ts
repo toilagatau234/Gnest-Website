@@ -107,6 +107,7 @@ export interface Database {
         Row: {
           id: string;
           category_id: string | null;
+          sku: string | null;
           name: string;
           slug: string;
           description: string | null;
@@ -115,12 +116,16 @@ export interface Database {
           specs: Json;
           is_active: boolean;
           is_featured: boolean;
+          seo_title: string | null;
+          seo_description: string | null;
+          seo_keywords: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           category_id?: string | null;
+          sku?: string | null;
           name: string;
           slug: string;
           description?: string | null;
@@ -129,11 +134,15 @@ export interface Database {
           specs?: Json;
           is_active?: boolean;
           is_featured?: boolean;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          seo_keywords?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           category_id?: string | null;
+          sku?: string | null;
           name?: string;
           slug?: string;
           description?: string | null;
@@ -142,6 +151,9 @@ export interface Database {
           specs?: Json;
           is_active?: boolean;
           is_featured?: boolean;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          seo_keywords?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -459,6 +471,7 @@ export interface Database {
           code: string;
           name: string;
           description: string | null;
+          name_template: string | null;
           is_active: boolean;
           sort_order: number;
           created_at: string;
@@ -469,6 +482,7 @@ export interface Database {
           code: string;
           name: string;
           description?: string | null;
+          name_template?: string | null;
           is_active?: boolean;
           sort_order?: number;
           created_at?: string;
@@ -478,6 +492,7 @@ export interface Database {
           code?: string;
           name?: string;
           description?: string | null;
+          name_template?: string | null;
           is_active?: boolean;
           sort_order?: number;
           updated_at?: string;

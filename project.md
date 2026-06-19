@@ -41,6 +41,9 @@ Không dùng/mở rộng backend legacy. Supabase là backend chính cho migrati
 /tuyen-dung             Recruitment
 /admin                  Admin/CMS target
 /admin/orders           Legacy admin/orders page
+/admin/products/import  Excel product import by spec templates
+/robots.txt             Dynamic robots.txt (blocks dev indexing)
+/sitemap.xml            Dynamic sitemap.xml
 ```
 
 ## Current Key Files
@@ -52,6 +55,9 @@ app/page.tsx
 app/danh-muc/page.tsx
 app/danh-muc/[slug]/page.tsx
 app/admin/orders/page.tsx
+app/robots.ts               Dynamic robots.txt definition
+app/sitemap.ts              Dynamic sitemap.xml generator
+app/admin/(dashboard)/products/import/page.tsx Excel import UI route
 
 components/SiteHeader.tsx
 components/ProductsRender.tsx
@@ -60,6 +66,9 @@ components/ProductModal.tsx
 components/ContactModal.tsx
 components/SiteFooter.tsx
 
+lib/config/site.ts          Centralized site SEO config
+lib/services/catalog/spec-filters.ts Catalog spec filtering service
+lib/services/admin/product-import.ts Excel product import service
 lib/data.ts
 lib/context.tsx
 lib/categories-context.tsx
@@ -74,11 +83,13 @@ lib/cart-context.tsx
 - Parent/child categories.
 - Product listing.
 - Product search/filter.
+- Product filtering by dynamic, database-managed standardized spec templates and fields (Phase C.5).
 - Product detail modal.
 - Product image gallery.
 - Price, wholesale discount, stock, specs.
 - Zalo/hotline/contact CTA.
 - Recruitment page.
+- Search Engine Optimization (SEO) foundation: clean dynamic title templates, alternates canonical links, robots.txt crawl controls, sitemap.xml index, and structured JSON-LD rich snippets (Organization, Product, CollectionPage, BreadcrumbList) (Phases D.1, D.2, D.3).
 
 ## Admin/CMS Features
 
@@ -88,6 +99,8 @@ Admin must manage:
 - Products/services.
 - Product images.
 - Product price, stock, specs.
+- Standardized product spec templates and fields builder (active, filterable settings).
+- Dynamic Excel template generation and preview-validation uploader to bulk import products matching template specifications (Phase C.6).
 - Wholesale/bulk discounts.
 - Sales contacts: phone, Zalo, avatar.
 - Recruitment posts.
@@ -125,6 +138,8 @@ job_vacancies
 inquiries
 site_contents
 audit_logs
+product_spec_templates
+product_spec_fields
 ```
 
 Minimal fields:
@@ -137,6 +152,8 @@ sales_contacts: id, name, role, phone, zalo, avatar_url, sort_order, is_active
 inquiries: id, customer_name, phone, message, status, assigned_to, created_at
 admin_users: id, email, role, is_active
 audit_logs: id, actor_id, action, entity, entity_id, metadata, created_at
+product_spec_templates: id, name, code, is_active, created_at, updated_at
+product_spec_fields: id, template_id, label, key, type, unit, options, required, is_filterable, is_active, sort_order
 ```
 
 ## Supabase Rules

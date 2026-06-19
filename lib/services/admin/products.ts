@@ -16,7 +16,7 @@ export type AdminProduct = Tables<'products'> & {
 // Minimal scalar fields needed by the product edit form
 export type ProductFormData = Pick<
   Tables<'products'>,
-  'id' | 'name' | 'slug' | 'category_id' | 'price' | 'stock' | 'is_active' | 'is_featured' | 'description' | 'specs'
+  'id' | 'sku' | 'name' | 'slug' | 'category_id' | 'price' | 'stock' | 'is_active' | 'is_featured' | 'description' | 'specs' | 'seo_title' | 'seo_description' | 'seo_keywords'
 >;
 
 // Slim row for the paginated list — no description, specs, or nested arrays.
@@ -24,6 +24,7 @@ export type ProductFormData = Pick<
 // thumbnail, image count, and discount info are enriched via secondary queries.
 export type ProductListItem = {
   id: string;
+  sku: string | null;
   name: string;
   slug: string;
   category_id: string | null;
@@ -75,6 +76,7 @@ export interface ProductListResult {
 
 export interface ProductPayload {
   category_id: string | null;
+  sku: string | null;
   name: string;
   slug: string;
   description: string | null;
@@ -83,11 +85,15 @@ export interface ProductPayload {
   specs: Json;
   is_active: boolean;
   is_featured: boolean;
+  seo_title: string | null;
+  seo_description: string | null;
+  seo_keywords: string | null;
 }
 
 // Base row shape returned by the slim list query (Phase 1)
 type ProductBaseRow = {
   id: string;
+  sku: string | null;
   name: string;
   slug: string;
   category_id: string | null;
@@ -127,6 +133,7 @@ function toProductAuditSnapshot(product: {
 function normalizeProductPayload(payload: ProductPayload): Inserts<'products'> {
   return {
     category_id: payload.category_id || null,
+    sku: payload.sku?.trim() || null,
     name: payload.name.trim(),
     slug: payload.slug.trim().toLowerCase(),
     description: payload.description?.trim() || null,
@@ -135,6 +142,9 @@ function normalizeProductPayload(payload: ProductPayload): Inserts<'products'> {
     specs: payload.specs,
     is_active: payload.is_active,
     is_featured: payload.is_featured,
+    seo_title: payload.seo_title?.trim() || null,
+    seo_description: payload.seo_description?.trim() || null,
+    seo_keywords: payload.seo_keywords?.trim() || null,
   };
 }
 
@@ -205,7 +215,7 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
     let query = supabase
       .from('products')
       .select(
-        'id, name, slug, category_id, price, stock, is_active, is_featured, updated_at, created_at, categories(id, name, slug)',
+        'id, sku, name, slug, category_id, price, stock, is_active, is_featured, updated_at, created_at, categories(id, name, slug)',
       )
       .order('is_featured', { ascending: false })
       .order('created_at', { ascending: false })
@@ -298,6 +308,7 @@ export async function getAdminProductsPage(params: ProductListParams = {}): Prom
       const activeBulkCount = activeBulkCountById.get(row.id) ?? 0;
       return {
         id: row.id,
+        sku: row.sku,
         name: row.name,
         slug: row.slug,
         category_id: row.category_id,

@@ -179,6 +179,7 @@ function ProductFormDialogSession({ categories, product, specTemplates, onClose 
       const d = result.data;
       setFormData({
         id: d.id,
+        sku: d.sku ?? null,
         name: d.name,
         slug: d.slug,
         category_id: d.category_id,
@@ -188,6 +189,9 @@ function ProductFormDialogSession({ categories, product, specTemplates, onClose 
         is_featured: d.is_featured,
         description: d.description,
         specs: d.specs,
+        seo_title: d.seo_title ?? null,
+        seo_description: d.seo_description ?? null,
+        seo_keywords: d.seo_keywords ?? null,
       });
       setExistingImages(d.product_images ?? []);
       setExistingDiscounts(d.product_bulk_discounts ?? []);

@@ -13,9 +13,21 @@ export interface SpecField {
 export interface SpecTemplate {
   label: string;
   fields: SpecField[];
+  nameTemplate?: string;
 }
 
 export const TEMPLATE_KEYS = [
+  // New product types (active)
+  'glass_container',
+  'plastic_container',
+  'packaging_bag',
+  'cap_pump_stopper',
+  'bird_nest_mold',
+  'tweezers',
+  'digital_scale',
+  'food_wrap',
+  'equipment',
+  // Legacy types (kept for backward compatibility with existing products)
   'plastic',
   'glass',
   'packaging',
@@ -25,6 +37,17 @@ export const TEMPLATE_KEYS = [
 ] as const;
 
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
+
+// Maps old template codes to their closest new equivalent (for documentation).
+// Existing products keep their old _template value — no forced remapping.
+export const LEGACY_TEMPLATE_ALIASES: Partial<Record<string, string>> = {
+  plastic: 'plastic_container',
+  glass: 'glass_container',
+  packaging: 'packaging_bag',
+  cap_bottle_jar: 'cap_pump_stopper',
+  // accessory → manual remap by admin (could be tweezers, bird_nest_mold, equipment, etc.)
+  other: 'other',
+};
 
 export interface TemplateRegistry {
   templates: Record<string, SpecTemplate>;
@@ -137,6 +160,122 @@ export function validateSpecs(specs: Record<string, unknown>, registry?: Templat
 }
 
 export const SPEC_TEMPLATES: Record<TemplateKey, SpecTemplate> = {
+  // ── New product types ──────────────────────────────────────────────────────
+
+  glass_container: {
+    label: 'Hũ/Chai thủy tinh',
+    nameTemplate: '{container_type} {capacity_ml}ml Phi {neck_diameter_mm}',
+    fields: [
+      { key: 'container_type',   label: 'Loại hũ/chai', type: 'select', options: ['Hũ lục giác','Hũ vuông','Hũ tròn','Chai yến','Chai sữa','Chai thủy tinh'], required: true, sortOrder: 1 },
+      { key: 'capacity_ml',      label: 'Dung tích',    type: 'number', unit: 'ml', required: true, sortOrder: 2 },
+      { key: 'neck_diameter_mm', label: 'Phi nắp',      type: 'number', unit: 'mm', required: true, sortOrder: 3 },
+      { key: 'cap_type',         label: 'Loại nắp',     type: 'select', options: ['Nắp vặn','Nắp cài','Nắp bơm','Nắp thiếc','Không có'], sortOrder: 4 },
+      { key: 'cap_color',        label: 'Màu nắp',      type: 'text',   sortOrder: 5 },
+      { key: 'packing_spec',     label: 'Quy cách',     type: 'text',   sortOrder: 6 },
+      { key: 'material',         label: 'Chất liệu',    type: 'select', options: ['Thủy tinh trong','Thủy tinh màu','Thủy tinh borosilicate'], sortOrder: 7 },
+      { key: 'height_mm',        label: 'Chiều cao',    type: 'number', unit: 'mm', sortOrder: 8 },
+      { key: 'diameter_mm',      label: 'Đường kính',   type: 'number', unit: 'mm', sortOrder: 9 },
+      { key: 'note',             label: 'Ghi chú',      type: 'textarea', sortOrder: 10 },
+    ],
+  },
+
+  plastic_container: {
+    label: 'Hộp/Hũ nhựa',
+    nameTemplate: '{box_type} {weight_g}g',
+    fields: [
+      { key: 'box_type',     label: 'Loại hộp',    type: 'select', options: ['Hộp tròn','Hộp vuông','Hộp bầu dục','Hộp chữ nhật'], required: true, sortOrder: 1 },
+      { key: 'weight_g',     label: 'Trọng lượng', type: 'number', unit: 'g',   required: true, sortOrder: 2 },
+      { key: 'material',     label: 'Chất liệu',   type: 'select', options: ['PET','PP','HDPE','PVC','LDPE','PS','ABS'], sortOrder: 3 },
+      { key: 'packing_spec', label: 'Quy cách',    type: 'text',   sortOrder: 4 },
+      { key: 'note',         label: 'Ghi chú',     type: 'textarea', sortOrder: 5 },
+    ],
+  },
+
+  packaging_bag: {
+    label: 'Túi đóng gói',
+    nameTemplate: 'Túi {bag_type} {size}',
+    fields: [
+      { key: 'size',           label: 'Kích thước',      type: 'text',         required: true, sortOrder: 1 },
+      { key: 'bag_type',       label: 'Loại túi',        type: 'select',       required: true, options: ['Túi đứng có đáy','Túi zip','Túi 3 biên','Túi hút chân không','Túi đứng zipper'], sortOrder: 2 },
+      { key: 'surface_finish', label: 'Gia công bề mặt', type: 'select',       options: ['Cán bóng','Cán mờ','Tráng UV','Không xử lý'], sortOrder: 3 },
+      { key: 'rope_type',      label: 'Loại dây',        type: 'select',       options: ['Dây giấy','Dây ribbon','Không có'], sortOrder: 4 },
+      { key: 'addon_features', label: 'Tính năng thêm',  type: 'multi_select', options: ['Cửa sổ','Khóa zip','Van thở','Vòi rót'], sortOrder: 5 },
+      { key: 'note',           label: 'Ghi chú',         type: 'textarea', sortOrder: 6 },
+    ],
+  },
+
+  cap_pump_stopper: {
+    label: 'Nắp/Bơm/Nút',
+    nameTemplate: '{closure_type} Phi {size_mm}',
+    fields: [
+      { key: 'closure_type', label: 'Loại',      type: 'select', options: ['Nắp vặn','Nắp bật','Nắp bơm','Nút chai','Nắp lật','Vòi xịt','Nắp chấm bi'], required: true, sortOrder: 1 },
+      { key: 'size_mm',      label: 'Phi',       type: 'number', unit: 'mm', required: true, sortOrder: 2 },
+      { key: 'material',     label: 'Chất liệu', type: 'select', options: ['PP','PE','ABS','Nhôm','Thủy tinh'], required: true, sortOrder: 3 },
+      { key: 'color',        label: 'Màu sắc',   type: 'text',   sortOrder: 4 },
+      { key: 'note',         label: 'Ghi chú',   type: 'textarea', sortOrder: 5 },
+    ],
+  },
+
+  bird_nest_mold: {
+    label: 'Khuôn tổ yến',
+    nameTemplate: 'Khuôn {mold_type} {weight_g}g',
+    fields: [
+      { key: 'mold_type',    label: 'Loại khuôn', type: 'select', options: ['Khuôn tổ sào','Khuôn tổ đùi gà','Khuôn tổ phẳng','Khuôn tổ trái tim'], required: true, sortOrder: 1 },
+      { key: 'weight_g',     label: 'Trọng lượng', type: 'number', unit: 'g', required: true, sortOrder: 2 },
+      { key: 'packing_spec', label: 'Quy cách',    type: 'text', sortOrder: 3 },
+      { key: 'note',         label: 'Ghi chú',     type: 'textarea', sortOrder: 4 },
+    ],
+  },
+
+  tweezers: {
+    label: 'Nhíp',
+    nameTemplate: 'Nhíp {material} {length_cm}cm {tip_type}',
+    fields: [
+      { key: 'material',  label: 'Chất liệu', type: 'select', options: ['Inox','Nhựa','Nhôm','Titan'], required: true, sortOrder: 1 },
+      { key: 'length_cm', label: 'Chiều dài', type: 'number', unit: 'cm', required: true, sortOrder: 2 },
+      { key: 'tip_type',  label: 'Đầu nhíp',  type: 'select', options: ['Đầu thẳng','Đầu cong','Đầu tù','Đầu nhọn'], required: true, sortOrder: 3 },
+      { key: 'note',      label: 'Ghi chú',   type: 'textarea', sortOrder: 4 },
+    ],
+  },
+
+  digital_scale: {
+    label: 'Cân điện tử',
+    nameTemplate: 'Cân điện tử {max_weight}',
+    fields: [
+      { key: 'max_weight',   label: 'Tải trọng tối đa', type: 'text',   required: true, sortOrder: 1 },
+      { key: 'accuracy',     label: 'Độ chính xác',     type: 'text',   required: true, sortOrder: 2 },
+      { key: 'battery_type', label: 'Loại pin',         type: 'text',   sortOrder: 3 },
+      { key: 'display_type', label: 'Loại màn hình',    type: 'select', options: ['LED','LCD'], sortOrder: 4 },
+      { key: 'note',         label: 'Ghi chú',          type: 'textarea', sortOrder: 5 },
+    ],
+  },
+
+  food_wrap: {
+    label: 'Màng bọc thực phẩm',
+    nameTemplate: 'Màng bọc {material} {width_cm}cm x {length_m}m',
+    fields: [
+      { key: 'width_cm', label: 'Chiều rộng', type: 'number', unit: 'cm', required: true, sortOrder: 1 },
+      { key: 'length_m', label: 'Chiều dài',  type: 'number', unit: 'm',  required: true, sortOrder: 2 },
+      { key: 'material', label: 'Chất liệu',  type: 'select', options: ['PE','PVC','PLA','PP'], required: true, sortOrder: 3 },
+      { key: 'note',     label: 'Ghi chú',    type: 'textarea', sortOrder: 4 },
+    ],
+  },
+
+  equipment: {
+    label: 'Thiết bị',
+    nameTemplate: '{equipment_type}',
+    fields: [
+      { key: 'equipment_type', label: 'Loại thiết bị', type: 'select', options: ['Máy hàn miệng túi','Máy đóng gói','Máy ghép mí','Máy rút màng','Máy dán nhãn','Máy in date','Máy hút chân không'], required: true, sortOrder: 1 },
+      { key: 'power',          label: 'Công suất',     type: 'text',   sortOrder: 2 },
+      { key: 'voltage',        label: 'Điện áp',       type: 'text',   sortOrder: 3 },
+      { key: 'capacity',       label: 'Năng suất',     type: 'text',   sortOrder: 4 },
+      { key: 'origin',         label: 'Xuất xứ',       type: 'select', options: ['Trung Quốc','Đài Loan','Việt Nam','Nhật Bản','Hàn Quốc'], sortOrder: 5 },
+      { key: 'warranty',       label: 'Bảo hành',      type: 'text',   sortOrder: 6 },
+      { key: 'note',           label: 'Ghi chú',       type: 'textarea', sortOrder: 7 },
+    ],
+  },
+
+  // ── Legacy types (kept for backward compatibility) ────────────────────────
   plastic: {
     label: 'Bao bì nhựa',
     fields: [

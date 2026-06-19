@@ -33,7 +33,7 @@ export async function getActiveSpecTemplates(): Promise<TemplateRegistry> {
 
     const { data: templateRows, error: tErr } = await supabase
       .from('product_spec_templates')
-      .select('id, code, name')
+      .select('id, code, name, name_template')
       .eq('is_active', true)
       .order('sort_order');
 
@@ -58,6 +58,7 @@ export async function getActiveSpecTemplates(): Promise<TemplateRegistry> {
       keys.push(t.code);
       templates[t.code] = {
         label: t.name,
+        nameTemplate: t.name_template ?? undefined,
         fields: (fieldRows ?? [])
           .filter((f) => f.template_id === t.id)
           .map((f) => ({
@@ -112,6 +113,7 @@ export async function createAdminSpecTemplate(
     code: string;
     name: string;
     description: string | null;
+    name_template: string | null;
     is_active: boolean;
     sort_order: number;
   },
@@ -126,6 +128,7 @@ export async function createAdminSpecTemplate(
       code: payload.code.trim().toLowerCase(),
       name: payload.name.trim(),
       description: payload.description?.trim() || null,
+      name_template: payload.name_template?.trim() || null,
       is_active: payload.is_active,
       sort_order: payload.sort_order,
     })
@@ -160,6 +163,7 @@ export async function updateAdminSpecTemplate(
     code: string;
     name: string;
     description: string | null;
+    name_template: string | null;
     is_active: boolean;
     sort_order: number;
   },
@@ -180,6 +184,7 @@ export async function updateAdminSpecTemplate(
       code: payload.code.trim().toLowerCase(),
       name: payload.name.trim(),
       description: payload.description?.trim() || null,
+      name_template: payload.name_template?.trim() || null,
       is_active: payload.is_active,
       sort_order: payload.sort_order,
     })

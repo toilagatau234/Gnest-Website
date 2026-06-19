@@ -8,6 +8,7 @@ import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 import {
   bulkImportProducts,
   validateProductImportRows,
+  type ColumnDef,
   type ImportResult,
   type ImportRow,
   type ImportRowError,
@@ -15,7 +16,7 @@ import {
   type ValidationResult,
 } from '@/lib/services/admin/product-import';
 
-export type { ImportResult, ImportRow, ImportRowError, ImportRowWarning, ValidationResult };
+export type { ColumnDef, ImportResult, ImportRow, ImportRowError, ImportRowWarning, ValidationResult };
 
 export async function validateProductsImportAction(rows: ImportRow[]): Promise<ValidationResult> {
   await requireAdminAuth(CONTENT_EDITOR_ROLES);
@@ -85,7 +86,7 @@ export async function importProductsAction(
   return result;
 }
 
-export async function generateTemplateColumnsAction(templateCode: string): Promise<string[]> {
+export async function generateTemplateColumnsAction(templateCode: string): Promise<ColumnDef[]> {
   await requireAdminAuth(CONTENT_EDITOR_ROLES);
   const { generateTemplateColumns } = await import('@/lib/services/admin/product-import');
   return generateTemplateColumns(templateCode);

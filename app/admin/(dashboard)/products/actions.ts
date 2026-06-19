@@ -89,12 +89,16 @@ async function readProductPayload(formData: FormData, registry: TemplateRegistry
     category_id: categoryId || null,
     name,
     slug,
+    sku: readString(formData, 'sku') || null,
     description: readString(formData, 'description') || null,
     price,
     stock,
     specs: parseSpecs(readString(formData, 'specs'), registry),
     is_active: readBoolean(formData, 'is_active'),
     is_featured: isFeatured,
+    seo_title: readString(formData, 'seo_title') || null,
+    seo_description: readString(formData, 'seo_description') || null,
+    seo_keywords: readString(formData, 'seo_keywords') || null,
   };
 }
 
@@ -243,6 +247,7 @@ export async function bulkCreateProductsAction(rows: BulkRowPayload[]): Promise<
 
       const payload: ProductPayload = {
         category_id: row.category_id || null,
+        sku: null,
         name: row.name.trim(),
         slug: row.slug.trim(),
         description: row.description?.trim() || null,
@@ -251,6 +256,9 @@ export async function bulkCreateProductsAction(rows: BulkRowPayload[]): Promise<
         specs: {} as Json,
         is_active: row.is_active,
         is_featured: row.is_featured,
+        seo_title: null,
+        seo_description: null,
+        seo_keywords: null,
       };
 
       const { data, error } = await createAdminProduct(payload, requestContext);

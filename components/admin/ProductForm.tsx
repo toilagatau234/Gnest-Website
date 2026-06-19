@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { AlertCircle, ImageIcon, Star, Upload, X, Percent } from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
+import { AlertCircle, ImageIcon, Star, Upload, X, Percent, Sparkles } from 'lucide-react';
 
 import { SpecsEditor } from '@/components/admin/SpecsEditor';
 import { AdminToggle } from '@/components/admin/AdminToggle';
@@ -59,12 +59,13 @@ interface ProductFormProps {
 
 const MAX_IMAGES = 10;
 
-type TabId = 'basic' | 'pricing' | 'specs' | 'media';
+type TabId = 'basic' | 'pricing' | 'specs' | 'seo' | 'media';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'basic', label: 'Thông tin cơ bản' },
   { id: 'pricing', label: 'Giá & kho sỉ' },
   { id: 'specs', label: 'Thông số kỹ thuật' },
+  { id: 'seo', label: 'SEO' },
   { id: 'media', label: 'Media & Giá sỉ' },
 ];
 
@@ -118,14 +119,21 @@ export function ProductForm({
 }: ProductFormProps) {
   const [activeTab, setActiveTab] = useState<TabId>('basic');
   const [activeMediaTab, setActiveMediaTab] = useState<'images' | 'discounts'>('images');
+  const [sku, setSku] = useState(product?.sku ?? '');
   const [name, setName] = useState(product?.name ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
   const [slugTouched, setSlugTouched] = useState(Boolean(product));
+  const [skuTouched, setSkuTouched] = useState(Boolean(product));
+  const [nameSuggestion, setNameSuggestion] = useState<string | null>(null);
   const [price, setPrice] = useState<string>(() => {
     if (product?.price === undefined || product?.price === null) return '';
     return formatCurrencyInput(String(product.price));
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleNameSuggestion = useCallback((suggestion: string | null) => {
+    setNameSuggestion(suggestion);
+  }, []);
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPrice(formatCurrencyInput(e.target.value));
@@ -200,6 +208,21 @@ export function ProductForm({
         <div className={visibleTab === 'basic' ? 'animate-fade-in flex-1 space-y-4' : 'hidden'}>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
+              <span className={labelClass}>Mã sản phẩm (SKU)</span>
+              <input
+                name="sku"
+                type="text"
+                value={sku}
+                onChange={(e) => { setSkuTouched(true); setSku(e.target.value); }}
+                className={`${fieldClass} font-mono`}
+                placeholder="VD: HU-TT-100ML-P53"
+              />
+              <span className="mt-1.5 block text-[10px] font-medium text-slate-400">
+                Để trống nếu chưa có mã. SKU phải là duy nhất toàn hệ thống.
+              </span>
+            </label>
+
+            <div className="block">
               <span className={labelClass}>
                 Tên sản phẩm <span className="text-[#E31E24]">*</span>
               </span>
@@ -212,7 +235,22 @@ export function ProductForm({
                 className={fieldClass}
                 placeholder="VD: Hũ thủy tinh 500ml"
               />
-            </label>
+              {nameSuggestion && nameSuggestion !== name ? (
+                <div className="mt-2 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50/60 px-3 py-2">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                  <span className="flex-1 text-[11px] text-blue-700">
+                    Gợi ý: <strong>{nameSuggestion}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setName(nameSuggestion); if (!slugTouched) setSlug(slugify(nameSuggestion)); }}
+                    className="shrink-0 rounded-md bg-blue-600 px-2.5 py-1 text-[10px] font-bold text-white transition hover:bg-blue-700"
+                  >
+                    Dùng tên này
+                  </button>
+                </div>
+              ) : null}
+            </div>
 
             <label className="block">
               <span className={labelClass}>
@@ -229,7 +267,7 @@ export function ProductForm({
               />
             </label>
 
-            <label className="block sm:col-span-2">
+            <label className="block">
               <span className={labelClass}>Danh mục thuộc về</span>
               <select name="category_id" defaultValue={product?.category_id ?? ''} className={selectClass}>
                 <option value="">Chưa phân loại</option>
@@ -302,7 +340,62 @@ export function ProductForm({
 
         {/* ── Specs ──────────────────────────────────────────────────────────── */}
         <div className={visibleTab === 'specs' ? 'animate-fade-in flex-1' : 'hidden'}>
-          <SpecsEditor initialSpecs={product?.specs} specTemplates={specTemplates} />
+          <SpecsEditor
+            initialSpecs={product?.specs}
+            specTemplates={specTemplates}
+            onNameSuggestion={handleNameSuggestion}
+          />
+        </div>
+
+        {/* ── SEO ────────────────────────────────────────────────────────────── */}
+        <div className={visibleTab === 'seo' ? 'animate-fade-in flex-1 space-y-4' : 'hidden'}>
+          <div className="rounded-xl border border-[#EEF2F6] bg-slate-50/40 px-4 py-3 text-xs leading-relaxed text-slate-500">
+            Các trường SEO sẽ được dùng thay cho tên/mô tả mặc định trong thẻ <code className="rounded bg-slate-200 px-1 py-0.5 font-mono">&lt;title&gt;</code> và <code className="rounded bg-slate-200 px-1 py-0.5 font-mono">&lt;meta description&gt;</code>. Để trống sẽ dùng tên sản phẩm và mô tả làm fallback.
+          </div>
+
+          <label className="block">
+            <span className={labelClass}>Tiêu đề SEO (seo_title)</span>
+            <input
+              name="seo_title"
+              type="text"
+              defaultValue={product?.seo_title ?? ''}
+              className={fieldClass}
+              placeholder="VD: Hũ thủy tinh 500ml cao cấp | Gnest"
+              maxLength={70}
+            />
+            <span className="mt-1.5 block text-[10px] font-medium text-slate-400">
+              Tối đa 70 ký tự. Để trống sẽ dùng tên sản phẩm.
+            </span>
+          </label>
+
+          <label className="block">
+            <span className={labelClass}>Mô tả SEO (seo_description)</span>
+            <textarea
+              name="seo_description"
+              rows={3}
+              defaultValue={product?.seo_description ?? ''}
+              className="admin-input min-h-20 max-h-40 py-2 text-xs font-normal leading-relaxed"
+              placeholder="Mô tả ngắn tối đa 160 ký tự xuất hiện dưới đường link trong Google."
+              maxLength={160}
+            />
+            <span className="mt-1.5 block text-[10px] font-medium text-slate-400">
+              Tối đa 160 ký tự. Để trống sẽ dùng mô tả catalog (60 ký tự đầu).
+            </span>
+          </label>
+
+          <label className="block">
+            <span className={labelClass}>Từ khóa SEO (seo_keywords)</span>
+            <input
+              name="seo_keywords"
+              type="text"
+              defaultValue={product?.seo_keywords ?? ''}
+              className={fieldClass}
+              placeholder="VD: hũ thủy tinh, bao bì cao cấp, đựng yến sào"
+            />
+            <span className="mt-1.5 block text-[10px] font-medium text-slate-400">
+              Phân cách bằng dấu phẩy. Không ảnh hưởng nhiều đến xếp hạng Google hiện đại nhưng hữu ích cho schema markup.
+            </span>
+          </label>
         </div>
 
         {/* ── Media (create mode only — image queue belongs to create form) ─── */}
