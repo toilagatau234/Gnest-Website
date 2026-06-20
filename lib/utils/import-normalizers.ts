@@ -130,3 +130,45 @@ export function normalizeNumberField(fieldKey: string, raw: string): string {
 
   return result !== null ? String(result) : raw;
 }
+
+/**
+ * Schema-driven numeric normalization.
+ * Picks the extractor purely from the field's declared `unit`
+ * (from product_spec_fields.unit), so brand-new numeric fields work
+ * without touching code. Falls back to bare-number extraction.
+ *
+ *   unit 'ml'        → extractMl   ("100ml" → "100")
+ *   unit 'mm'        → extractMm   ("Phi 53" → "53")
+ *   unit 'g'/'gram'  → extractGramsFlexible ("5kg" → "5000")
+ *   unit 'cm'        → extractCm
+ *   unit 'm'         → extractM
+ */
+export function normalizeNumericByUnit(unit: string | null | undefined, raw: string): string {
+  const cleaned = raw.trim();
+  if (!cleaned) return raw;
+
+  let result: number | null = null;
+  switch ((unit ?? '').trim().toLowerCase()) {
+    case 'ml':
+      result = extractMl(cleaned);
+      break;
+    case 'mm':
+      result = extractMm(cleaned);
+      break;
+    case 'g':
+    case 'gram':
+    case 'grams':
+      result = extractGramsFlexible(cleaned);
+      break;
+    case 'cm':
+      result = extractCm(cleaned);
+      break;
+    case 'm':
+      result = extractM(cleaned);
+      break;
+    default:
+      result = extractNumberWithUnit(cleaned);
+  }
+
+  return result !== null ? String(result) : raw;
+}

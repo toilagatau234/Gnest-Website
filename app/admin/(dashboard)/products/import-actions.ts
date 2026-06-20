@@ -223,9 +223,9 @@ export async function validateV4ImportAction(rows: V4ImportRow[]): Promise<V4Val
   return validateV4Import(rows);
 }
 
-export async function importV4UpsertAction(rows: V4ImportRow[]): Promise<V4ImportResult> {
+export async function importV4UpsertAction(rows: V4ImportRow[], fileName?: string | null): Promise<V4ImportResult> {
   await requireAdminAuth(CONTENT_EDITOR_ROLES);
-  const result = await importV4Upsert(rows);
+  const result = await importV4Upsert(rows, fileName);
 
   if (result.ok) {
     revalidatePath('/admin/products');

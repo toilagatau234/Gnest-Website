@@ -5,7 +5,8 @@ import type { Inserts, Json } from '@/lib/types/database';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { getActiveSpecTemplates } from '@/lib/services/admin/product-spec-templates';
 import type { RequestContext } from '@/lib/services/admin/audit-metadata';
-import { normalizeNumberField } from '@/lib/utils/import-normalizers';
+import { normalizeNumberField, normalizeNumericByUnit } from '@/lib/utils/import-normalizers';
+import type { SpecField } from '@/lib/product-spec-templates';
 import { generateProductName } from '@/lib/utils/product-name-generator';
 import { importImagesFromDriveFolder, extractDriveFolderId } from '@/lib/services/admin/gdrive-image-import';
 import { normalizeString } from '@/lib/utils/product-import-utils';
@@ -977,6 +978,8 @@ export interface V4ImportRow {
   seo_description?: string | null;
   seo_keywords?: string | null;
   specs?: Record<string, unknown> | null;
+  gdrive_folder_url?: string | null;
+  primary_image_name?: string | null;
   image_1_url?: string | null;
   image_2_url?: string | null;
   image_3_url?: string | null;
@@ -1012,36 +1015,51 @@ export interface V4ImportResult {
 
 
 /**
- * Helper to parse/validate a spec field value based on template type definition.
+ * Schema-driven parse/validate of a single spec field value.
+ * Normalization (numbers) is driven by the field's declared `unit`, and
+ * enum membership is checked against the field's `options` — so new fields
+ * and new product types work without code changes.
  */
-function parseSpecValue(fieldKey: string, type: string, rawVal: unknown): { error?: string; value?: unknown } {
+function parseSpecValue(field: SpecField, rawVal: unknown): { error?: string; value?: unknown } {
   if (rawVal === undefined || rawVal === null || String(rawVal).trim() === '') {
     return { value: null };
   }
   const strVal = String(rawVal).trim();
-  if (type === 'number') {
-    const normalized = normalizeNumberField(fieldKey, strVal);
-    const num = Number(normalized);
-    if (isNaN(num) || num < 0) {
-      return { error: `phải là số không âm (nhận được: "${strVal}")` };
+
+  switch (field.type) {
+    case 'number': {
+      const normalized = normalizeNumericByUnit(field.unit, strVal);
+      const num = Number(normalized);
+      if (isNaN(num) || num < 0) {
+        return { error: `phải là số không âm (nhận được: "${strVal}")` };
+      }
+      return { value: num };
     }
-    return { value: num };
-  }
-  if (type === 'boolean') {
-    const v = strVal.toLowerCase();
-    if (['true', 'yes', '1', 'có'].includes(v)) {
-      return { value: true };
-    } else if (['false', 'no', '0', 'không'].includes(v)) {
-      return { value: false };
-    } else {
+    case 'boolean': {
+      const v = strVal.toLowerCase();
+      if (['true', 'yes', '1', 'có'].includes(v)) return { value: true };
+      if (['false', 'no', '0', 'không'].includes(v)) return { value: false };
       return { error: `phải là Có/Không (nhận được: "${strVal}")` };
     }
+    case 'select': {
+      if (field.options && field.options.length > 0 && !field.options.includes(strVal)) {
+        return { error: `giá trị "${strVal}" không hợp lệ. Cho phép: ${field.options.join(', ')}` };
+      }
+      return { value: strVal };
+    }
+    case 'multi_select': {
+      const parts = strVal.split(',').map((p) => p.trim()).filter(Boolean);
+      if (field.options && field.options.length > 0) {
+        const bad = parts.filter((p) => !field.options!.includes(p));
+        if (bad.length > 0) {
+          return { error: `giá trị "${bad.join(', ')}" không hợp lệ. Cho phép: ${field.options.join(', ')}` };
+        }
+      }
+      return { value: parts.join(', ') };
+    }
+    default:
+      return { value: strVal };
   }
-  if (type === 'multi_select') {
-    const parts = strVal.split(',').map((p) => p.trim()).filter(Boolean);
-    return { value: parts.join(', ') };
-  }
-  return { value: strVal };
 }
 
 /**
@@ -1074,11 +1092,11 @@ export async function validateV4Import(rows: V4ImportRow[]): Promise<V4Validatio
 
     const slugQuery = candidateSlugs.length > 0
       ? supabase.from('products').select('id, slug, sku').in('slug', candidateSlugs)
-      : Promise.resolve({ data: [] });
-    
+      : Promise.resolve({ data: [] as { id: string; slug: string; sku: string | null }[] });
+
     const skuQuery = candidateSkus.length > 0
       ? supabase.from('products').select('id, slug, sku').in('sku', candidateSkus)
-      : Promise.resolve({ data: [] });
+      : Promise.resolve({ data: [] as { id: string; slug: string; sku: string | null }[] });
 
     const [catsResult, slugRes, skuRes] = await Promise.all([
       supabase.from('categories').select('id, slug, name').eq('is_active', true),
@@ -1092,14 +1110,15 @@ export async function validateV4Import(rows: V4ImportRow[]): Promise<V4Validatio
       validCategoryKeys.add(c.name.toLowerCase());
     }
 
-    const existingProducts = [...(slugRes.data ?? []), ...(skuRes.data ?? [])];
-    const existingSlugSet = new Set<string>();
-    const skuToSlug = new Map<string, string>();
-    for (const p of existingProducts) {
-      existingSlugSet.add(p.slug.toLowerCase());
-      if (p.sku) {
-        skuToSlug.set(p.sku.trim(), p.slug.toLowerCase());
-      }
+    // SKU is the business identity → match existing products by SKU.
+    const existingSkuSet = new Set<string>();
+    for (const p of skuRes.data ?? []) {
+      if (p.sku) existingSkuSet.add(p.sku.trim());
+    }
+    // slug → its owning SKU, so we can detect "slug belongs to a different product".
+    const slugToSku = new Map<string, string | null>();
+    for (const p of [...(slugRes.data ?? []), ...(skuRes.data ?? [])]) {
+      slugToSku.set(p.slug.toLowerCase(), p.sku?.trim() ?? null);
     }
 
     const registry = await getActiveSpecTemplates();
@@ -1128,25 +1147,30 @@ export async function validateV4Import(rows: V4ImportRow[]): Promise<V4Validatio
         errors.push({ row: rowNum, field: 'slug', message: `Slug "${slug}" bị trùng lặp trong file.` });
       } else {
         seenSlugs.add(slug);
-        if (existingSlugSet.has(slug)) {
-          warnings.push({ row: rowNum, field: 'slug', message: `Slug "${slug}" đã tồn tại — sẽ cập nhật (UPSERT).` });
-          upsertCount++;
-        } else {
-          insertCount++;
-        }
       }
 
+      // ── SKU is REQUIRED (business identity for matching + UPSERT) ──
       const sku = String(row.sku ?? '').trim();
-      if (sku) {
+      if (!sku) {
+        errors.push({ row: rowNum, field: 'sku', message: 'Mã sản phẩm (SKU) là bắt buộc — đây là định danh để cập nhật/đối chiếu.' });
+      } else {
         const skuLower = sku.toLowerCase();
         if (seenSkus.has(skuLower)) {
           errors.push({ row: rowNum, field: 'sku', message: `Mã sản phẩm (SKU) "${sku}" bị trùng lặp trong file (dòng ${seenSkus.get(skuLower)}).` });
         } else {
           seenSkus.set(skuLower, rowNum);
-          if (skuToSlug.has(sku)) {
-            const dbSlug = skuToSlug.get(sku)!;
-            if (dbSlug !== slug) {
-              errors.push({ row: rowNum, field: 'sku', message: `Mã sản phẩm (SKU) "${sku}" đã tồn tại trên sản phẩm khác ("${dbSlug}").` });
+          // Insert vs update is decided by SKU existence, NOT slug.
+          if (existingSkuSet.has(sku)) {
+            warnings.push({ row: rowNum, field: 'sku', message: `SKU "${sku}" đã tồn tại — sẽ cập nhật (UPSERT theo SKU).` });
+            upsertCount++;
+          } else {
+            insertCount++;
+          }
+          // Guard: slug already used by a DIFFERENT product (different/empty SKU).
+          if (slug && slugToSku.has(slug)) {
+            const owner = slugToSku.get(slug);
+            if (owner !== sku) {
+              errors.push({ row: rowNum, field: 'slug', message: `Slug "${slug}" đã thuộc về sản phẩm khác (SKU "${owner ?? '—'}").` });
             }
           }
         }
@@ -1158,17 +1182,39 @@ export async function validateV4Import(rows: V4ImportRow[]): Promise<V4Validatio
       }
 
       const templateCode = String(row.template_code ?? '').trim();
+      const template = templateCode ? registry.templates[templateCode] : undefined;
       if (templateCode && !registry.keys.includes(templateCode)) {
         errors.push({ row: rowNum, field: 'template_code', message: `Loại sản phẩm "${templateCode}" không hợp lệ. Cho phép: ${registry.keys.join(', ')}.` });
       }
 
-      // Specs type validation (optional specs, but check types if present)
-      if (templateCode && registry.templates[templateCode] && row.specs) {
-        const template = registry.templates[templateCode];
+      // Google Drive URL (image source)
+      const driveUrl = String(row.gdrive_folder_url ?? '').trim();
+      if (driveUrl && !extractDriveFolderId(driveUrl)) {
+        errors.push({ row: rowNum, field: 'gdrive_folder_url', message: `Link Google Drive không hợp lệ: "${driveUrl}".` });
+      }
+
+      // ── Specs: reject UNKNOWN keys (no silent drop) + type/enum check ──
+      if (template && row.specs) {
+        const allowedKeys = new Set(template.fields.map((f) => f.key));
+        for (const specKey of Object.keys(row.specs)) {
+          const rawVal = row.specs[specKey];
+          const isEmpty = rawVal === undefined || rawVal === null || String(rawVal).trim() === '';
+          if (!allowedKeys.has(specKey)) {
+            if (!isEmpty) {
+              errors.push({ row: rowNum, field: `spec.${specKey}`, message: `Thông số "spec.${specKey}" không thuộc loại sản phẩm "${templateCode}". Thông số hợp lệ: ${[...allowedKeys].join(', ')}.` });
+            }
+            continue;
+          }
+        }
         for (const field of template.fields) {
           const rawVal = row.specs[field.key];
-          if (rawVal !== undefined && rawVal !== null && String(rawVal).trim() !== '') {
-            const parsed = parseSpecValue(field.key, field.type, rawVal);
+          const isEmpty = rawVal === undefined || rawVal === null || String(rawVal).trim() === '';
+          if (field.required && isEmpty) {
+            errors.push({ row: rowNum, field: `spec.${field.key}`, message: `Thông số "${field.label}" là bắt buộc cho loại sản phẩm này.` });
+            continue;
+          }
+          if (!isEmpty) {
+            const parsed = parseSpecValue(field, rawVal);
             if (parsed.error) {
               errors.push({ row: rowNum, field: `spec.${field.key}`, message: `Thông số "${field.label}" ${parsed.error}.` });
             }
@@ -1193,9 +1239,18 @@ export async function validateV4Import(rows: V4ImportRow[]): Promise<V4Validatio
 }
 
 /**
- * Imports Excel V4 rows into database using UPSERT mode.
+ * Imports Excel V4 rows into the database using SKU-based UPSERT.
+ *
+ * Identity rule (Phase 7/8): SKU is the business identity. Matching and
+ * upsert happen on `sku` via the upsert_products_by_sku RPC, which preserves
+ * existing non-empty fields and JSONB-merges specs (incremental enrichment).
+ * Images come from Google Drive (Phase 9) — never from browser folder upload.
+ * Every run is recorded in import_jobs / import_job_errors (Phase 11).
  */
-export async function importV4Upsert(rows: V4ImportRow[]): Promise<V4ImportResult> {
+export async function importV4Upsert(
+  rows: V4ImportRow[],
+  fileName?: string | null,
+): Promise<V4ImportResult> {
   const adminUser = await requireAdminAuth(PRODUCT_IMPORT_ROLES);
   const supabase = createServiceRoleClient();
 
@@ -1206,6 +1261,24 @@ export async function importV4Upsert(rows: V4ImportRow[]): Promise<V4ImportResul
     return { ok: false, upserted: 0, inserted: 0, updated: 0, tierCount: 0, imageCount: 0, error: 'Tối đa 500 sản phẩm mỗi lần nhập.' };
   }
 
+  // 0. Open an import job (traceability)
+  const { data: job } = await supabase
+    .from('import_jobs')
+    .insert({
+      file_name: fileName ?? null,
+      started_by: adminUser.id,
+      mode: 'v4_upsert',
+      status: 'running',
+      total_rows: rows.length,
+    })
+    .select('id')
+    .single();
+  const jobId = job?.id ?? null;
+
+  const jobErrors: { row_number: number | null; column_name: string | null; error_code: string; error_message: string }[] = [];
+  const recordError = (rowNum: number | null, column: string | null, code: string, message: string) =>
+    jobErrors.push({ row_number: rowNum, column_name: column, error_code: code, error_message: message });
+
   // 1. Fetch categories
   const { data: cats } = await supabase.from('categories').select('id, slug, name').eq('is_active', true);
   const catMap = new Map<string, string>();
@@ -1214,63 +1287,43 @@ export async function importV4Upsert(rows: V4ImportRow[]): Promise<V4ImportResul
     catMap.set(c.name.toLowerCase(), c.id);
   }
 
-  // 2. Fetch existing products by slug to merge specs
-  const slugs = rows.map((r) => String(r.slug ?? '').trim().toLowerCase()).filter(Boolean);
-  const { data: existing } = await supabase
-    .from('products')
-    .select('id, slug, specs, sku')
-    .in('slug', slugs);
-
-  const existingBySlug = new Map<string, { id: string; specs: Record<string, unknown>; sku: string | null }>();
-  for (const p of existing ?? []) {
-    existingBySlug.set(p.slug, {
-      id: p.id,
-      specs: (p.specs as Record<string, unknown>) ?? {},
-      sku: (p.sku as string | null) ?? null,
-    });
-  }
-
   const registry = await getActiveSpecTemplates();
 
+  // 2. Build SKU-keyed payloads (specs normalized schema-driven; unknown keys ignored —
+  //    they are blocked upstream by validateV4Import).
   const upsertPayloads: Record<string, unknown>[] = [];
-  const tierDataBySlug = new Map<string, { price: number; qty: number }[]>();
-  const imageDataBySlug = new Map<string, string[]>();
+  const tierDataBySku = new Map<string, { price: number; qty: number }[]>();
+  const driveBySku = new Map<string, { url: string; primary: string | null }>();
 
   for (const row of rows) {
+    const rowNum = row.row ?? null;
+    const sku = String(row.sku ?? '').trim();
     const slug = String(row.slug ?? '').trim().toLowerCase();
     const name = String(row.name ?? '').trim();
-    if (!slug || !name) continue;
+    if (!sku) { recordError(rowNum, 'sku', 'MISSING_SKU', 'Thiếu SKU — bỏ qua dòng.'); continue; }
+    if (!slug || !name) { recordError(rowNum, !slug ? 'slug' : 'name', 'MISSING_CORE', 'Thiếu slug hoặc tên — bỏ qua dòng.'); continue; }
 
-    // Normalize spec values based on their template fields
+    const templateCode = String(row.template_code ?? '').trim();
+    const template = templateCode ? registry.templates[templateCode] : undefined;
+
     const normalizedSpecs: Record<string, unknown> = {};
-    const templateCode = row.template_code || '';
-    const template = registry.templates[templateCode];
     if (template && row.specs) {
       for (const field of template.fields) {
-        const rawVal = row.specs[field.key];
-        const parsed = parseSpecValue(field.key, field.type, rawVal);
+        const parsed = parseSpecValue(field, row.specs[field.key]);
         if (parsed.value !== undefined && parsed.value !== null) {
           normalizedSpecs[field.key] = parsed.value;
         }
       }
     } else if (row.specs) {
       for (const [k, v] of Object.entries(row.specs)) {
-        if (v !== null && v !== undefined && String(v).trim() !== '') {
-          normalizedSpecs[k] = v;
-        }
+        if (v !== null && v !== undefined && String(v).trim() !== '') normalizedSpecs[k] = v;
       }
     }
-
-    // Merge specs: preserve existing fields, overlay only non-empty incoming values
-    const existingSpecs = existingBySlug.get(slug)?.specs ?? {};
-    const mergedSpecs: Record<string, unknown> = { ...existingSpecs, ...normalizedSpecs };
-    if (templateCode) {
-      mergedSpecs._template = templateCode;
-    }
+    if (templateCode) normalizedSpecs._template = templateCode;
 
     const catInput = String(row.category ?? '').trim().toLowerCase();
     upsertPayloads.push({
-      sku: row.sku ? String(row.sku).trim() || null : (existingBySlug.get(slug)?.sku ?? null),
+      sku,
       name,
       slug,
       category_id: catInput ? (catMap.get(catInput) ?? null) : null,
@@ -1282,50 +1335,52 @@ export async function importV4Upsert(rows: V4ImportRow[]): Promise<V4ImportResul
       seo_title: String(row.seo_title ?? '').trim() || null,
       seo_description: String(row.seo_description ?? '').trim() || null,
       seo_keywords: String(row.seo_keywords ?? '').trim() || null,
-      specs: mergedSpecs,
+      specs: normalizedSpecs,
     });
 
     const tiers: { price: number; qty: number }[] = [];
     for (let i = 1; i <= 3; i++) {
       const price = parsePrice((row as Record<string, unknown>)[`tier_${i}_price`]);
       const qty = parsePrice((row as Record<string, unknown>)[`tier_${i}_min_qty`]);
-      if (price !== null && qty !== null && qty > 0) {
-        tiers.push({ price, qty });
-      }
+      if (price !== null && qty !== null && qty > 0) tiers.push({ price, qty });
     }
-    if (tiers.length > 0) {
-      tierDataBySlug.set(slug, tiers);
-    }
+    if (tiers.length > 0) tierDataBySku.set(sku, tiers);
 
-    const imgs = [row.image_1_url, row.image_2_url, row.image_3_url].filter(
-      (u): u is string => typeof u === 'string' && u.trim().length > 0,
-    );
-    if (imgs.length > 0) {
-      imageDataBySlug.set(slug, imgs);
-    }
+    const driveUrl = String(row.gdrive_folder_url ?? '').trim();
+    if (driveUrl) driveBySku.set(sku, { url: driveUrl, primary: String(row.primary_image_name ?? '').trim() || null });
   }
 
   if (upsertPayloads.length === 0) {
+    if (jobId) {
+      if (jobErrors.length > 0) await supabase.from('import_job_errors').insert(jobErrors.map((e) => ({ ...e, job_id: jobId })));
+      await supabase.from('import_jobs').update({ status: 'failed', error_count: jobErrors.length, finished_at: new Date().toISOString() }).eq('id', jobId);
+    }
     return { ok: false, upserted: 0, inserted: 0, updated: 0, tierCount: 0, imageCount: 0, error: 'Không có hàng hợp lệ để nhập.' };
   }
 
-  const { data: upserted, error: upsertError } = await supabase
-    .from('products')
-    .upsert(upsertPayloads as any, { onConflict: 'slug', ignoreDuplicates: false })
-    .select('id, slug');
+  // 3. SKU UPSERT via RPC (set-based; COALESCE-preserve + specs merge)
+  const { data: upserted, error: upsertError } = await supabase.rpc('upsert_products_by_sku', {
+    p_rows: upsertPayloads as unknown as Json,
+  });
 
   if (upsertError) {
+    if (jobId) {
+      recordError(null, null, 'DB_UPSERT', upsertError.message);
+      await supabase.from('import_job_errors').insert(jobErrors.map((e) => ({ ...e, job_id: jobId })));
+      await supabase.from('import_jobs').update({ status: 'failed', error_count: jobErrors.length, finished_at: new Date().toISOString() }).eq('id', jobId);
+    }
     return { ok: false, upserted: 0, inserted: 0, updated: 0, tierCount: 0, imageCount: 0, error: upsertError.message };
   }
 
-  const upsertedProducts = upserted ?? [];
-  const insertedCount = upsertedProducts.filter((p) => !existingBySlug.has(p.slug)).length;
-  const updatedCount = upsertedProducts.length - insertedCount;
-  const slugToId = new Map(upsertedProducts.map((p) => [p.slug, p.id]));
+  const upsertedRows = (upserted ?? []) as { id: string; sku: string; slug: string; was_inserted: boolean }[];
+  const insertedCount = upsertedRows.filter((p) => p.was_inserted).length;
+  const updatedCount = upsertedRows.length - insertedCount;
+  const skuToId = new Map(upsertedRows.map((p) => [p.sku, p.id]));
 
+  // 4. Bulk discount tiers (replace per product)
   let tierCount = 0;
-  for (const [slug, tiers] of tierDataBySlug) {
-    const productId = slugToId.get(slug);
+  for (const [sku, tiers] of tierDataBySku) {
+    const productId = skuToId.get(sku);
     if (!productId) continue;
     await supabase.from('product_bulk_discounts').delete().eq('product_id', productId);
     const { data: ti } = await supabase
@@ -1335,16 +1390,33 @@ export async function importV4Upsert(rows: V4ImportRow[]): Promise<V4ImportResul
     tierCount += ti?.length ?? 0;
   }
 
+  // 5. Google Drive image sync (inline, per SKU, non-fatal on per-folder failure)
   let imageCount = 0;
-  for (const [slug, urls] of imageDataBySlug) {
-    const productId = slugToId.get(slug);
+  for (const [sku, drive] of driveBySku) {
+    const productId = skuToId.get(sku);
     if (!productId) continue;
-    await supabase.from('product_images').delete().eq('product_id', productId);
-    const { data: ii } = await supabase
-      .from('product_images')
-      .insert(urls.map((url, i) => ({ product_id: productId, storage_path: url, public_url: url, sort_order: i, is_primary: i === 0, is_active: true })))
-      .select('id');
-    imageCount += ii?.length ?? 0;
+    try {
+      const driveResult = await importImagesFromDriveFolder(productId, sku, drive.url, drive.primary);
+      imageCount += driveResult.imported;
+      if (driveResult.error) recordError(null, 'gdrive_folder_url', 'DRIVE_FOLDER', `SKU ${sku}: ${driveResult.error}`);
+      for (const f of driveResult.failed) recordError(null, 'gdrive_folder_url', 'DRIVE_FILE', `SKU ${sku} · ${f.name}: ${f.error}`);
+    } catch (err) {
+      recordError(null, 'gdrive_folder_url', 'DRIVE_EXCEPTION', `SKU ${sku}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  // 6. Finalize job + audit log
+  if (jobId) {
+    if (jobErrors.length > 0) await supabase.from('import_job_errors').insert(jobErrors.map((e) => ({ ...e, job_id: jobId })));
+    await supabase.from('import_jobs').update({
+      status: jobErrors.length > 0 ? 'completed_with_errors' : 'completed',
+      success_count: upsertedRows.length,
+      error_count: jobErrors.length,
+      inserted_count: insertedCount,
+      updated_count: updatedCount,
+      image_count: imageCount,
+      finished_at: new Date().toISOString(),
+    }).eq('id', jobId);
   }
 
   const { buildAuditMetadata } = await import('@/lib/services/admin/audit-metadata');
@@ -1354,11 +1426,11 @@ export async function importV4Upsert(rows: V4ImportRow[]): Promise<V4ImportResul
     entity: 'products',
     entity_id: null,
     metadata: buildAuditMetadata({
-      extra: { upserted: upsertedProducts.length, inserted: insertedCount, updated: updatedCount, tiers: tierCount, images: imageCount },
+      extra: { job_id: jobId, upserted: upsertedRows.length, inserted: insertedCount, updated: updatedCount, tiers: tierCount, images: imageCount, errors: jobErrors.length },
     }),
   });
 
-  return { ok: true, upserted: upsertedProducts.length, inserted: insertedCount, updated: updatedCount, tierCount, imageCount };
+  return { ok: true, upserted: upsertedRows.length, inserted: insertedCount, updated: updatedCount, tierCount, imageCount };
 }
 
 

@@ -1,12 +1,31 @@
 import 'server-only';
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { extractDriveFolderId } from '@/lib/utils/gdrive-url';
+
+export { extractDriveFolderId };
 
 const GOOGLE_DRIVE_API_KEY = process.env.GOOGLE_DRIVE_API_KEY;
 const ENABLE_WEBP_CONVERSION = process.env.ENABLE_WEBP_CONVERSION === 'true';
-const IMAGE_BUCKET = 'product-images';
+// Canonical storage layout (Phase 10): products/{SKU}/NN.webp in the public `products` bucket.
+const IMAGE_BUCKET = 'products';
+const MAX_DRIVE_RETRIES = 2;
 const ALLOWED_MIME_PREFIXES = ['image/'];
 const ALLOWED_EXTENSIONS = /\.(jpe?g|png|webp|gif)$/i;
+
+/** Retry a transport-level async op with linear backoff. */
+async function withRetry<T>(fn: () => Promise<T>, attempts = MAX_DRIVE_RETRIES): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i <= attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts) await new Promise((r) => setTimeout(r, 300 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
 
 export interface DriveImageResult {
   filename: string;
@@ -29,32 +48,6 @@ export interface DriveImportResult {
 }
 
 // ── URL parsing ──────────────────────────────────────────────────────────────
-
-/**
- * Extracts the Google Drive folder ID from various URL formats:
- *  - https://drive.google.com/drive/folders/{folderId}
- *  - https://drive.google.com/drive/u/0/folders/{folderId}
- *  - https://drive.google.com/open?id={folderId}
- */
-export function extractDriveFolderId(url: string): string | null {
-  if (!url) return null;
-  const trimmed = url.trim();
-
-  // /folders/{id} pattern
-  const folderMatch = trimmed.match(/\/folders\/([a-zA-Z0-9_-]+)/);
-  if (folderMatch) return folderMatch[1];
-
-  // ?id={id} pattern
-  try {
-    const parsed = new URL(trimmed);
-    const id = parsed.searchParams.get('id');
-    if (id) return id;
-  } catch {
-    // not a valid URL
-  }
-
-  return null;
-}
 
 // ── Drive API ────────────────────────────────────────────────────────────────
 
@@ -184,23 +177,34 @@ export async function importImagesFromDriveFolder(
   }
 
   const supabase = createServiceRoleClient();
+  // Canonical prefix: products/{SKU}/ (SKU is the business identity for matching).
   const storagePrefix = `products/${productSku ?? productId}`;
   let sortOrder = 0;
   let primaryAssigned = false;
 
-  // 3. Process each image serially
+  // 3. Process each image serially with deterministic zero-padded NN naming.
   for (const file of imageFiles) {
-    const filename = sanitizeFilename(file.name);
+    // Decide primary from the *original* Drive filename before renaming.
+    const isPrimary =
+      !primaryAssigned &&
+      (matchesPrimaryName(file.name, primaryImageName) ||
+        (!primaryImageName && sortOrder === 0));
 
-    // Download
-    const downloadResult = await downloadDriveFile(file.id);
+    // Download (with retry on transport errors)
+    let downloadResult: Awaited<ReturnType<typeof downloadDriveFile>>;
+    try {
+      downloadResult = await withRetry(() => downloadDriveFile(file.id));
+    } catch (err) {
+      result.failed.push({ name: file.name, error: `Lỗi tải ảnh: ${err instanceof Error ? err.message : String(err)}` });
+      continue;
+    }
     if ('error' in downloadResult) {
       result.failed.push({ name: file.name, error: downloadResult.error });
       continue;
     }
 
     let { buffer, contentType } = downloadResult;
-    let outputFilename = filename;
+    let ext = (file.name.match(/\.([a-z0-9]+)$/i)?.[1] ?? 'jpg').toLowerCase();
 
     // Optional WebP conversion
     if (ENABLE_WEBP_CONVERSION && contentType !== 'image/webp') {
@@ -208,21 +212,26 @@ export async function importImagesFromDriveFolder(
         const sharp = (await import('sharp')).default;
         buffer = await sharp(buffer).webp({ quality: 85 }).toBuffer();
         contentType = 'image/webp';
-        outputFilename = filename.replace(/\.[^.]+$/, '.webp');
+        ext = 'webp';
       } catch {
         // Skip conversion if sharp fails, upload original
       }
     }
 
+    // Canonical name: 01.webp, 02.webp, …
+    const outputFilename = `${String(sortOrder + 1).padStart(2, '0')}.${ext}`;
     const storagePath = `${storagePrefix}/${outputFilename}`;
 
     // Upload to Supabase Storage (upsert to avoid duplicates on re-import)
-    const { error: uploadError } = await supabase.storage
-      .from(IMAGE_BUCKET)
-      .upload(storagePath, buffer, {
-        contentType,
-        upsert: true,
-      });
+    let uploadError: { message: string } | null = null;
+    try {
+      const res = await withRetry(() =>
+        supabase.storage.from(IMAGE_BUCKET).upload(storagePath, buffer, { contentType, upsert: true }),
+      );
+      uploadError = res.error;
+    } catch (err) {
+      uploadError = { message: err instanceof Error ? err.message : String(err) };
+    }
 
     if (uploadError) {
       result.failed.push({ name: file.name, error: `Upload thất bại: ${uploadError.message}` });
@@ -231,12 +240,6 @@ export async function importImagesFromDriveFolder(
 
     const { data: urlData } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(storagePath);
     const publicUrl = urlData.publicUrl;
-
-    const isPrimary =
-      !primaryAssigned &&
-      (matchesPrimaryName(outputFilename, primaryImageName) ||
-        // If no primary name specified, first image becomes primary
-        (!primaryImageName && sortOrder === 0));
 
     if (isPrimary) primaryAssigned = true;
 
