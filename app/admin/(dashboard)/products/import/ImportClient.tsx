@@ -26,11 +26,12 @@ import {
   type V4ValidationResult,
   type V4ImportResult,
 } from '../import-actions';
+import { normalizeString, groupSpecAttributes, parseExcelWithTechKeys } from '@/lib/utils/product-import-utils';
 import type { ImportRow, ValidationResult } from '@/lib/services/admin/product-import';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const IMAGE_BUCKET = 'product-images';
+const IMAGE_BUCKET = 'products';
 const MAX_IMAGES_PER_PRODUCT = 3;
 const ACCEPTED_IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const ACCEPTED_IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
@@ -101,16 +102,7 @@ interface UIValidation {
 
 // ── Pure utility functions ────────────────────────────────────────────────────
 
-/** Convert a Vietnamese string (with diacritics) to an ASCII kebab-case slug. */
-export function normalizeToSlug(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/đ/g, 'd')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
+
 
 function isAcceptedImage(file: File): boolean {
   if (ACCEPTED_IMAGE_MIME.has(file.type)) return true;
@@ -130,41 +122,7 @@ export function detectV4Format(keys: string[]): boolean {
   return keys.some((k) => k === 'template_code' || k.startsWith('spec.'));
 }
 
-/**
- * Parse an Excel worksheet that has a 2-row header:
- *   Row 0 = Vietnamese display headers (ignored)
- *   Row 1 = Technical keys used as object keys
- *   Row 2+ = Data rows
- *
- * Returns a flat `Record<string, unknown>[]` where spec columns remain as
- * `spec.fieldKey` strings (grouping happens separately).
- */
-export async function parseExcelWithTechKeys(
-  worksheet: import('xlsx').WorkSheet,
-): Promise<Record<string, unknown>[]> {
-  const XLSX = await import('xlsx');
-  const allRows = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
-    header: 1,
-    defval: null,
-    blankrows: false,
-  });
 
-  if (allRows.length < 3) return [];
-
-  const keys = (allRows[1] as (string | null)[]).map((k) =>
-    typeof k === 'string' ? k.trim() : '',
-  );
-
-  return allRows.slice(2).flatMap((rawRow, i) => {
-    const cols = rawRow as unknown[];
-    const obj: Record<string, unknown> = { row: i + 3 };
-    keys.forEach((key, j) => {
-      if (key) obj[key] = cols[j] ?? null;
-    });
-    const hasData = keys.some((k) => k && obj[k] !== null && obj[k] !== '');
-    return hasData ? [obj] : [];
-  });
-}
 
 /** Fall-back for single-header-row (legacy) Excel files. */
 async function parseLegacySheet(
@@ -175,36 +133,7 @@ async function parseLegacySheet(
   return parsed.map((obj, i) => ({ ...obj, row: i + 2 } as unknown as ImportRow));
 }
 
-/**
- * Separate `spec.*` prefixed keys from a flat row object into a nested
- * `specs` object, returning the cleaned row alongside the grouped specs.
- *
- * Only non-empty spec values are included (allows partial first-pass imports).
- *
- * @example
- * groupSpecAttributes({ name: 'Hủ', 'spec.cap_type': 'Nắp thiếc', 'spec.weight_gram': 110 })
- * // → { cleanRow: { name: 'Hủ' }, specs: { cap_type: 'Nắp thiếc', weight_gram: 110 } }
- */
-export function groupSpecAttributes(flatRow: Record<string, unknown>): {
-  cleanRow: Record<string, unknown>;
-  specs: Record<string, unknown>;
-} {
-  const cleanRow: Record<string, unknown> = {};
-  const specs: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(flatRow)) {
-    if (key.startsWith('spec.') && key.length > 5) {
-      const specKey = key.slice(5);
-      if (specKey && value !== null && value !== undefined && String(value).trim() !== '') {
-        specs[specKey] = value;
-      }
-    } else {
-      cleanRow[key] = value;
-    }
-  }
-
-  return { cleanRow, specs };
-}
 
 /**
  * Group image files by the normalised parent-folder name and match to slugs.
@@ -220,7 +149,7 @@ function buildImageMapping(
     const parts = file.webkitRelativePath?.split('/') ?? [];
     const parent = parts.length >= 2 ? parts[parts.length - 2] : '';
     if (!parent) continue;
-    const key = normalizeToSlug(parent);
+    const key = normalizeString(parent);
     if (!folderMap.has(key)) folderMap.set(key, []);
     folderMap.get(key)!.push(file);
   }
@@ -228,14 +157,13 @@ function buildImageMapping(
   const mapping = new Map<string, File[]>();
   for (const slug of slugs) {
     if (!slug) continue;
-    for (const [normFolder, files] of folderMap) {
-      if (slug.includes(normFolder) || normFolder.includes(slug)) {
-        const sorted = [...files].sort((a, b) =>
-          a.name.localeCompare(b.name, undefined, { numeric: true }),
-        );
-        mapping.set(slug, sorted.slice(0, MAX_IMAGES_PER_PRODUCT));
-        break;
-      }
+    const normSlug = normalizeString(slug);
+    const files = folderMap.get(normSlug);
+    if (files && files.length > 0) {
+      const sorted = [...files].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true }),
+      );
+      mapping.set(slug, sorted.slice(0, MAX_IMAGES_PER_PRODUCT));
     }
   }
   return mapping;
@@ -267,12 +195,12 @@ async function matchAndUploadLocalImages<T extends { slug?: string | null; image
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const ext = getFileExt(file);
-      const storagePath = `${slug}/image_${i + 1}.${ext}`;
+      // Target path: bucket products at ${slug}/image_${index + 1}.png
+      const storagePath = `${slug}/image_${i + 1}.png`;
 
       const { error } = await supabase.storage
         .from(IMAGE_BUCKET)
-        .upload(storagePath, file, { upsert: true, contentType: file.type || `image/${ext}` });
+        .upload(storagePath, file, { upsert: true, contentType: 'image/png' });
 
       if (!error) {
         const { data: urlData } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(storagePath);
@@ -392,10 +320,15 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
           range: 0,
           defval: null,
         });
+        const row0 = (sampleRows[0] as unknown[]) ?? [];
         const row1 = (sampleRows[1] as unknown[]) ?? [];
-        const row1Keys = row1.filter((c): c is string => typeof c === 'string' && /^[a-z_.]/.test(c.trim()));
 
-        const hasRow2Keys = row1Keys.length > 0;
+        const techKeysToCheck = ['sku', 'slug', 'template_code', 'category', 'price', 'stock'];
+        const row0HasKeys = row0.some(c => typeof c === 'string' && techKeysToCheck.includes(c.trim().toLowerCase()));
+        const row1HasKeys = row1.some(c => typeof c === 'string' && techKeysToCheck.includes(c.trim().toLowerCase()));
+
+        const hasRow2Keys = row1HasKeys && !row0HasKeys;
+        const row1Keys = row1.filter((c): c is string => typeof c === 'string' && /^[a-z_.]/.test(c.trim()));
         const isV4 = hasRow2Keys && detectV4Format(row1Keys);
 
         if (hasRow2Keys) {
@@ -409,6 +342,7 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
               globalError: 'File không có dữ liệu sản phẩm hợp lệ.',
             });
             setIsProcessingExcel(false);
+            setPhase('parsed');
             return;
           }
 
@@ -458,6 +392,7 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
               globalError: 'File không có dữ liệu sản phẩm hợp lệ.',
             });
             setIsProcessingExcel(false);
+            setPhase('parsed');
             return;
           }
           const items = parsed.map((row) => ({ data: row, matchedFiles: [] }));
@@ -480,6 +415,7 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
           errorCount: 0, insertCount: 0, upsertCount: 0,
           globalError: 'Không thể đọc file. Đảm bảo file đúng định dạng .xlsx / .xls.',
         });
+        setPhase('parsed');
       } finally {
         setIsProcessingExcel(false);
       }
@@ -573,6 +509,13 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
 
   // ── Template download (V4 format) ───────────────────────────────────────
 
+  const handleDownloadV3Template = () => {
+    const link = document.createElement('a');
+    link.href = '/templates/MauFileSanPham_Gnest_V3.xlsx';
+    link.download = 'MauFileSanPham_Gnest_V3.xlsx';
+    link.click();
+  };
+
   const handleDownloadV4Template = async () => {
     try {
       const XLSX = await import('xlsx');
@@ -628,6 +571,24 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
 
   return (
     <div className="space-y-6">
+      {/* Hidden inputs always mounted so refs and Playwright locators are always available */}
+      <input
+        type="file"
+        ref={excelInputRef}
+        onChange={handleExcelChange}
+        accept=".xlsx,.xls"
+        disabled={isProcessing}
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={folderInputRef}
+        onChange={handleFolderChange}
+        multiple
+        {...{ webkitdirectory: "", directory: "" }}
+        disabled={isProcessing}
+        className="hidden"
+      />
       <div className="flex items-center">
         <Link
           href="/admin/products"
@@ -644,17 +605,28 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
           {/* Left panel */}
           <div className="md:col-span-1 bg-white border border-[#EEF2F6] rounded-xl p-5 shadow-sm space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-              File mẫu Excel V4
+              File mẫu Excel
             </h3>
 
-            <button
-              type="button"
-              onClick={handleDownloadV4Template}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-white border border-[#4880FF] hover:bg-[#4880FF]/5 text-sm font-bold text-[#4880FF] px-4 py-2.5 transition"
-            >
-              <Download className="h-4 w-4" />
-              Tải file mẫu V4
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadV3Template}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-white border border-[#4880FF] hover:bg-[#4880FF]/5 text-sm font-bold text-[#4880FF] px-4 py-2.5 transition"
+              >
+                <Download className="h-4 w-4" />
+                Tải file mẫu V3
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadV4Template}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-white border border-[#4880FF] hover:bg-[#4880FF]/5 text-sm font-bold text-[#4880FF] px-4 py-2.5 transition"
+              >
+                <Download className="h-4 w-4" />
+                Tải file mẫu V4
+              </button>
+            </div>
 
             <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2.5 text-[11px] leading-relaxed text-amber-800 space-y-1">
               <p className="font-bold">Cấu trúc file V4:</p>
@@ -690,14 +662,7 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
                   1. File Excel sản phẩm
                 </p>
-                <input
-                  type="file"
-                  ref={excelInputRef}
-                  onChange={handleExcelChange}
-                  accept=".xlsx,.xls"
-                  disabled={isProcessing}
-                  className="hidden"
-                />
+
                 <div
                   onClick={() => !isProcessing && excelInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-xl p-6 text-center transition flex flex-col items-center justify-center gap-2 min-h-[160px] ${
@@ -733,14 +698,7 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
                   2. Thư mục ảnh <span className="text-slate-300 font-normal">(tuỳ chọn)</span>
                 </p>
-                <input
-                  type="file"
-                  ref={folderInputRef}
-                  onChange={handleFolderChange}
-                  multiple
-                  disabled={isProcessing}
-                  className="hidden"
-                />
+
                 <div
                   onClick={() => !isProcessing && folderInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-xl p-6 text-center transition flex flex-col items-center justify-center gap-2 min-h-[160px] ${

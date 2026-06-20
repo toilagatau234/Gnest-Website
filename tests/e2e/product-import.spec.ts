@@ -393,18 +393,16 @@ test.describe('Product Import — Image Folder', () => {
       'hu-vuong-500ml': ['image_1.png'],
     });
     tmpDirs.push(imgDir);
-    const allFiles = collectFiles(imgDir);
-
-    await folderInput(page).setInputFiles(allFiles, { noWaitAfter: true });
+    await folderInput(page).setInputFiles(imgDir, { noWaitAfter: true });
     await page.waitForTimeout(1500);
 
     // Counter should mention the number of image files
-    const counter = page.locator('text=/file ảnh/i, text=/ảnh đã quét/i').first();
+    const counter = page.locator('text=/file ảnh/i').first();
     await expect(counter).toBeVisible({ timeout: 8000 });
     const text = await counter.textContent() ?? '';
     const numMatch = text.match(/\d+/);
     expect(numMatch).not.toBeNull();
-    expect(Number(numMatch![0])).toBe(allFiles.length);
+    expect(Number(numMatch![0])).toBe(3);
   });
 
   test('non-image files in folder are not counted as images', async ({ page }) => {
@@ -414,13 +412,11 @@ test.describe('Product Import — Image Folder', () => {
     // Add a non-image file
     const txtFile = path.join(imgDir, 'products', 'readme.txt');
     fs.writeFileSync(txtFile, 'not an image');
-    const allFiles = collectFiles(imgDir);
-
-    await folderInput(page).setInputFiles(allFiles, { noWaitAfter: true });
+    await folderInput(page).setInputFiles(imgDir, { noWaitAfter: true });
     await page.waitForTimeout(1500);
 
     // Counter should show 1, not 2 (txt excluded)
-    const counter = page.locator('text=/file ảnh/i, text=/ảnh đã quét/i').first();
+    const counter = page.locator('text=/file ảnh/i').first();
     if (await counter.isVisible({ timeout: 5000 }).catch(() => false)) {
       const text = await counter.textContent() ?? '';
       const numMatch = text.match(/\d+/);
@@ -447,9 +443,7 @@ test.describe('Product Import — Image Folder', () => {
       [FOLDER_NAME_A]: ['image_1.png', 'image_2.png'],
     });
     tmpDirs.push(imgDir);
-    const allFiles = collectFiles(imgDir);
-
-    await folderInput(page).setInputFiles(allFiles, { noWaitAfter: true });
+    await folderInput(page).setInputFiles(imgDir, { noWaitAfter: true });
     await page.waitForTimeout(1500);
 
     // Preview table should show the image badge (either in idle or parsed state)
@@ -669,7 +663,7 @@ test.describe('Product Import — Full Import Flow', () => {
     await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 10000 });
 
     // Upload folder
-    await folderInput(page).setInputFiles(allFiles, { noWaitAfter: true });
+    await folderInput(page).setInputFiles(imgDir, { noWaitAfter: true });
     await page.waitForTimeout(1000);
 
     // Confirm import
@@ -685,7 +679,7 @@ test.describe('Product Import — Full Import Flow', () => {
 
     // Done phase
     await expect(
-      page.locator('[class*="emerald"], [class*="green"]').filter({ hasText: /hoàn tất|thành công|success/i }),
+      page.locator('h3', { hasText: /nhập hoàn tất/i }),
     ).toBeVisible({ timeout: 60000 });
   });
 
@@ -728,11 +722,9 @@ test.describe('Product Import — Upload Progress UI', () => {
       10000, 100, 1, '', 'Cái', 100, 8, 5, 'Glass', null, null, null, null, null,
     ]]);
     const excelPath = writeTmp(buf);
-    const allFiles = collectFiles(imgDir);
-
     await excelInput(page).setInputFiles(excelPath);
     await page.waitForTimeout(3000);
-    await folderInput(page).setInputFiles(allFiles, { noWaitAfter: true });
+    await folderInput(page).setInputFiles(imgDir, { noWaitAfter: true });
     await page.waitForTimeout(1000);
 
     await page.getByRole('button', { name: /xác nhận nhập/i }).click();
