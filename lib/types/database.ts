@@ -165,6 +165,7 @@ export interface Database {
           storage_path: string;
           public_url: string | null;
           alt: string | null;
+          content_hash: string | null;
           sort_order: number;
           is_primary: boolean;
           is_active: boolean;
@@ -176,6 +177,7 @@ export interface Database {
           storage_path: string;
           public_url?: string | null;
           alt?: string | null;
+          content_hash?: string | null;
           sort_order?: number;
           is_primary?: boolean;
           is_active?: boolean;
@@ -186,6 +188,7 @@ export interface Database {
           storage_path?: string;
           public_url?: string | null;
           alt?: string | null;
+          content_hash?: string | null;
           sort_order?: number;
           is_primary?: boolean;
           is_active?: boolean;
@@ -646,6 +649,39 @@ export interface Database {
           error_code?: string | null;
           error_message?: string | null;
           raw_value?: string | null;
+        };
+        Relationships: [];
+      };
+      import_job_images: {
+        Row: {
+          id: string;
+          job_id: string;
+          sku: string | null;
+          filename: string | null;
+          storage_path: string | null;
+          content_hash: string | null;
+          status: string;
+          error_message: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          job_id: string;
+          sku?: string | null;
+          filename?: string | null;
+          storage_path?: string | null;
+          content_hash?: string | null;
+          status?: string;
+          error_message?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          sku?: string | null;
+          filename?: string | null;
+          storage_path?: string | null;
+          content_hash?: string | null;
+          status?: string;
+          error_message?: string | null;
         };
         Relationships: [];
       };

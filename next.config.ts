@@ -2,6 +2,13 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Bulk import uploads images one request per file; allow a single 5 MB image
+  // (plus multipart overhead) through Server Actions.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '8mb',
+    },
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -1,104 +1,23 @@
 import 'server-only';
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
-import type { Inserts, Json } from '@/lib/types/database';
+import type { Json } from '@/lib/types/database';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { getActiveSpecTemplates } from '@/lib/services/admin/product-spec-templates';
 import type { RequestContext } from '@/lib/services/admin/audit-metadata';
-import { normalizeNumberField, normalizeNumericByUnit } from '@/lib/utils/import-normalizers';
+import { normalizeNumericByUnit } from '@/lib/utils/import-normalizers';
 import type { SpecField } from '@/lib/product-spec-templates';
-import { generateProductName } from '@/lib/utils/product-name-generator';
-import { importImagesFromDriveFolder, extractDriveFolderId } from '@/lib/services/admin/gdrive-image-import';
-import { normalizeString } from '@/lib/utils/product-import-utils';
 
 const PRODUCT_IMPORT_ROLES = ['super_admin', 'admin', 'editor'] as const;
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-export interface ImportError {
-  row: number;
-  column: string;
-  message: string;
-}
-
-interface SkuTracker {
-  existingSkus: Set<string>;
-  seenSkus: Map<string, number>;
-}
-
-export interface TemplateImportResult {
-  ok: boolean;
-  importedCount: number;
-  errors: ImportError[];
-  driveResults?: { row: number; sku: string | null; imported: number; failed: number; error?: string }[];
-  error?: string;
-}
-
-// ── Column definition for the new Vietnamese-header import system ────────────
-
-export interface ColumnDef {
-  /** Vietnamese header displayed in the Excel template */
-  header: string;
-  /** Key used when parsing the uploaded Excel row object */
-  key: string;
-  /** Spec field key (for spec columns only) */
-  fieldKey?: string;
-  unit?: string;
-  required?: boolean;
-  type?: string;
-}
-
-/** Core columns shared across all product types */
-const CORE_COLUMN_DEFS: ColumnDef[] = [
-  { header: 'Mã sản phẩm',              key: 'sku',                required: false },
-  { header: 'Tên sản phẩm',             key: 'name',               required: false },
-  { header: 'Slug',                      key: 'slug',               required: false },
-  { header: 'Loại sản phẩm *',          key: 'template_code',      required: true  },
-  { header: 'Danh mục',                  key: 'category',           required: false },
-  { header: 'Mô tả ngắn',               key: 'description',        required: false },
-  { header: 'Trạng thái (Có/Không)',     key: 'is_active',          required: false },
-  { header: 'Nổi bật (Có/Không)',        key: 'is_featured',        required: false },
-  { header: 'Giá bán',                   key: 'price',              required: false },
-  { header: 'Tồn kho',                   key: 'stock',              required: false },
-  { header: 'Tiêu đề SEO',              key: 'seo_title',          required: false },
-  { header: 'Mô tả SEO',               key: 'seo_description',    required: false },
-  { header: 'Từ khóa SEO',              key: 'seo_keywords',       required: false },
-  { header: 'Link thư mục ảnh GG Drive', key: 'gdrive_folder_url', required: false },
-  { header: 'Tên ảnh đại diện',         key: 'primary_image_name', required: false },
-  { header: 'Giá sỉ bậc 1',             key: 'tier_1_price',       required: false },
-  { header: 'SL tối thiểu bậc 1',       key: 'tier_1_min_qty',     required: false },
-  { header: 'Giá sỉ bậc 2',             key: 'tier_2_price',       required: false },
-  { header: 'SL tối thiểu bậc 2',       key: 'tier_2_min_qty',     required: false },
-  { header: 'Giá sỉ bậc 3',             key: 'tier_3_price',       required: false },
-  { header: 'SL tối thiểu bậc 3',       key: 'tier_3_min_qty',     required: false },
-];
-
 /**
- * Returns core columns + template-specific spec columns with Vietnamese headers.
- * Replaces the old generateTemplateColumns() which returned English keys.
+ * Maximum product rows accepted per Excel import. Products are written set-based
+ * via a single RPC, and images are uploaded out-of-band one request per file, so
+ * this ceiling protects the parse/validate step (and the audit trail) without
+ * limiting how many images a single SKU may carry.
  */
-export async function generateTemplateColumns(templateCode: string): Promise<ColumnDef[]> {
-  const registry = await getActiveSpecTemplates();
-  const template = registry.templates[templateCode];
-
-  if (!template) {
-    return CORE_COLUMN_DEFS;
-  }
-
-  const specColumns: ColumnDef[] = template.fields.map((field) => {
-    const unitLabel = field.unit ? ` (${field.unit})` : '';
-    const requiredMark = field.required ? ' *' : '';
-    return {
-      header: `${field.label}${unitLabel}${requiredMark}`,
-      key: `spec.${field.key}`,
-      fieldKey: field.key,
-      unit: field.unit,
-      required: field.required,
-      type: field.type,
-    };
-  });
-
-  return [...CORE_COLUMN_DEFS, ...specColumns];
-}
+export const MAX_IMPORT_ROWS = 2000;
 
 // ── Row parsing helpers ──────────────────────────────────────────────────────
 
@@ -119,383 +38,6 @@ function parseStock(raw: unknown): number {
   if (raw === null || raw === undefined || String(raw).trim() === '') return 0;
   const n = parseInt(String(raw).trim(), 10);
   return Number.isFinite(n) && n >= 0 ? n : 0;
-}
-
-// ── New-system row validator (per-row) ───────────────────────────────────────
-
-interface ValidatedRow {
-  sku: string | null;
-  name: string;
-  slug: string;
-  template_code: string;
-  category_id: string | null;
-  description: string | null;
-  is_active: boolean;
-  is_featured: boolean;
-  price: number | null;
-  stock: number;
-  seo_title: string | null;
-  seo_description: string | null;
-  seo_keywords: string | null;
-  gdrive_folder_url: string | null;
-  primary_image_name: string | null;
-  tier_1_price: number | null;
-  tier_1_min_qty: number | null;
-  tier_2_price: number | null;
-  tier_2_min_qty: number | null;
-  tier_3_price: number | null;
-  tier_3_min_qty: number | null;
-  specs: Record<string, unknown>;
-}
-
-function validateNewImportRow(
-  row: Record<string, unknown>,
-  rowIndex: number,
-  categoryMap: Map<string, string>,
-  existingSlugs: Set<string>,
-  seenSlugs: Set<string>,
-  skuTracker: SkuTracker,
-  activeTemplateKeys: string[],
-  columnDefs: ColumnDef[],
-  nameTemplate: string | null | undefined,
-): { errors: ImportError[]; validated?: ValidatedRow } {
-  const errors: ImportError[] = [];
-
-  // ── template_code ──────────────────────────────────────────────
-  const rawTemplate = String(row['template_code'] ?? row['Loại sản phẩm *'] ?? '').trim();
-  if (!rawTemplate) {
-    errors.push({ row: rowIndex, column: 'Loại sản phẩm *', message: 'Loại sản phẩm không được để trống.' });
-  } else if (!activeTemplateKeys.includes(rawTemplate)) {
-    errors.push({ row: rowIndex, column: 'Loại sản phẩm *', message: `Loại sản phẩm "${rawTemplate}" không hợp lệ. Cho phép: ${activeTemplateKeys.join(', ')}.` });
-  }
-
-  // ── SKU ───────────────────────────────────────────────────────
-  const sku = String(row['sku'] ?? row['Mã sản phẩm'] ?? '').trim() || null;
-  if (sku) {
-    if (skuTracker.seenSkus.has(sku)) {
-      errors.push({ row: rowIndex, column: 'Mã sản phẩm', message: `SKU "${sku}" bị trùng lặp trong file (dòng ${skuTracker.seenSkus.get(sku)}).` });
-    } else if (skuTracker.existingSkus.has(sku)) {
-      errors.push({ row: rowIndex, column: 'Mã sản phẩm', message: `SKU "${sku}" đã tồn tại trong hệ thống.` });
-    } else {
-      skuTracker.seenSkus.set(sku, rowIndex);
-    }
-  }
-
-  // ── Spec fields ────────────────────────────────────────────────
-  const specs: Record<string, unknown> = {};
-  const specDefs = columnDefs.filter((c) => c.fieldKey);
-
-  for (const col of specDefs) {
-    // Find value by header (Vietnamese) or by key (spec.fieldKey)
-    let rawVal = row[col.header] ?? row[col.key];
-    const isValEmpty = rawVal === undefined || rawVal === null || String(rawVal).trim() === '';
-
-    if (col.required && isValEmpty) {
-      errors.push({ row: rowIndex, column: col.header, message: `"${col.header}" là bắt buộc cho loại sản phẩm này.` });
-      continue;
-    }
-    if (isValEmpty) continue;
-
-    let strVal = String(rawVal).trim();
-
-    switch (col.type) {
-      case 'number': {
-        // Normalize first (handles "100ml", "Phi 53", "100 gram", etc.)
-        const normalized = normalizeNumberField(col.fieldKey!, strVal);
-        const num = Number(normalized);
-        if (isNaN(num) || num < 0) {
-          errors.push({ row: rowIndex, column: col.header, message: `"${col.header}" phải là số không âm (nhận được: "${strVal}").` });
-        } else {
-          specs[col.fieldKey!] = num;
-        }
-        break;
-      }
-      case 'boolean': {
-        const v = strVal.toLowerCase();
-        if (['true', 'yes', '1', 'có'].includes(v)) {
-          specs[col.fieldKey!] = true;
-        } else if (['false', 'no', '0', 'không'].includes(v)) {
-          specs[col.fieldKey!] = false;
-        } else {
-          errors.push({ row: rowIndex, column: col.header, message: `"${col.header}" phải là Có/Không (nhận được: "${strVal}").` });
-        }
-        break;
-      }
-      case 'select': {
-        // Allow matching by trimmed string, case-insensitive partial
-        specs[col.fieldKey!] = strVal;
-        break;
-      }
-      case 'multi_select': {
-        const parts = strVal.split(',').map((p) => p.trim()).filter(Boolean);
-        specs[col.fieldKey!] = parts.join(', ');
-        break;
-      }
-      default:
-        specs[col.fieldKey!] = strVal;
-    }
-  }
-
-  // ── Slug (optional — auto-derive from SKU if blank) ────────────
-  let slug = String(row['slug'] ?? row['Slug'] ?? '').trim().toLowerCase();
-  if (!slug && sku) {
-    slug = sku.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-  }
-  if (!slug) {
-    errors.push({ row: rowIndex, column: 'Slug', message: 'Slug không được để trống và không thể tự sinh từ Mã sản phẩm.' });
-  } else if (!SLUG_RE.test(slug)) {
-    errors.push({ row: rowIndex, column: 'Slug', message: 'Slug chỉ được chứa chữ thường a-z, số 0-9 và dấu gạch ngang.' });
-  } else if (seenSlugs.has(slug)) {
-    errors.push({ row: rowIndex, column: 'Slug', message: `Slug "${slug}" bị trùng lặp trong file.` });
-  } else if (existingSlugs.has(slug)) {
-    errors.push({ row: rowIndex, column: 'Slug', message: `Slug "${slug}" đã tồn tại trong hệ thống.` });
-  } else {
-    seenSlugs.add(slug);
-  }
-
-  // ── Name (optional — auto-generate if blank) ───────────────────
-  let name = String(row['name'] ?? row['Tên sản phẩm'] ?? '').trim();
-  if (!name && nameTemplate) {
-    name = generateProductName(nameTemplate, specs) ?? '';
-  }
-  if (!name) {
-    errors.push({ row: rowIndex, column: 'Tên sản phẩm', message: 'Tên sản phẩm không được để trống và không thể tự sinh từ thông số kỹ thuật.' });
-  }
-
-  // ── Category (optional) ────────────────────────────────────────
-  const categoryInput = String(row['category'] ?? row['Danh mục'] ?? '').trim().toLowerCase();
-  const category_id = categoryInput ? (categoryMap.get(categoryInput) ?? null) : null;
-  if (categoryInput && !category_id) {
-    errors.push({ row: rowIndex, column: 'Danh mục', message: `Không tìm thấy danh mục "${categoryInput}".` });
-  }
-
-  // ── Price ─────────────────────────────────────────────────────
-  const priceRaw = row['price'] ?? row['Giá bán'];
-  const price = parsePrice(priceRaw);
-  if (priceRaw !== undefined && priceRaw !== null && String(priceRaw).trim() !== '' && price === null) {
-    errors.push({ row: rowIndex, column: 'Giá bán', message: 'Giá bán phải là số không âm.' });
-  }
-
-  // ── Google Drive URL validation ────────────────────────────────
-  const gdrive_folder_url = String(row['gdrive_folder_url'] ?? row['Link thư mục ảnh GG Drive'] ?? '').trim() || null;
-  if (gdrive_folder_url && !extractDriveFolderId(gdrive_folder_url)) {
-    errors.push({ row: rowIndex, column: 'Link thư mục ảnh GG Drive', message: `URL Google Drive không hợp lệ: "${gdrive_folder_url}".` });
-  }
-
-  if (errors.length > 0) {
-    return { errors };
-  }
-
-  return {
-    errors: [],
-    validated: {
-      sku,
-      name,
-      slug,
-      template_code: rawTemplate,
-      category_id,
-      description: String(row['description'] ?? row['Mô tả ngắn'] ?? '').trim() || null,
-      is_active: parseBoolField(row['is_active'] ?? row['Trạng thái (Có/Không)'], true),
-      is_featured: parseBoolField(row['is_featured'] ?? row['Nổi bật (Có/Không)'], false),
-      price,
-      stock: parseStock(row['stock'] ?? row['Tồn kho']),
-      seo_title: String(row['seo_title'] ?? row['Tiêu đề SEO'] ?? '').trim() || null,
-      seo_description: String(row['seo_description'] ?? row['Mô tả SEO'] ?? '').trim() || null,
-      seo_keywords: String(row['seo_keywords'] ?? row['Từ khóa SEO'] ?? '').trim() || null,
-      gdrive_folder_url,
-      primary_image_name: String(row['primary_image_name'] ?? row['Tên ảnh đại diện'] ?? '').trim() || null,
-      tier_1_price: parsePrice(row['tier_1_price'] ?? row['Giá sỉ bậc 1']),
-      tier_1_min_qty: parseStock(row['tier_1_min_qty'] ?? row['SL tối thiểu bậc 1']) || null,
-      tier_2_price: parsePrice(row['tier_2_price'] ?? row['Giá sỉ bậc 2']),
-      tier_2_min_qty: parseStock(row['tier_2_min_qty'] ?? row['SL tối thiểu bậc 2']) || null,
-      tier_3_price: parsePrice(row['tier_3_price'] ?? row['Giá sỉ bậc 3']),
-      tier_3_min_qty: parseStock(row['tier_3_min_qty'] ?? row['SL tối thiểu bậc 3']) || null,
-      specs,
-    },
-  };
-}
-
-// ── New import function ──────────────────────────────────────────────────────
-
-/**
- * Validates or imports products from parsed Excel data.
- * Handles all new columns: sku, seo_*, bulk discount tiers, GDrive image import,
- * and auto-generates product names from the template name_template when blank.
- */
-export async function importProductsExcel(
-  parsedRows: Record<string, unknown>[],
-  templateCode: string,
-  dryRun: boolean,
-): Promise<TemplateImportResult> {
-  const adminUser = await requireAdminAuth(PRODUCT_IMPORT_ROLES);
-  const supabase = createServiceRoleClient();
-
-  // 1. Load registry + template
-  const registry = await getActiveSpecTemplates();
-  const template = registry.templates[templateCode];
-  if (!template) {
-    return { ok: false, importedCount: 0, errors: [], error: `Loại sản phẩm "${templateCode}" không tồn tại hoặc không hoạt động.` };
-  }
-
-  // 2. Build ColumnDef list (needed for spec field lookup)
-  const columnDefs = await generateTemplateColumns(templateCode);
-
-  // 3. Fetch categories and existing product data
-  const [categoriesRes, productsRes] = await Promise.all([
-    supabase.from('categories').select('id, name, slug').eq('is_active', true),
-    supabase.from('products').select('slug, sku'),
-  ]);
-
-  if (categoriesRes.error || !categoriesRes.data) {
-    return { ok: false, importedCount: 0, errors: [], error: 'Không thể tải danh mục.' };
-  }
-
-  const categoryMap = new Map<string, string>();
-  for (const c of categoriesRes.data) {
-    categoryMap.set(c.slug.trim().toLowerCase(), c.id);
-    categoryMap.set(c.name.trim().toLowerCase(), c.id);
-  }
-
-  const existingSlugs = new Set<string>((productsRes.data ?? []).map((p) => p.slug.trim().toLowerCase()));
-  const seenSlugs = new Set<string>();
-
-  // Deduplication uses the dedicated sku column (not specs.sku)
-  const existingSkus = new Set<string>(
-    (productsRes.data ?? [])
-      .filter((p) => p.sku)
-      .map((p) => String(p.sku).trim()),
-  );
-  const skuTracker: SkuTracker = { existingSkus, seenSkus: new Map() };
-
-  const errors: ImportError[] = [];
-  const validRows: ValidatedRow[] = [];
-  const validRowIndices: number[] = [];
-
-  // 4. Validate all rows
-  for (let i = 0; i < parsedRows.length; i++) {
-    const rowIndex = i + 2;
-    const { errors: rowErrors, validated } = validateNewImportRow(
-      parsedRows[i],
-      rowIndex,
-      categoryMap,
-      existingSlugs,
-      seenSlugs,
-      skuTracker,
-      registry.keys,
-      columnDefs,
-      template.nameTemplate,
-    );
-    if (rowErrors.length > 0) {
-      errors.push(...rowErrors);
-    } else if (validated) {
-      validRows.push(validated);
-      validRowIndices.push(rowIndex);
-    }
-  }
-
-  if (dryRun) {
-    return { ok: errors.length === 0, importedCount: 0, errors };
-  }
-
-  if (validRows.length === 0) {
-    return { ok: true, importedCount: 0, errors };
-  }
-
-  // 5. Insert products
-  const inserts: Inserts<'products'>[] = validRows.map((r) => ({
-    sku: r.sku,
-    name: r.name,
-    slug: r.slug,
-    category_id: r.category_id,
-    description: r.description,
-    price: r.price,
-    stock: r.stock,
-    is_active: r.is_active,
-    is_featured: r.is_featured,
-    seo_title: r.seo_title,
-    seo_description: r.seo_description,
-    seo_keywords: r.seo_keywords,
-    specs: { ...r.specs, _template: r.template_code } as Json,
-  }));
-
-  const { data: inserted, error: insertError } = await supabase
-    .from('products')
-    .insert(inserts)
-    .select('id, slug, sku');
-
-  if (insertError) {
-    return { ok: false, importedCount: 0, errors, error: insertError.message };
-  }
-
-  const insertedProducts = inserted ?? [];
-  const slugToProduct = new Map(insertedProducts.map((p) => [p.slug, p]));
-
-  // 6. Insert bulk discount tiers
-  const tierInserts: Inserts<'product_bulk_discounts'>[] = [];
-  for (const r of validRows) {
-    const product = slugToProduct.get(r.slug);
-    if (!product) continue;
-    const tiers = [
-      { price: r.tier_1_price, qty: r.tier_1_min_qty },
-      { price: r.tier_2_price, qty: r.tier_2_min_qty },
-      { price: r.tier_3_price, qty: r.tier_3_min_qty },
-    ];
-    for (const tier of tiers) {
-      if (tier.price !== null && tier.qty !== null && tier.qty > 0) {
-        tierInserts.push({ product_id: product.id, min_quantity: tier.qty, price_per_unit: tier.price, is_active: true });
-      }
-    }
-  }
-  if (tierInserts.length > 0) {
-    await supabase.from('product_bulk_discounts').insert(tierInserts);
-  }
-
-  // 7. Google Drive image import (serial per product)
-  const driveResults: TemplateImportResult['driveResults'] = [];
-  for (const r of validRows) {
-    if (!r.gdrive_folder_url) continue;
-    const product = slugToProduct.get(r.slug);
-    if (!product) continue;
-
-    const driveResult = await importImagesFromDriveFolder(
-      product.id,
-      product.sku ?? null,
-      r.gdrive_folder_url,
-      r.primary_image_name,
-    );
-
-    driveResults.push({
-      row: validRowIndices[validRows.indexOf(r)],
-      sku: product.sku ?? null,
-      imported: driveResult.imported,
-      failed: driveResult.failed.length,
-      error: driveResult.error,
-    });
-  }
-
-  // 8. Audit log
-  const { buildAuditMetadata } = await import('@/lib/services/admin/audit-metadata');
-  await supabase.from('audit_logs').insert({
-    actor_id: adminUser.id,
-    action: 'bulk_import',
-    entity: 'products',
-    entity_id: null,
-    metadata: buildAuditMetadata({
-      extra: {
-        template: templateCode,
-        imported_count: insertedProducts.length,
-        skipped_count: errors.length,
-        drive_imports: driveResults.length,
-      },
-    }),
-  });
-
-  return {
-    ok: true,
-    importedCount: insertedProducts.length,
-    errors,
-    driveResults: driveResults.length > 0 ? driveResults : undefined,
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -978,11 +520,6 @@ export interface V4ImportRow {
   seo_description?: string | null;
   seo_keywords?: string | null;
   specs?: Record<string, unknown> | null;
-  gdrive_folder_url?: string | null;
-  primary_image_name?: string | null;
-  image_1_url?: string | null;
-  image_2_url?: string | null;
-  image_3_url?: string | null;
   tier_1_price?: number | string | null;
   tier_1_min_qty?: number | string | null;
   tier_2_price?: number | string | null;
@@ -1004,11 +541,16 @@ export interface V4ValidationResult {
 
 export interface V4ImportResult {
   ok: boolean;
+  /** Import-job id — used by the client to attach uploaded images to this run. */
+  jobId: string | null;
   upserted: number;
   inserted: number;
   updated: number;
   tierCount: number;
+  /** Images are uploaded client-side (Phase 8/9); always 0 from the upsert call. */
   imageCount: number;
+  /** SKU → product UUID, so the client can upload images to the right product. */
+  skuToProductId: Record<string, string>;
   error?: string;
 }
 
@@ -1077,8 +619,8 @@ export async function validateV4Import(rows: V4ImportRow[]): Promise<V4Validatio
   if (!Array.isArray(rows) || rows.length === 0) {
     return { ...EMPTY, error: 'File không có dữ liệu sản phẩm.' };
   }
-  if (rows.length > 500) {
-    return { ...EMPTY, error: 'Tối đa 500 sản phẩm mỗi lần nhập.' };
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return { ...EMPTY, error: `Tối đa ${MAX_IMPORT_ROWS} sản phẩm mỗi lần nhập.` };
   }
 
   try {
@@ -1187,12 +729,6 @@ export async function validateV4Import(rows: V4ImportRow[]): Promise<V4Validatio
         errors.push({ row: rowNum, field: 'template_code', message: `Loại sản phẩm "${templateCode}" không hợp lệ. Cho phép: ${registry.keys.join(', ')}.` });
       }
 
-      // Google Drive URL (image source)
-      const driveUrl = String(row.gdrive_folder_url ?? '').trim();
-      if (driveUrl && !extractDriveFolderId(driveUrl)) {
-        errors.push({ row: rowNum, field: 'gdrive_folder_url', message: `Link Google Drive không hợp lệ: "${driveUrl}".` });
-      }
-
       // ── Specs: reject UNKNOWN keys (no silent drop) + type/enum check ──
       if (template && row.specs) {
         const allowedKeys = new Set(template.fields.map((f) => f.key));
@@ -1244,8 +780,10 @@ export async function validateV4Import(rows: V4ImportRow[]): Promise<V4Validatio
  * Identity rule (Phase 7/8): SKU is the business identity. Matching and
  * upsert happen on `sku` via the upsert_products_by_sku RPC, which preserves
  * existing non-empty fields and JSONB-merges specs (incremental enrichment).
- * Images come from Google Drive (Phase 9) — never from browser folder upload.
- * Every run is recorded in import_jobs / import_job_errors (Phase 11).
+ * Images are uploaded separately from a local folder (Phase 8/9) keyed by SKU —
+ * this function returns the opened job id + SKU→product-id map so the client can
+ * stream images into Supabase Storage. Every run is recorded in import_jobs /
+ * import_job_errors / import_job_images (Phase 11).
  */
 export async function importV4Upsert(
   rows: V4ImportRow[],
@@ -1254,11 +792,16 @@ export async function importV4Upsert(
   const adminUser = await requireAdminAuth(PRODUCT_IMPORT_ROLES);
   const supabase = createServiceRoleClient();
 
+  const fail = (error: string, jobId: string | null = null): V4ImportResult => ({
+    ok: false, jobId, upserted: 0, inserted: 0, updated: 0,
+    tierCount: 0, imageCount: 0, skuToProductId: {}, error,
+  });
+
   if (!Array.isArray(rows) || rows.length === 0) {
-    return { ok: false, upserted: 0, inserted: 0, updated: 0, tierCount: 0, imageCount: 0, error: 'Không có dữ liệu sản phẩm.' };
+    return fail('Không có dữ liệu sản phẩm.');
   }
-  if (rows.length > 500) {
-    return { ok: false, upserted: 0, inserted: 0, updated: 0, tierCount: 0, imageCount: 0, error: 'Tối đa 500 sản phẩm mỗi lần nhập.' };
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return fail(`Tối đa ${MAX_IMPORT_ROWS} sản phẩm mỗi lần nhập.`);
   }
 
   // 0. Open an import job (traceability)
@@ -1293,7 +836,6 @@ export async function importV4Upsert(
   //    they are blocked upstream by validateV4Import).
   const upsertPayloads: Record<string, unknown>[] = [];
   const tierDataBySku = new Map<string, { price: number; qty: number }[]>();
-  const driveBySku = new Map<string, { url: string; primary: string | null }>();
 
   for (const row of rows) {
     const rowNum = row.row ?? null;
@@ -1345,9 +887,6 @@ export async function importV4Upsert(
       if (price !== null && qty !== null && qty > 0) tiers.push({ price, qty });
     }
     if (tiers.length > 0) tierDataBySku.set(sku, tiers);
-
-    const driveUrl = String(row.gdrive_folder_url ?? '').trim();
-    if (driveUrl) driveBySku.set(sku, { url: driveUrl, primary: String(row.primary_image_name ?? '').trim() || null });
   }
 
   if (upsertPayloads.length === 0) {
@@ -1355,7 +894,7 @@ export async function importV4Upsert(
       if (jobErrors.length > 0) await supabase.from('import_job_errors').insert(jobErrors.map((e) => ({ ...e, job_id: jobId })));
       await supabase.from('import_jobs').update({ status: 'failed', error_count: jobErrors.length, finished_at: new Date().toISOString() }).eq('id', jobId);
     }
-    return { ok: false, upserted: 0, inserted: 0, updated: 0, tierCount: 0, imageCount: 0, error: 'Không có hàng hợp lệ để nhập.' };
+    return fail('Không có hàng hợp lệ để nhập.', jobId);
   }
 
   // 3. SKU UPSERT via RPC (set-based; COALESCE-preserve + specs merge)
@@ -1369,7 +908,7 @@ export async function importV4Upsert(
       await supabase.from('import_job_errors').insert(jobErrors.map((e) => ({ ...e, job_id: jobId })));
       await supabase.from('import_jobs').update({ status: 'failed', error_count: jobErrors.length, finished_at: new Date().toISOString() }).eq('id', jobId);
     }
-    return { ok: false, upserted: 0, inserted: 0, updated: 0, tierCount: 0, imageCount: 0, error: upsertError.message };
+    return fail(upsertError.message, jobId);
   }
 
   const upsertedRows = (upserted ?? []) as { id: string; sku: string; slug: string; was_inserted: boolean }[];
@@ -1390,22 +929,9 @@ export async function importV4Upsert(
     tierCount += ti?.length ?? 0;
   }
 
-  // 5. Google Drive image sync (inline, per SKU, non-fatal on per-folder failure)
-  let imageCount = 0;
-  for (const [sku, drive] of driveBySku) {
-    const productId = skuToId.get(sku);
-    if (!productId) continue;
-    try {
-      const driveResult = await importImagesFromDriveFolder(productId, sku, drive.url, drive.primary);
-      imageCount += driveResult.imported;
-      if (driveResult.error) recordError(null, 'gdrive_folder_url', 'DRIVE_FOLDER', `SKU ${sku}: ${driveResult.error}`);
-      for (const f of driveResult.failed) recordError(null, 'gdrive_folder_url', 'DRIVE_FILE', `SKU ${sku} · ${f.name}: ${f.error}`);
-    } catch (err) {
-      recordError(null, 'gdrive_folder_url', 'DRIVE_EXCEPTION', `SKU ${sku}: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-
-  // 6. Finalize job + audit log
+  // 5. Finalize the product portion of the job. Images are uploaded afterwards
+  //    by the client (Phase 8/9) and recorded against this same job id, bumping
+  //    import_jobs.image_count via recordImportJobImages().
   if (jobId) {
     if (jobErrors.length > 0) await supabase.from('import_job_errors').insert(jobErrors.map((e) => ({ ...e, job_id: jobId })));
     await supabase.from('import_jobs').update({
@@ -1414,7 +940,6 @@ export async function importV4Upsert(
       error_count: jobErrors.length,
       inserted_count: insertedCount,
       updated_count: updatedCount,
-      image_count: imageCount,
       finished_at: new Date().toISOString(),
     }).eq('id', jobId);
   }
@@ -1426,11 +951,20 @@ export async function importV4Upsert(
     entity: 'products',
     entity_id: null,
     metadata: buildAuditMetadata({
-      extra: { job_id: jobId, upserted: upsertedRows.length, inserted: insertedCount, updated: updatedCount, tiers: tierCount, images: imageCount, errors: jobErrors.length },
+      extra: { job_id: jobId, upserted: upsertedRows.length, inserted: insertedCount, updated: updatedCount, tiers: tierCount, errors: jobErrors.length },
     }),
   });
 
-  return { ok: true, upserted: upsertedRows.length, inserted: insertedCount, updated: updatedCount, tierCount, imageCount };
+  return {
+    ok: true,
+    jobId,
+    upserted: upsertedRows.length,
+    inserted: insertedCount,
+    updated: updatedCount,
+    tierCount,
+    imageCount: 0,
+    skuToProductId: Object.fromEntries(skuToId),
+  };
 }
 
 
