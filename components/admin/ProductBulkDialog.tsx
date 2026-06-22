@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { FileSpreadsheet, Layers, TableProperties } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, FileSpreadsheet, FolderOpen, Layers, RefreshCw, TableProperties } from 'lucide-react';
 
 import { AdminActionButton } from '@/components/admin/AdminActionButton';
 import { AdminModal } from '@/components/admin/AdminModal';
 import { ProductBulkManualTable } from '@/components/admin/ProductBulkManualTable';
-import { ProductImportContent } from '@/components/admin/ProductImportDialog';
 import type { AdminCategory } from '@/lib/services/admin/categories';
 
 type Tab = 'table' | 'excel';
@@ -72,10 +72,35 @@ export function ProductBulkDialog({ categories }: ProductBulkDialogProps) {
         )}
 
         {tab === 'excel' && (
-          <ProductImportContent
-            onClose={closeDialog}
-            onPendingChange={setImportPending}
-          />
+          <div className="space-y-4">
+            <div className="rounded-xl border border-[#E3ECFF] bg-[#F5F8FF] p-5">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-[#4880FF]/10 p-2 text-[#4880FF]">
+                  <FileSpreadsheet className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-[#1B3A6B]">Nhập từ Excel V4 + thư mục ảnh</p>
+                  <p className="text-xs leading-relaxed text-slate-600">
+                    Trình nhập mới đối chiếu &amp; cập nhật theo <strong>SKU</strong>, kiểm tra thông số kỹ thuật
+                    đúng theo từng loại sản phẩm, và tải ảnh thẳng từ thư mục máy tính (đặt tên thư mục con = SKU).
+                  </p>
+                </div>
+              </div>
+              <ul className="mt-3 space-y-1.5 text-[11px] text-slate-600">
+                <li className="flex items-center gap-1.5"><RefreshCw className="h-3 w-3 text-emerald-500" /> UPSERT theo SKU — import lại để bổ sung, không ghi đè dữ liệu cũ bằng giá trị trống.</li>
+                <li className="flex items-center gap-1.5"><FolderOpen className="h-3 w-3 text-blue-500" /> Ảnh lấy từ thư mục local <code className="rounded bg-white px-1">products/&#123;SKU&#125;/</code>, ưu tiên <code className="rounded bg-white px-1">cover.*</code>.</li>
+                <li className="flex items-center gap-1.5"><FileSpreadsheet className="h-3 w-3 text-indigo-500" /> Mẫu V4: dòng 1 nhãn tiếng Việt, dòng 2 khoá kỹ thuật (<code className="rounded bg-white px-1">spec.*</code>), dòng 3+ dữ liệu.</li>
+              </ul>
+            </div>
+            <Link
+              href="/admin/products/import"
+              onClick={closeDialog}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#4880FF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#3769D6]"
+            >
+              Mở trình nhập Excel + Ảnh
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         )}
       </AdminModal>
     </>

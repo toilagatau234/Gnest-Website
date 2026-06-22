@@ -1,5 +1,6 @@
-import { AlertCircle, Package } from 'lucide-react';
+import { AlertCircle, FileSpreadsheet, Package } from 'lucide-react';
 
+import { AdminActionButton } from '@/components/admin/AdminActionButton';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { AdminSection } from '@/components/admin/AdminSection';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
@@ -71,6 +72,13 @@ export default async function ProductsPage({
         description={`${stats.total} sản phẩm · ${stats.active} đang hiển thị`}
         action={
           <div className="flex items-center gap-2">
+            <AdminActionButton
+              href="/admin/products/import"
+              variant="secondary"
+              icon={<FileSpreadsheet className="h-4 w-4" />}
+            >
+              Nhập Excel + Ảnh
+            </AdminActionButton>
             <ProductBulkDialog categories={safeCategories} />
             <ProductFormDialog categories={safeCategories} specTemplates={specTemplates} />
           </div>
