@@ -36,13 +36,16 @@ const IMPORT_URL = '/admin/products/import';
 const QA_SKU_A = 'QA-IMP-A100';
 const QA_SKU_B = 'QA-IMP-B200';
 
+// NOTE: glass_container requires container_type + capacity_ml + neck_diameter_mm
+// (see product_spec_fields seed). Every data row must satisfy the required specs
+// or validation marks it invalid and the confirm button stays disabled.
 const VI_HEADERS = [
   'Mã sản phẩm *', 'Tên sản phẩm', 'Slug', 'Loại sản phẩm *', 'Danh mục',
-  'Giá bán', 'Tồn kho', 'Dung tích (ml)', 'Phi nắp (mm)', 'Loại nắp',
+  'Giá bán', 'Tồn kho', 'Loại hũ/chai', 'Dung tích (ml)', 'Phi nắp (mm)', 'Loại nắp',
 ];
 const TECH_KEYS = [
   'sku', 'name', 'slug', 'template_code', 'category',
-  'price', 'stock', 'spec.capacity_ml', 'spec.neck_diameter_mm', 'spec.cap_type',
+  'price', 'stock', 'spec.container_type', 'spec.capacity_ml', 'spec.neck_diameter_mm', 'spec.cap_type',
 ];
 
 /** Builds a 2-row-header V4 workbook buffer from data rows. */
@@ -86,9 +89,9 @@ test.describe('Import pipeline (requires QA admin credentials)', () => {
   test('Scenario 1 & 3: import new products without images → preview shows row', async ({ page }) => {
     await gotoImport(page);
     const file = writeTempXlsx('new-products.xlsx', [
-      [QA_SKU_A, 'QA Hũ A 100ml', 'qa-imp-a100', 'glass_container', '', 12000, 100, 100, 48, 'Nắp thiếc'],
+      [QA_SKU_A, 'QA Hũ A 100ml', 'qa-imp-a100', 'glass_container', '', 12000, 100, 'Hũ tròn', 100, 48, 'Nắp thiếc'],
     ]);
-    await page.locator('input[accept=".xlsx,.xls"]').setInputFiles(file);
+    await page.locator('input[accept=".xlsx,.xls"]').first().setInputFiles(file);
     await expect(page.getByText(/Xem trước|Kiểm tra dữ liệu/i)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(QA_SKU_A)).toBeVisible();
     await expect(page.getByText(/Chưa có/).first()).toBeVisible(); // no image folder (Scenario 3)
@@ -97,29 +100,29 @@ test.describe('Import pipeline (requires QA admin credentials)', () => {
   test('Scenario 5: duplicate SKU inside the Excel file is reported as an error', async ({ page }) => {
     await gotoImport(page);
     const file = writeTempXlsx('dup-sku.xlsx', [
-      [QA_SKU_B, 'QA Dup 1', 'qa-imp-b200-1', 'glass_container', '', 1000, 1, 100, 48, 'Nắp thiếc'],
-      [QA_SKU_B, 'QA Dup 2', 'qa-imp-b200-2', 'glass_container', '', 1000, 1, 100, 48, 'Nắp thiếc'],
+      [QA_SKU_B, 'QA Dup 1', 'qa-imp-b200-1', 'glass_container', '', 1000, 1, 'Hũ tròn', 100, 48, 'Nắp thiếc'],
+      [QA_SKU_B, 'QA Dup 2', 'qa-imp-b200-2', 'glass_container', '', 1000, 1, 'Hũ tròn', 100, 48, 'Nắp thiếc'],
     ]);
-    await page.locator('input[accept=".xlsx,.xls"]').setInputFiles(file);
+    await page.locator('input[accept=".xlsx,.xls"]').first().setInputFiles(file);
     await expect(page.getByText(/bị trùng lặp trong file/i)).toBeVisible({ timeout: 15000 });
   });
 
   test('Scenario 6: no image folder selected still allows product-only import', async ({ page }) => {
     await gotoImport(page);
     const file = writeTempXlsx('no-folder.xlsx', [
-      [QA_SKU_A, 'QA No Folder', 'qa-imp-a100-nf', 'glass_container', '', 5000, 10, 100, 48, 'Nắp thiếc'],
+      [QA_SKU_A, 'QA No Folder', 'qa-imp-a100-nf', 'glass_container', '', 5000, 10, 'Hũ tròn', 100, 48, 'Nắp thiếc'],
     ]);
-    await page.locator('input[accept=".xlsx,.xls"]').setInputFiles(file);
+    await page.locator('input[accept=".xlsx,.xls"]').first().setInputFiles(file);
     await expect(page.getByRole('button', { name: /Xác nhận Nhập/i })).toBeEnabled({ timeout: 15000 });
   });
 
   test('Scenario 8: oversized batch is rejected by the row cap', async ({ page }) => {
     await gotoImport(page);
     const rows = Array.from({ length: 2001 }, (_, i) => [
-      `QA-BULK-${i}`, `QA Bulk ${i}`, `qa-bulk-${i}`, 'glass_container', '', 1000, 1, 100, 48, 'Nắp thiếc',
+      `QA-BULK-${i}`, `QA Bulk ${i}`, `qa-bulk-${i}`, 'glass_container', '', 1000, 1, 'Hũ tròn', 100, 48, 'Nắp thiếc',
     ]);
     const file = writeTempXlsx('too-many.xlsx', rows);
-    await page.locator('input[accept=".xlsx,.xls"]').setInputFiles(file);
+    await page.locator('input[accept=".xlsx,.xls"]').first().setInputFiles(file);
     await expect(page.getByText(/Tối đa 2000 sản phẩm/i)).toBeVisible({ timeout: 20000 });
   });
 
