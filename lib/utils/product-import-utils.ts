@@ -1,5 +1,3 @@
-import type { ImportRow } from '@/lib/services/admin/product-import';
-
 /**
  * Standard string normalization helper to slugify values.
  */

@@ -2,20 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { getRequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 import {
-  bulkImportProducts,
-  validateProductImportRows,
   validateV4Import,
   importV4Upsert,
-  MAX_IMPORT_ROWS,
-  type ImportResult,
-  type ImportRow,
-  type ImportRowError,
-  type ImportRowWarning,
-  type ValidationResult,
   type V4ImportRow,
   type V4ValidationResult,
   type V4ImportResult,
@@ -27,11 +18,6 @@ import {
 } from '@/lib/services/admin/product-image-import';
 
 export type {
-  ImportResult,
-  ImportRow,
-  ImportRowError,
-  ImportRowWarning,
-  ValidationResult,
   V4ImportRow,
   V4ValidationResult,
   V4ImportResult,
@@ -42,64 +28,6 @@ function revalidateProductPaths() {
   revalidatePath('/admin/dashboard');
   revalidatePath('/danh-muc');
   revalidatePath('/');
-}
-
-// ── Legacy bulk-paste import (ProductImportDialog) ─────────────────────────────
-
-export async function validateProductsImportAction(rows: ImportRow[]): Promise<ValidationResult> {
-  await requireAdminAuth(CONTENT_EDITOR_ROLES);
-
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return {
-      ok: false, errors: [], warnings: [],
-      validCount: 0, warningCount: 0, errorCount: 0,
-      error: 'File không có dữ liệu sản phẩm.',
-    };
-  }
-  if (rows.length > MAX_IMPORT_ROWS) {
-    return {
-      ok: false, errors: [], warnings: [],
-      validCount: 0, warningCount: 0, errorCount: 0,
-      error: `Tối đa ${MAX_IMPORT_ROWS} sản phẩm mỗi lần nhập.`,
-    };
-  }
-
-  return validateProductImportRows(rows);
-}
-
-export async function importProductsAction(
-  _prev: ImportResult,
-  formData: FormData,
-): Promise<ImportResult> {
-  await requireAdminAuth(CONTENT_EDITOR_ROLES);
-
-  const raw = formData.get('rows');
-  if (!raw || typeof raw !== 'string') {
-    return { ok: false, error: 'Dữ liệu không hợp lệ.' };
-  }
-
-  let rows: ImportRow[];
-  try {
-    rows = JSON.parse(raw) as ImportRow[];
-  } catch {
-    return { ok: false, error: 'Không thể đọc dữ liệu từ file.' };
-  }
-
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return { ok: false, error: 'File không có dữ liệu sản phẩm.' };
-  }
-  if (rows.length > MAX_IMPORT_ROWS) {
-    return { ok: false, error: `Tối đa ${MAX_IMPORT_ROWS} sản phẩm mỗi lần nhập.` };
-  }
-
-  const requestContext = await getRequestContext();
-  const result = await bulkImportProducts(rows, requestContext);
-
-  if (result.ok) {
-    revalidateProductPaths();
-  }
-
-  return result;
 }
 
 // ── V4 Excel import (SKU upsert + local-folder images) ─────────────────────────
