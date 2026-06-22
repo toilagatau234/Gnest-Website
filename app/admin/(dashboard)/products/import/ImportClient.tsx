@@ -27,34 +27,67 @@ import {
 } from '../import-actions';
 import { groupSpecAttributes, parseExcelWithTechKeys } from '@/lib/utils/product-import-utils';
 import { buildSkuImageMap, type SkuImageGroup } from '@/lib/utils/image-folder';
+import type { SpecField, TemplateRegistry } from '@/lib/product-spec-templates';
 
-// ── V4 template column layout (row 1 = VI label, row 2 = tech key) ──────────────
+// ── V4 template CORE columns (row 1 = VI label, row 2 = tech key, row 3 = sample) ─
+// Spec columns are appended DYNAMICALLY per product type (from product_spec_fields),
+// so each downloaded template carries exactly the spec.* columns of the chosen type.
 // Images come from a LOCAL folder named by SKU — never from a URL column.
-const V4_CORE_COLUMNS: { vi: string; key: string; example: string | number | null }[] = [
-  { vi: 'Mã sản phẩm *',         key: 'sku',             example: 'HLG100P53' },
-  { vi: 'Tên sản phẩm',          key: 'name',            example: 'Hũ thủy tinh tròn 100ml' },
-  { vi: 'Slug',                   key: 'slug',            example: 'hu-thuy-tinh-tron-100ml' },
-  { vi: 'Loại sản phẩm *',       key: 'template_code',   example: 'glass_container' },
-  { vi: 'Danh mục',               key: 'category',        example: 'hu-thuy-tinh' },
-  { vi: 'Mô tả ngắn',            key: 'description',     example: 'Hũ chưng yến cao cấp' },
-  { vi: 'Trạng thái (Có/Không)',  key: 'is_active',       example: 'Có' },
-  { vi: 'Nổi bật (Có/Không)',     key: 'is_featured',     example: 'Không' },
-  { vi: 'Giá bán',                key: 'price',           example: 12000 },
-  { vi: 'Tồn kho',                key: 'stock',           example: 1500 },
-  { vi: 'Tiêu đề SEO',           key: 'seo_title',       example: '' },
-  { vi: 'Mô tả SEO',             key: 'seo_description', example: '' },
-  { vi: 'Từ khóa SEO',           key: 'seo_keywords',    example: '' },
-  { vi: 'Giá sỉ bậc 1',          key: 'tier_1_price',    example: 11000 },
-  { vi: 'SL tối thiểu bậc 1',    key: 'tier_1_min_qty',  example: 100 },
-  { vi: 'Giá sỉ bậc 2',          key: 'tier_2_price',    example: 10000 },
-  { vi: 'SL tối thiểu bậc 2',    key: 'tier_2_min_qty',  example: 500 },
-  { vi: 'Giá sỉ bậc 3',          key: 'tier_3_price',    example: 9200 },
-  { vi: 'SL tối thiểu bậc 3',    key: 'tier_3_min_qty',  example: 1000 },
-  // Spec example columns (glass_container) — add/replace per product type.
-  { vi: 'Loại nắp',               key: 'spec.cap_type',         example: 'Nắp thiếc' },
-  { vi: 'Dung tích (ml)',         key: 'spec.capacity_ml',      example: 100 },
-  { vi: 'Phi nắp (mm)',           key: 'spec.neck_diameter_mm', example: 48 },
+interface CoreCol {
+  vi: string;
+  key: string;
+  example: string | number;
+  required?: boolean;
+  note: string;
+}
+
+const V4_CORE_COLUMNS: CoreCol[] = [
+  { vi: 'Mã sản phẩm', key: 'sku', example: 'HLG100P53', required: true, note: 'Định danh duy nhất. Dùng để đối chiếu & cập nhật (UPSERT). Tên thư mục ảnh phải trùng mã này.' },
+  { vi: 'Tên sản phẩm', key: 'name', example: 'Hũ thủy tinh tròn 100ml', required: true, note: 'Tên hiển thị của sản phẩm.' },
+  { vi: 'Slug', key: 'slug', example: 'hu-thuy-tinh-tron-100ml', required: true, note: 'Chữ thường, số, gạch ngang; duy nhất.' },
+  { vi: 'Loại sản phẩm', key: 'template_code', example: 'glass_container', required: true, note: 'Mã loại — quyết định bộ thông số kỹ thuật bên dưới. Giữ nguyên giá trị mẫu.' },
+  { vi: 'Danh mục', key: 'category', example: 'hu-thuy-tinh', note: 'Slug hoặc tên danh mục đang hiển thị. Bỏ trống nếu chưa rõ.' },
+  { vi: 'Mô tả ngắn', key: 'description', example: 'Hũ chưng yến cao cấp', note: 'Text thuần.' },
+  { vi: 'Trạng thái', key: 'is_active', example: 'Có', note: 'Có / Không (mặc định Có).' },
+  { vi: 'Nổi bật', key: 'is_featured', example: 'Không', note: 'Có / Không (mặc định Không).' },
+  { vi: 'Giá bán', key: 'price', example: 12000, note: 'Số ≥ 0. Bỏ trống = Liên hệ.' },
+  { vi: 'Tồn kho', key: 'stock', example: 1500, note: 'Số nguyên, mặc định 0.' },
+  { vi: 'Tiêu đề SEO', key: 'seo_title', example: '', note: 'Tùy chọn.' },
+  { vi: 'Mô tả SEO', key: 'seo_description', example: '', note: 'Tùy chọn.' },
+  { vi: 'Từ khóa SEO', key: 'seo_keywords', example: '', note: 'Tùy chọn.' },
+  { vi: 'Giá sỉ bậc 1', key: 'tier_1_price', example: 11000, note: 'Giá sỉ theo bậc số lượng.' },
+  { vi: 'SL tối thiểu bậc 1', key: 'tier_1_min_qty', example: 100, note: 'Số lượng tối thiểu áp dụng giá bậc 1.' },
+  { vi: 'Giá sỉ bậc 2', key: 'tier_2_price', example: 10000, note: 'Giá sỉ bậc 2.' },
+  { vi: 'SL tối thiểu bậc 2', key: 'tier_2_min_qty', example: 500, note: 'Số lượng tối thiểu áp dụng giá bậc 2.' },
+  { vi: 'Giá sỉ bậc 3', key: 'tier_3_price', example: 9200, note: 'Giá sỉ bậc 3.' },
+  { vi: 'SL tối thiểu bậc 3', key: 'tier_3_min_qty', example: 1000, note: 'Số lượng tối thiểu áp dụng giá bậc 3.' },
 ];
+
+const FIELD_TYPE_VI: Record<SpecField['type'], string> = {
+  text: 'Chữ', number: 'Số', select: 'Chọn 1', multi_select: 'Chọn nhiều', boolean: 'Có/Không', textarea: 'Đoạn văn',
+};
+
+/** Header label: appends a “*” marker for required core columns. */
+function coreLabel(c: CoreCol): string {
+  return `${c.vi}${c.required ? ' *' : ''}`;
+}
+/** Header label for a spec column: appends unit and a “*” for required fields. */
+function specLabel(f: SpecField): string {
+  return `${f.label}${f.unit ? ` (${f.unit})` : ''}${f.required ? ' *' : ''}`;
+}
+/** A representative example so the sample row (row 3) is meaningful per field type. */
+function specExample(f: SpecField): string | number {
+  if (f.type === 'select' || f.type === 'multi_select') return f.options?.[0] ?? '';
+  if (f.type === 'boolean') return 'Có';
+  if (f.type === 'number') {
+    if (f.unit === 'ml') return 100;
+    if (f.unit === 'mm') return 50;
+    if (f.unit === 'cm') return 10;
+    if (f.unit === 'g' || f.unit === 'kg') return 50;
+    return 1;
+  }
+  return '';
+}
 
 const UPLOAD_CONCURRENCY = 5;
 
@@ -122,14 +155,14 @@ async function runQueue<T>(
 }
 
 interface ImportClientProps {
-  specTemplates: {
-    templates: Record<string, { label: string; fields: { key: string; label: string; unit?: string; required?: boolean }[] }>;
-    keys: string[];
-  };
+  specTemplates: TemplateRegistry;
 }
 
 export function ImportClient({ specTemplates }: ImportClientProps) {
   const [phase, setPhase] = useState<Phase>('idle');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(
+    specTemplates.keys.includes('glass_container') ? 'glass_container' : (specTemplates.keys[0] ?? 'glass_container'),
+  );
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [v4Rows, setV4Rows] = useState<V4ImportRow[]>([]);
   const [uiValidation, setUiValidation] = useState<UIValidation | null>(null);
@@ -297,17 +330,52 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
     setPhase('done');
   };
 
-  const handleDownloadV4Template = async () => {
+  const handleDownloadV4Template = async (code: string) => {
     try {
+      const tpl = specTemplates.templates[code];
+      const fields = [...(tpl?.fields ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
       const XLSX = await import('xlsx');
       const wb = XLSX.utils.book_new();
-      const viHeaders = V4_CORE_COLUMNS.map((c) => c.vi);
-      const techKeys = V4_CORE_COLUMNS.map((c) => c.key);
-      const exampleRow = V4_CORE_COLUMNS.map((c) => c.example ?? '');
+
+      // ── Sheet 1: ProductTemplate (row 1 = VI label, row 2 = tech key, row 3 = sample) ──
+      const viHeaders = [...V4_CORE_COLUMNS.map(coreLabel), ...fields.map(specLabel)];
+      const techKeys = [...V4_CORE_COLUMNS.map((c) => c.key), ...fields.map((f) => `spec.${f.key}`)];
+      const exampleRow = [
+        ...V4_CORE_COLUMNS.map((c) => (c.key === 'template_code' ? code : c.example)),
+        ...fields.map(specExample),
+      ];
       const ws = XLSX.utils.aoa_to_sheet([viHeaders, techKeys, exampleRow]);
-      ws['!cols'] = V4_CORE_COLUMNS.map(() => ({ wch: 24 }));
+      ws['!cols'] = [...V4_CORE_COLUMNS, ...fields].map(() => ({ wch: 22 }));
       XLSX.utils.book_append_sheet(wb, ws, 'ProductTemplate');
-      XLSX.writeFile(wb, 'MauFileSanPham_Gnest_V4.xlsx');
+
+      // ── Sheet 2: Hướng dẫn (human-readable column guide) ──
+      const guideHeader = ['STT', 'Cột (nhãn dòng 1)', 'Khoá kỹ thuật (dòng 2)', 'Bắt buộc', 'Kiểu', 'Đơn vị', 'Giá trị cho phép', 'Ghi chú'];
+      const coreGuide = V4_CORE_COLUMNS.map((c, i) => [
+        i + 1, c.vi, c.key, c.required ? 'Bắt buộc' : 'Tùy chọn', '', '', '', c.note,
+      ]);
+      const specGuide = fields.map((f, i) => [
+        V4_CORE_COLUMNS.length + i + 1,
+        f.label,
+        `spec.${f.key}`,
+        f.required ? 'Bắt buộc' : 'Tùy chọn',
+        FIELD_TYPE_VI[f.type] ?? f.type,
+        f.unit ?? '',
+        (f.options ?? []).join(' / '),
+        f.type === 'select' || f.type === 'multi_select' ? 'Chỉ nhập đúng một trong các giá trị cho phép.' : '',
+      ]);
+      const guideWs = XLSX.utils.aoa_to_sheet([
+        [`HƯỚNG DẪN NHẬP — Loại sản phẩm: ${tpl?.label ?? code} (${code})`],
+        ['Dòng 1 = nhãn tiếng Việt · Dòng 2 = khoá kỹ thuật (GIỮ NGUYÊN, không sửa) · Nhập dữ liệu từ dòng 3.'],
+        ['Ảnh: tạo thư mục con tên = Mã sản phẩm (SKU), bỏ ảnh vào trong; ưu tiên ảnh đại diện cover.*'],
+        [],
+        guideHeader,
+        ...coreGuide,
+        ...specGuide,
+      ]);
+      guideWs['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 26 }, { wch: 12 }, { wch: 11 }, { wch: 9 }, { wch: 42 }, { wch: 52 }];
+      XLSX.utils.book_append_sheet(wb, guideWs, 'Hướng dẫn');
+
+      XLSX.writeFile(wb, `MauFileSanPham_Gnest_V4_${code}.xlsx`);
     } catch {
       alert('Không thể tạo file mẫu. Vui lòng thử lại.');
     }
@@ -333,7 +401,10 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
   const totalRows = v4Rows.length;
   const totalErrors = uiValidation?.errorCount ?? 0;
   const validRowsCount = uiValidation?.validCount ?? totalRows;
-  const templateLabels = specTemplates.keys.map((k) => `${k} (${specTemplates.templates[k]?.label ?? ''})`);
+  const selectedFields = [...(specTemplates.templates[selectedTemplate]?.fields ?? [])].sort(
+    (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+  );
+  const selectedLabel = specTemplates.templates[selectedTemplate]?.label ?? selectedTemplate;
 
   const excelSkus = useMemo(
     () => new Set(v4Rows.map((r) => String(r.sku ?? '').trim()).filter(Boolean)),
@@ -388,13 +459,32 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1 bg-white border border-[#EEF2F6] rounded-xl p-5 shadow-sm space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">File mẫu Excel V4</h3>
+
+            <div className="space-y-1.5">
+              <label htmlFor="tpl-picker" className="text-[11px] font-bold text-slate-500">
+                Chọn loại sản phẩm để lấy đúng cột thông số
+              </label>
+              <select
+                id="tpl-picker"
+                value={selectedTemplate}
+                onChange={(e) => setSelectedTemplate(e.target.value)}
+                className="w-full rounded-lg border border-[#D1D8E8] bg-white px-3 py-2 text-sm font-semibold text-slate-700 focus:border-[#4880FF] focus:outline-none focus:ring-2 focus:ring-[#4880FF]/20"
+              >
+                {specTemplates.keys.map((k) => (
+                  <option key={k} value={k}>
+                    {specTemplates.templates[k]?.label ?? k} — {k}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <button
               type="button"
-              onClick={handleDownloadV4Template}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-white border border-[#4880FF] hover:bg-[#4880FF]/5 text-sm font-bold text-[#4880FF] px-4 py-2.5 transition"
+              onClick={() => handleDownloadV4Template(selectedTemplate)}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#4880FF] hover:bg-[#3769D6] text-sm font-bold text-white px-4 py-2.5 transition"
             >
               <Download className="h-4 w-4" />
-              Tải file mẫu V4
+              Tải file mẫu — {selectedLabel}
             </button>
 
             <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2.5 text-[11px] leading-relaxed text-amber-800 space-y-1">
@@ -414,11 +504,28 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
               <p>Chọn thư mục chứa các thư mục con đặt tên đúng theo <code className="bg-blue-100 px-0.5 rounded">SKU</code>, ví dụ <code className="bg-blue-100 px-0.5 rounded">HLG100P53/01.jpg</code>. Ảnh tải thẳng lên Supabase Storage tại <code className="bg-blue-100 px-0.5 rounded">products/&#123;SKU&#125;/</code>. Ưu tiên ảnh đại diện: <code className="bg-blue-100 px-0.5 rounded">cover.*</code> → <code className="bg-blue-100 px-0.5 rounded">01.*</code> → ảnh đầu tiên.</p>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">
-              <p className="font-bold mb-1">Loại sản phẩm hợp lệ (template_code):</p>
-              <ul className="list-disc list-inside space-y-0.5">
-                {templateLabels.map((t) => <li key={t}><code className="text-[10px]">{t}</code></li>)}
-              </ul>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] leading-relaxed text-slate-600">
+              <p className="font-bold mb-1.5 text-slate-700">
+                Thông số kỹ thuật của <span className="text-[#4880FF]">{selectedLabel}</span>{' '}
+                <span className="font-normal text-slate-400">({selectedFields.length} cột spec)</span>
+              </p>
+              {selectedFields.length === 0 ? (
+                <p className="text-slate-400 italic">Loại này chưa khai báo thông số kỹ thuật.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {selectedFields.map((f) => (
+                    <li key={f.key} className="leading-snug">
+                      <code className="bg-white border border-slate-200 px-1 rounded text-[10px]">spec.{f.key}</code>{' '}
+                      <span className="text-slate-700">{f.label}</span>
+                      {f.unit ? <span className="text-slate-400"> ({f.unit})</span> : null}
+                      {f.required ? <span className="text-red-500 font-bold"> *</span> : null}
+                      {f.options?.length ? (
+                        <span className="block text-slate-400 pl-1">↳ {f.options.join(' / ')}</span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 
