@@ -21,6 +21,7 @@ import { useCategories } from "@/lib/categories-context";
 import { useModal } from "@/lib/context";
 import { CatalogCategory, CatalogItem } from "@/lib/data";
 import { PublicProductCard } from "@/lib/services/public-products";
+import type { FilterDef } from "@/lib/services/catalog/spec-filters";
 import { Interactive3DTilt } from "./Interactive3DTilt";
 import { LazyProductImageDisplay } from "./LazyProductImageDisplay";
 
@@ -30,12 +31,31 @@ function FilterGroup({
   def,
   isFilterActive,
   handleFilterClick,
+  handleRangeChange,
+  currentRangeValue,
 }: {
-  def: { key: string; label: string; values: string[] };
+  def: FilterDef;
   isFilterActive: (key: string, value: string) => boolean;
   handleFilterClick: (key: string, value: string) => void;
+  handleRangeChange: (key: string, value: string) => void;
+  currentRangeValue: string;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [sMin, sMax] = currentRangeValue.split("-");
+  const [minInput, setMinInput] = useState(sMin || "");
+  const [maxInput, setMaxInput] = useState(sMax || "");
+
+  const onMinChange = (val: string) => {
+    setMinInput(val);
+    const nextVal = `${val}-${maxInput}`;
+    handleRangeChange(def.key, nextVal);
+  };
+
+  const onMaxChange = (val: string) => {
+    setMaxInput(val);
+    const nextVal = `${minInput}-${val}`;
+    handleRangeChange(def.key, nextVal);
+  };
 
   return (
     <div className="border-b border-slate-100 py-3 last:border-b-0">
@@ -55,25 +75,52 @@ function FilterGroup({
 
       {isExpanded ? (
         <div className="pt-2.5">
-          <div className="flex flex-wrap gap-1.5">
-            {def.values.map((val) => {
-              const active = isFilterActive(def.key, val);
-              return (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => handleFilterClick(def.key, val)}
-                  className={`inline-flex min-h-[30px] items-center justify-center rounded px-2.5 py-0.5 text-[11.5px] font-semibold transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dtl-navy/40 ${
-                    active
-                      ? "bg-dtl-navy text-white shadow-sm"
-                      : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-dtl-navy border border-transparent"
-                  }`}
-                >
-                  {val}
-                </button>
-              );
-            })}
-          </div>
+          {def.type === "number" ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  placeholder={`Từ: ${def.range?.min ?? 0}`}
+                  value={minInput}
+                  onChange={(e) => onMinChange(e.target.value)}
+                  className="w-1/2 rounded border border-slate-200 px-2.5 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-dtl-navy"
+                />
+                <span className="text-slate-400 text-xs">-</span>
+                <input
+                  type="number"
+                  placeholder={`Đến: ${def.range?.max ?? ""}`}
+                  value={maxInput}
+                  onChange={(e) => onMaxChange(e.target.value)}
+                  className="w-1/2 rounded border border-slate-200 px-2.5 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-dtl-navy"
+                />
+              </div>
+              {def.unit && (
+                <span className="text-slate-400 text-[10px] font-medium self-end">
+                  Đơn vị: {def.unit}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {def.values.map((val) => {
+                const active = isFilterActive(def.key, val);
+                return (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => handleFilterClick(def.key, val)}
+                    className={`inline-flex min-h-[30px] items-center justify-center rounded px-2.5 py-0.5 text-[11.5px] font-semibold transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dtl-navy/40 ${
+                      active
+                        ? "bg-dtl-navy text-white shadow-sm"
+                        : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-dtl-navy border border-transparent"
+                    }`}
+                  >
+                    {val}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       ) : null}
     </div>
@@ -101,7 +148,7 @@ function ProductGridSkeleton() {
   );
 }
 
-export function CatalogPage({ slug }: { slug: string }) {
+export function CatalogPage({ slug, banner }: { slug: string; banner?: React.ReactNode }) {
   const { openProductDetail } = useModal();
   const { catalog, categories, loading } = useCategories();
   const searchParams = useSearchParams();
@@ -127,6 +174,7 @@ export function CatalogPage({ slug }: { slug: string }) {
     },
   );
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [dynamicFilterDefs, setDynamicFilterDefs] = useState<FilterDef[]>([]);
 
   const [prevSlug, setPrevSlug] = useState(slug);
   if (slug !== prevSlug) {
@@ -179,6 +227,9 @@ export function CatalogPage({ slug }: { slug: string }) {
         setItems(res.items);
         setTotal(res.total);
         setPageCount(res.pageCount);
+        if (res.filterDefs) {
+          setDynamicFilterDefs(res.filterDefs);
+        }
         setStatus(res.items.length > 0 ? "success" : "empty");
       })
       .catch((err) => {
@@ -308,24 +359,42 @@ export function CatalogPage({ slug }: { slug: string }) {
     0,
   );
 
-  const visibleItems: CatalogItem[] = items.map((card) => ({
-    id: card.slug,
-    name: card.name,
-    img: card.thumbnailUrl || null,
-    imgs: card.thumbnailUrl ? [card.thumbnailUrl] : [],
-    price: card.price ?? undefined,
-    stock: card.stock,
-    categoryId: card.category_slug || "",
-    dungTich: card.specs.dungTich,
-    quyCach: card.specs.quyCach,
-    phiNap: card.specs.phiNap,
-    loaiNap: card.specs.loaiNap,
-    color: card.specs.color,
-    bulkDiscounts:
-      card.hasActiveBulkDiscount && card.minBulkPrice
-        ? [{ threshold: 10, pricePerUnit: card.minBulkPrice }]
-        : undefined,
-  }));
+  const handleRangeChange = (key: string, value: string) => {
+    setActiveFilters((prev) => {
+      const nextFilters = { ...prev };
+      if (value === "-" || value === "") {
+        delete nextFilters[key];
+      } else {
+        nextFilters[key] = [value];
+      }
+      return nextFilters;
+    });
+    setPage(1);
+  };
+
+  const visibleItems: (CatalogItem & Record<string, unknown>)[] = items.map((card) => {
+    const rawSpecs = card.rawSpecs || {};
+    return {
+      id: card.slug,
+      name: card.name,
+      img: card.thumbnailUrl || null,
+      imgs: card.thumbnailUrl ? [card.thumbnailUrl] : [],
+      price: card.price ?? undefined,
+      stock: card.stock,
+      categoryId: card.category_slug || "",
+      dungTich: card.specs.dungTich,
+      quyCach: card.specs.quyCach,
+      phiNap: card.specs.phiNap,
+      loaiNap: card.specs.loaiNap,
+      color: card.specs.color,
+      ...card.specs,
+      ...rawSpecs,
+      bulkDiscounts:
+        card.hasActiveBulkDiscount && card.minBulkPrice
+          ? [{ threshold: 10, pricePerUnit: card.minBulkPrice }]
+          : undefined,
+    };
+  });
 
   const rootProductCategories = categories
     .filter((c) => c.type === "product" && !c.parentId)
@@ -365,15 +434,28 @@ export function CatalogPage({ slug }: { slug: string }) {
   const activeChildCategories = activeRootCategory
     ? childCategories.filter((child) => child.parentId === activeRootCategory.id)
     : [];
-  const activeFilterBadges = categoryDetail.filterDefs
-    ? categoryDetail.filterDefs.flatMap((def) =>
-        (activeFilters[def.key] ?? []).map((value) => ({
-          key: def.key,
-          label: def.label,
-          value,
-        })),
-      )
-    : [];
+  const activeFilterBadges = dynamicFilterDefs.flatMap((def) => {
+    const values = activeFilters[def.key] ?? [];
+    return values.map((value) => {
+      let displayValue = value;
+      if (def.type === "number") {
+        const [min, max] = value.split("-");
+        if (min && max) {
+          displayValue = `${min} - ${max}${def.unit ? " " + def.unit : ""}`;
+        } else if (min) {
+          displayValue = `>= ${min}${def.unit ? " " + def.unit : ""}`;
+        } else if (max) {
+          displayValue = `<= ${max}${def.unit ? " " + def.unit : ""}`;
+        }
+      }
+      return {
+        key: def.key,
+        label: def.label,
+        value,
+        displayValue,
+      };
+    });
+  });
 
   const renderSidebarContent = (isMobile = false) => {
     return (
@@ -455,7 +537,7 @@ export function CatalogPage({ slug }: { slug: string }) {
         </div>
 
         {/* Filters */}
-        {categoryDetail.hasFilters && categoryDetail.filterDefs ? (
+        {categoryDetail.hasFilters && dynamicFilterDefs.length > 0 ? (
           <div className="mt-2 pt-6 border-t border-slate-200">
             <div className="flex items-center justify-between gap-3 mb-4 px-1">
               <div className="flex items-center gap-2">
@@ -480,12 +562,14 @@ export function CatalogPage({ slug }: { slug: string }) {
             </div>
 
             <div className="space-y-1">
-              {categoryDetail.filterDefs.map((def) => (
+              {dynamicFilterDefs.map((def) => (
                 <FilterGroup
-                  key={def.key}
-                  def={def as { key: string; label: string; values: string[] }}
+                  key={`${def.key}:${activeFilters[def.key]?.[0] || ""}`}
+                  def={def}
                   isFilterActive={isFilterActive}
                   handleFilterClick={handleFilterClick}
+                  handleRangeChange={handleRangeChange}
+                  currentRangeValue={activeFilters[def.key]?.[0] || ""}
                 />
               ))}
             </div>
@@ -542,6 +626,8 @@ export function CatalogPage({ slug }: { slug: string }) {
           </div>
         </div>
 
+        {banner}
+
         {/* ─── Layout Grid (Sidebar + Product Grid) ─────────────────── */}
         <div className="flex flex-col lg:flex-row gap-8 items-start mt-6">
           {/* Desktop Left Sidebar */}
@@ -577,11 +663,11 @@ export function CatalogPage({ slug }: { slug: string }) {
                     key={`${badge.key}:${badge.value}`}
                     type="button"
                     onClick={() => handleFilterClick(badge.key, badge.value)}
-                    aria-label={`Bỏ lọc ${badge.label}: ${badge.value}`}
+                    aria-label={`Bỏ lọc ${badge.label}: ${badge.displayValue}`}
                     className="inline-flex items-center gap-1 rounded bg-[#EDF2FA] px-2 py-1 text-[11px] font-bold text-dtl-navy border border-dtl-navy/15 transition-colors hover:bg-[#E1EAF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dtl-navy/40 focus-visible:ring-offset-1"
                   >
                     <span className="text-dtl-gray">{badge.label}:</span>
-                    <span>{badge.value}</span>
+                    <span>{badge.displayValue}</span>
                     <X className="h-3 w-3 shrink-0 text-dtl-navy/50" aria-hidden="true" />
                   </button>
                 ))}
@@ -714,20 +800,20 @@ export function CatalogPage({ slug }: { slug: string }) {
                             </div>
                           )}
 
-                          {categoryDetail.filterDefs ? (
+                          {dynamicFilterDefs && dynamicFilterDefs.length > 0 ? (
                             <div className="mt-2.5 flex flex-wrap gap-1 justify-center">
-                              {categoryDetail.filterDefs.map((def) => {
+                              {dynamicFilterDefs.map((def) => {
                                 const val = (
                                   item as CatalogItem & Record<string, unknown>
                                 )[def.key];
-                                if (!val) return null;
+                                if (val === undefined || val === null || String(val).trim() === '') return null;
 
                                 return (
                                   <span
                                     key={def.key}
                                     className="rounded bg-dtl-bg-alt px-1.5 py-0.5 text-[9px] font-semibold uppercase text-dtl-navy border border-dtl-border/30"
                                   >
-                                    {String(val)}
+                                    {def.label}: {String(val)}{def.unit ? ' ' + def.unit : ''}
                                   </span>
                                 );
                               })}

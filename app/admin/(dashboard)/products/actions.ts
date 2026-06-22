@@ -14,6 +14,8 @@ import { getRequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 import type { Json } from '@/lib/types/database';
+import { validateSpecs, type TemplateRegistry } from '@/lib/product-spec-templates';
+import { getActiveSpecTemplates } from '@/lib/services/admin/product-spec-templates';
 
 export type AdminFormState = { ok: boolean; error?: string; productId?: string };
 
@@ -40,26 +42,30 @@ function parseNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parseSpecs(value: string): Json {
-  if (!value) {
-    return {};
-  }
+function parseSpecs(value: string, registry: TemplateRegistry): Json {
+  if (!value) return {};
 
+  // Step 1: parse JSON — give a clear syntax error.
+  let parsed: Json;
   try {
-    const parsed = JSON.parse(value) as Json;
-
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('Specs phải là object JSON.');
-    }
-
-    return parsed;
+    parsed = JSON.parse(value) as Json;
   } catch {
     throw new Error('Specs không đúng định dạng JSON. Ví dụ: {"dungTich":"500ml"}');
   }
+
+  // Step 2: must be a plain object.
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Specs phải là object JSON, không phải mảng hay giá trị đơn.');
+  }
+
+  // Step 3: template-aware field validation against the active DB registry.
+  validateSpecs(parsed as Record<string, unknown>, registry);
+
+  return parsed;
 }
 
 
-function readProductPayload(formData: FormData): ProductPayload {
+async function readProductPayload(formData: FormData, registry: TemplateRegistry): Promise<ProductPayload> {
   const name = readString(formData, 'name');
   const slug = readString(formData, 'slug');
   const categoryId = readString(formData, 'category_id');
@@ -83,12 +89,16 @@ function readProductPayload(formData: FormData): ProductPayload {
     category_id: categoryId || null,
     name,
     slug,
+    sku: readString(formData, 'sku') || null,
     description: readString(formData, 'description') || null,
     price,
     stock,
-    specs: parseSpecs(readString(formData, 'specs')),
+    specs: parseSpecs(readString(formData, 'specs'), registry),
     is_active: readBoolean(formData, 'is_active'),
     is_featured: isFeatured,
+    seo_title: readString(formData, 'seo_title') || null,
+    seo_description: readString(formData, 'seo_description') || null,
+    seo_keywords: readString(formData, 'seo_keywords') || null,
   };
 }
 
@@ -98,7 +108,8 @@ export async function createProductAction(
 ): Promise<AdminFormState> {
   await requireAdminAuth(CONTENT_EDITOR_ROLES);
   try {
-    const payload = readProductPayload(formData);
+    const activeRegistry = await getActiveSpecTemplates();
+    const payload = await readProductPayload(formData, activeRegistry);
     const requestContext = await getRequestContext();
     const { data, error } = await createAdminProduct(payload, requestContext);
 
@@ -126,7 +137,8 @@ export async function updateProductAction(
       return { ok: false, error: 'Thiếu ID sản phẩm.' };
     }
 
-    const payload = readProductPayload(formData);
+    const activeRegistry = await getActiveSpecTemplates();
+    const payload = await readProductPayload(formData, activeRegistry);
     const requestContext = await getRequestContext();
     const { error } = await updateAdminProduct(productId, payload, requestContext);
 
@@ -235,6 +247,7 @@ export async function bulkCreateProductsAction(rows: BulkRowPayload[]): Promise<
 
       const payload: ProductPayload = {
         category_id: row.category_id || null,
+        sku: null,
         name: row.name.trim(),
         slug: row.slug.trim(),
         description: row.description?.trim() || null,
@@ -243,6 +256,9 @@ export async function bulkCreateProductsAction(rows: BulkRowPayload[]): Promise<
         specs: {} as Json,
         is_active: row.is_active,
         is_featured: row.is_featured,
+        seo_title: null,
+        seo_description: null,
+        seo_keywords: null,
       };
 
       const { data, error } = await createAdminProduct(payload, requestContext);

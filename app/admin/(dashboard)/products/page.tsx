@@ -15,6 +15,7 @@ import {
   type StatusFilter,
   type StockFilter,
 } from '@/lib/services/admin/products';
+import { getActiveSpecTemplates } from '@/lib/services/admin/product-spec-templates';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,10 +50,11 @@ export default async function ProductsPage({
   const price = parsePrice(sp.price);
   const images = parseImages(sp.images);
 
-  const [listResult, stats, { data: categories }] = await Promise.all([
+  const [listResult, stats, { data: categories }, specTemplates] = await Promise.all([
     getAdminProductsPage({ page, pageSize, q, categoryId, status, stock, price, images }),
     getAdminProductStats(),
     getAdminCategories(),
+    getActiveSpecTemplates(),
   ]);
 
   if (process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1') {
@@ -70,7 +72,7 @@ export default async function ProductsPage({
         action={
           <div className="flex items-center gap-2">
             <ProductBulkDialog categories={safeCategories} />
-            <ProductFormDialog categories={safeCategories} />
+            <ProductFormDialog categories={safeCategories} specTemplates={specTemplates} />
           </div>
         }
       />
@@ -97,6 +99,7 @@ export default async function ProductsPage({
         <ProductsTable
           items={listResult.data}
           categories={safeCategories}
+          specTemplates={specTemplates}
           pagination={{
             page: listResult.page,
             pageSize: listResult.pageSize,

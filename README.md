@@ -24,10 +24,12 @@ Dự án sử dụng **Next.js App Router**, **React**, **TypeScript**, **Tailwi
 
 - Trang chủ giới thiệu thương hiệu, danh mục nổi bật và CTA liên hệ.
 - Catalog sản phẩm với bộ lọc theo từ khóa, danh mục, giá và trạng thái.
+- **Bộ lọc động theo thông số kỹ thuật**: Lọc sản phẩm theo các tiêu chí (chất liệu, dung tích, loại nắp,...) được cấu hình động từ mẫu thông số (spec templates) trong DB.
 - Trang danh mục chi tiết.
 - Modal chi tiết sản phẩm gồm thông số kỹ thuật, gallery, bảng giá sỉ và CTA tư vấn.
 - Form gửi yêu cầu báo giá/liên hệ.
 - Trang tuyển dụng.
+- **Tối ưu hóa SEO**: Tự động sinh `robots.txt` động (chặn index trên môi trường dev/staging, cho phép ở prod), sinh `sitemap.xml` tự động chứa danh sách sản phẩm và danh mục đang hoạt động, và chèn dữ liệu cấu trúc JSON-LD (`Organization`, `Product`, `CollectionPage`, `BreadcrumbList`) trên toàn bộ các trang.
 
 ### Admin CMS
 
@@ -35,6 +37,8 @@ Dự án sử dụng **Next.js App Router**, **React**, **TypeScript**, **Tailwi
 - Route guard server-side qua `requireAdminAuth`.
 - Dashboard thống kê sản phẩm, danh mục, yêu cầu báo giá và hoạt động gần đây.
 - Quản lý danh mục cha-con, sản phẩm, hình ảnh, giá sỉ, yêu cầu liên hệ, nhân sự hỗ trợ, tuyển dụng, nội dung site và audit logs.
+- **Quản lý Mẫu thông số (Spec Templates)**: Cho phép định nghĩa các trường thông số bắt buộc, tùy chọn, loại dữ liệu, và đánh dấu trường nào được phép lọc ở ngoài storefront.
+- **Nhập dữ liệu từ Excel theo mẫu thông số**: Cho phép tải về file mẫu Excel động tương ứng với mẫu thông số đã chọn, kiểm tra lỗi hợp lệ (validation) trực quan từng dòng trước khi xác nhận nhập vào DB.
 - Phân quyền `super_admin`, `admin`, `editor`, `viewer`.
 
 ---

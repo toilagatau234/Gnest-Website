@@ -1,8 +1,17 @@
 import { Briefcase, Send, Shield, Heart, Award } from 'lucide-react';
+import type { Metadata } from 'next';
 
 import { getJobVacancies, type JobVacancy } from '@/lib/services/job-vacancies';
 import { RecruitmentClientActions } from '@/components/RecruitmentClientActions';
 import { RecruitmentJobsContainer } from '@/components/RecruitmentJobsContainer';
+
+export const metadata: Metadata = {
+  title: 'Tuyển dụng',
+  description: 'Gia nhập đội ngũ Đại Tài Lợi – Khám phá cơ hội phát triển sự nghiệp trong môi trường chuyên nghiệp, chế độ đãi ngộ tốt.',
+  alternates: {
+    canonical: '/tuyen-dung',
+  },
+};
 
 interface MappedJob {
   id: string;

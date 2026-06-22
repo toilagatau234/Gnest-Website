@@ -107,6 +107,7 @@ export interface Database {
         Row: {
           id: string;
           category_id: string | null;
+          sku: string | null;
           name: string;
           slug: string;
           description: string | null;
@@ -115,12 +116,16 @@ export interface Database {
           specs: Json;
           is_active: boolean;
           is_featured: boolean;
+          seo_title: string | null;
+          seo_description: string | null;
+          seo_keywords: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           category_id?: string | null;
+          sku?: string | null;
           name: string;
           slug: string;
           description?: string | null;
@@ -129,11 +134,15 @@ export interface Database {
           specs?: Json;
           is_active?: boolean;
           is_featured?: boolean;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          seo_keywords?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           category_id?: string | null;
+          sku?: string | null;
           name?: string;
           slug?: string;
           description?: string | null;
@@ -142,6 +151,9 @@ export interface Database {
           specs?: Json;
           is_active?: boolean;
           is_featured?: boolean;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          seo_keywords?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -153,6 +165,7 @@ export interface Database {
           storage_path: string;
           public_url: string | null;
           alt: string | null;
+          content_hash: string | null;
           sort_order: number;
           is_primary: boolean;
           is_active: boolean;
@@ -164,6 +177,7 @@ export interface Database {
           storage_path: string;
           public_url?: string | null;
           alt?: string | null;
+          content_hash?: string | null;
           sort_order?: number;
           is_primary?: boolean;
           is_active?: boolean;
@@ -174,11 +188,20 @@ export interface Database {
           storage_path?: string;
           public_url?: string | null;
           alt?: string | null;
+          content_hash?: string | null;
           sort_order?: number;
           is_primary?: boolean;
           is_active?: boolean;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'product_images_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'products';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       product_bulk_discounts: {
         Row: {
@@ -323,7 +346,15 @@ export interface Database {
           metadata?: Json;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'inquiries_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'products';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       site_contents: {
         Row: {
@@ -453,10 +484,221 @@ export interface Database {
         };
         Relationships: [];
       };
+      product_spec_templates: {
+        Row: {
+          id: string;
+          code: string;
+          name: string;
+          description: string | null;
+          name_template: string | null;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          name: string;
+          description?: string | null;
+          name_template?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          name?: string;
+          description?: string | null;
+          name_template?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      product_spec_fields: {
+        Row: {
+          id: string;
+          template_id: string;
+          key: string;
+          label: string;
+          type: string;
+          unit: string | null;
+          options: Json | null;
+          is_required: boolean;
+          is_filterable: boolean;
+          is_searchable: boolean;
+          is_sortable: boolean;
+          is_multiple: boolean;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          key: string;
+          label: string;
+          type: string;
+          unit?: string | null;
+          options?: Json | null;
+          is_required?: boolean;
+          is_filterable?: boolean;
+          is_searchable?: boolean;
+          is_sortable?: boolean;
+          is_multiple?: boolean;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          template_id?: string;
+          key?: string;
+          label?: string;
+          type?: string;
+          unit?: string | null;
+          options?: Json | null;
+          is_required?: boolean;
+          is_filterable?: boolean;
+          is_searchable?: boolean;
+          is_sortable?: boolean;
+          is_multiple?: boolean;
+          is_active?: boolean;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      import_jobs: {
+        Row: {
+          id: string;
+          file_name: string | null;
+          started_by: string | null;
+          mode: string;
+          status: string;
+          total_rows: number;
+          success_count: number;
+          error_count: number;
+          inserted_count: number;
+          updated_count: number;
+          image_count: number;
+          metadata: Json;
+          started_at: string;
+          finished_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          file_name?: string | null;
+          started_by?: string | null;
+          mode?: string;
+          status?: string;
+          total_rows?: number;
+          success_count?: number;
+          error_count?: number;
+          inserted_count?: number;
+          updated_count?: number;
+          image_count?: number;
+          metadata?: Json;
+          started_at?: string;
+          finished_at?: string | null;
+        };
+        Update: {
+          file_name?: string | null;
+          started_by?: string | null;
+          mode?: string;
+          status?: string;
+          total_rows?: number;
+          success_count?: number;
+          error_count?: number;
+          inserted_count?: number;
+          updated_count?: number;
+          image_count?: number;
+          metadata?: Json;
+          finished_at?: string | null;
+        };
+        Relationships: [];
+      };
+      import_job_errors: {
+        Row: {
+          id: string;
+          job_id: string;
+          row_number: number | null;
+          column_name: string | null;
+          error_code: string | null;
+          error_message: string | null;
+          raw_value: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          job_id: string;
+          row_number?: number | null;
+          column_name?: string | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          raw_value?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          row_number?: number | null;
+          column_name?: string | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          raw_value?: string | null;
+        };
+        Relationships: [];
+      };
+      import_job_images: {
+        Row: {
+          id: string;
+          job_id: string;
+          sku: string | null;
+          filename: string | null;
+          storage_path: string | null;
+          content_hash: string | null;
+          status: string;
+          error_message: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          job_id: string;
+          sku?: string | null;
+          filename?: string | null;
+          storage_path?: string | null;
+          content_hash?: string | null;
+          status?: string;
+          error_message?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          sku?: string | null;
+          filename?: string | null;
+          storage_path?: string | null;
+          content_hash?: string | null;
+          status?: string;
+          error_message?: string | null;
+        };
+        Relationships: [];
+      };
     };
 
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      upsert_products_by_sku: {
+        Args: { p_rows: Json };
+        Returns: {
+          id: string;
+          sku: string;
+          slug: string;
+          was_inserted: boolean;
+        }[];
+      };
+    };
     Enums: {
       admin_role: AdminRole;
       category_type: CategoryType;
