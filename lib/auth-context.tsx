@@ -99,11 +99,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Thiếu cấu hình Supabase trên trình duyệt.');
     }
 
+    // NOTE: the force_password_change flag is intentionally NOT cleared here. Clearing it is
+    // done server-side in changeOwnPasswordAction together with a validated password change, so
+    // the forced first-login reset cannot be skipped from the client.
     const { data, error } = await supabase.auth.updateUser({
       password: nextPassword,
-      data: {
-        force_password_change: false,
-      },
     });
 
     if (error) {

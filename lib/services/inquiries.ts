@@ -1,4 +1,4 @@
-import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Inserts } from '@/lib/types/database';
 
 export type CreateInquiryInput = Pick<
@@ -7,14 +7,15 @@ export type CreateInquiryInput = Pick<
 >;
 
 export async function createInquiry(input: CreateInquiryInput) {
-  const supabase = await createClient();
+  // Inquiries are written with the server-only service-role client. Direct anon INSERT was
+  // revoked (20260623010000_harden_inquiries_grants.sql) so the anti-spam controls in the
+  // Server Action cannot be bypassed via direct PostgREST calls. This runs server-side only;
+  // no admin details or personal data are returned to the client.
+  const adminSupabase = createServiceRoleClient();
 
   // Find active sale/admin to assign the inquiry (round-robin / least active new inquiry strategy)
-  // NOTE: We use the server-only service role client here to safely bypass RLS restrictions 
-  // during public submissions. No admin user details or personal data are exposed or returned to the client.
   let assignedTo: string | null = null;
   try {
-    const adminSupabase = createServiceRoleClient();
     const { data: adminUsers, error: adminErr } = await adminSupabase
       .from('admin_users')
       .select('id')
@@ -60,7 +61,7 @@ export async function createInquiry(input: CreateInquiryInput) {
     assignedTo = null;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await adminSupabase
     .from('inquiries')
     .insert({
       customer_name: input.customer_name,

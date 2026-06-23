@@ -88,13 +88,13 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3">
           <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">
-            Mật khẩu mặc định
+            Mật khẩu tạm (hiển thị một lần)
           </p>
           <p className="mt-1 break-all font-mono text-sm font-bold text-amber-950">
             {state.createdUser.temporaryPassword}
           </p>
           <p className="mt-1 text-[10px] font-medium text-amber-800">
-            Dùng mật khẩu mặc định này cho lần đăng nhập đầu tiên.
+            Sao chép ngay — mật khẩu này sẽ không hiển thị lại. Dùng cho lần đăng nhập đầu tiên.
           </p>
         </div>
       </div>
@@ -102,8 +102,9 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
       <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
         <p className="font-bold text-slate-800">Lưu ý bàn giao</p>
         <p className="mt-1 leading-relaxed">
-          Chia sẻ email đăng nhập và mật khẩu mặc định <strong>abc@123</strong> qua kênh an toàn.
-          Sau khi đổi mật khẩu, cờ <code>force_password_change</code> sẽ tự động được gỡ.
+          Chia sẻ email đăng nhập và mật khẩu tạm phía trên qua kênh an toàn. Mật khẩu này chỉ
+          hiển thị một lần. Sau khi người dùng đổi mật khẩu, cờ{' '}
+          <code>force_password_change</code> sẽ tự động được gỡ.
         </p>
       </div>
 
@@ -185,9 +186,8 @@ function DialogContent({ formId, onClose }: DialogContentProps) {
         </p>
         <p className="mt-1 break-all text-sm font-semibold text-slate-900">{previewLoginEmail}</p>
         <p className="mt-1 text-[10px] font-medium text-slate-500">
-          Mật khẩu mặc định của tài khoản mới là{' '}
-          <strong className="text-amber-700">abc@123</strong> và hệ thống yêu cầu đổi mật khẩu
-          sau khi đăng nhập lần đầu.
+          Hệ thống sẽ sinh một mật khẩu tạm ngẫu nhiên và hiển thị sau khi tạo tài khoản. Người
+          dùng buộc phải đổi mật khẩu ngay ở lần đăng nhập đầu tiên.
         </p>
       </div>
 
@@ -244,7 +244,7 @@ export function AdminUserInviteDialog() {
         open={open}
         onClose={closeDialog}
         title="Tạo tài khoản quản trị"
-        description="Hệ thống sẽ tự thêm @gnest.com, gán mật khẩu mặc định abc@123 và yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên."
+        description="Hệ thống sẽ tự thêm @gnest.com, sinh mật khẩu tạm ngẫu nhiên (hiển thị một lần) và yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên."
         size="lg"
         footer={null}
       >
