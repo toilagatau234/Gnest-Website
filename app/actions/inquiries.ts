@@ -77,22 +77,22 @@ export async function submitQuoteAction(
   const ip = rawIp.split(',')[0].trim();
 
   // Rate Limiting by IP: 5 requests / 10 minutes
-  if (isRateLimited('ip', ip)) {
+  if (await isRateLimited('ip', ip)) {
     return { status: 'error', message: 'Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.' };
   }
 
   // Rate Limiting by Phone: 3 requests / 30 minutes
-  if (isRateLimited('phone', phoneClean)) {
+  if (await isRateLimited('phone', phoneClean)) {
     return { status: 'error', message: 'Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.' };
   }
 
   // Rate Limiting by Phone + Product: 2 requests / 15 minutes
-  if (isRateLimited('phoneProduct', `${phoneClean}:${productId}`)) {
+  if (await isRateLimited('phoneProduct', `${phoneClean}:${productId}`)) {
     return { status: 'error', message: 'Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.' };
   }
 
   // Rate Limiting by IP + Product: 3 requests / 15 minutes
-  if (isRateLimited('ipProduct', `${ip}:${productId}`)) {
+  if (await isRateLimited('ipProduct', `${ip}:${productId}`)) {
     return { status: 'error', message: 'Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.' };
   }
 

@@ -1,3 +1,7 @@
+import 'server-only';
+
+import { createServiceRoleClient } from '@/lib/supabase/server';
+
 interface RateLimitRule {
   limit: number;
   windowMs: number;
@@ -10,59 +14,38 @@ const rules: Record<string, RateLimitRule> = {
   ipProduct: { limit: 3, windowMs: 15 * 60 * 1000 },       // 3 requests / 15 mins
 };
 
-// Simple in-memory cache to store timestamps of hits
-// NOTE: This in-memory limiter is a best-effort approach. Timestamps reset on server restart
-// and are not shared across serverless instances or multi-instance deployments.
-// For production scale, it can be migrated to Redis, Supabase-backed logs, or Cloudflare WAF.
-// Key structure: `rl:${ruleName}:${identifier}`
-const cache = new Map<string, number[]>();
+export type RateLimitRuleName = keyof typeof rules;
 
-// Periodically clean up expired timestamps from memory
-if (typeof global !== 'undefined') {
-  const intervalId = 'rateLimitCleanupInterval';
-  if (!(global as any)[intervalId]) {
-    (global as any)[intervalId] = setInterval(() => {
-      const now = Date.now();
-      for (const [key, timestamps] of cache.entries()) {
-        // Find rule name
-        const match = key.match(/^rl:([^:]+):/);
-        if (match) {
-          const ruleName = match[1];
-          const rule = rules[ruleName];
-          if (rule) {
-            const cutoff = now - rule.windowMs;
-            const valid = timestamps.filter((t) => t > cutoff);
-            if (valid.length === 0) {
-              cache.delete(key);
-            } else {
-              cache.set(key, valid);
-            }
-          }
-        }
-      }
-    }, 5 * 60 * 1000); // Clean every 5 mins
-  }
-}
-
-export function isRateLimited(ruleName: 'ip' | 'phone' | 'phoneProduct' | 'ipProduct', identifier: string): boolean {
+/**
+ * Durable, cross-instance rate limiting backed by Postgres (rate_limit_hits) via the
+ * service-role-only RPC `check_rate_limit`. Unlike an in-memory limiter, this survives cold
+ * starts and is shared across all serverless instances.
+ *
+ * Returns true when the request should be rejected (limit reached). Fails open (returns false)
+ * on any error so a transient DB issue never blocks a legitimate submission.
+ */
+export async function isRateLimited(
+  ruleName: RateLimitRuleName,
+  identifier: string,
+): Promise<boolean> {
   try {
     const rule = rules[ruleName];
     if (!rule || !identifier) return false;
 
-    const key = `rl:${ruleName}:${identifier}`;
-    const now = Date.now();
-    const cutoff = now - rule.windowMs;
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase.rpc('check_rate_limit', {
+      p_rule: ruleName,
+      p_identifier: identifier,
+      p_limit: rule.limit,
+      p_window_seconds: Math.floor(rule.windowMs / 1000),
+    });
 
-    const timestamps = cache.get(key) ?? [];
-    const validTimestamps = timestamps.filter((t) => t > cutoff);
-
-    if (validTimestamps.length >= rule.limit) {
-      return true;
+    if (error) {
+      console.error(`[rate-limit] RPC error for ${ruleName}:${identifier}`, error.message);
+      return false; // Fail open
     }
 
-    validTimestamps.push(now);
-    cache.set(key, validTimestamps);
-    return false;
+    return data === true;
   } catch (error) {
     console.error(`[rate-limit] Error checking limit for ${ruleName}:${identifier}`, error);
     return false; // Fail gracefully

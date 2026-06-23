@@ -698,6 +698,15 @@ export interface Database {
           was_inserted: boolean;
         }[];
       };
+      check_rate_limit: {
+        Args: {
+          p_rule: string;
+          p_identifier: string;
+          p_limit: number;
+          p_window_seconds: number;
+        };
+        Returns: boolean;
+      };
     };
     Enums: {
       admin_role: AdminRole;
