@@ -89,6 +89,53 @@ function specExample(f: SpecField): string | number {
   return '';
 }
 
+// ── Excel cell styles (xlsx-js-style) — mirror the original V4 palette ────────────
+// Core columns → navy header; Spec columns → teal header; thin grey borders.
+const BORDER_THIN = {
+  top: { style: 'thin', color: { rgb: 'BDC3C7' } },
+  bottom: { style: 'thin', color: { rgb: 'BDC3C7' } },
+  left: { style: 'thin', color: { rgb: 'BDC3C7' } },
+  right: { style: 'thin', color: { rgb: 'BDC3C7' } },
+};
+const STYLE_CORE_HEAD = {
+  font: { name: 'Segoe UI', bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
+  fill: { fgColor: { rgb: '2C3E50' } },
+  alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+  border: BORDER_THIN,
+};
+const STYLE_SPEC_HEAD = { ...STYLE_CORE_HEAD, fill: { fgColor: { rgb: '117A65' } } };
+const STYLE_CORE_KEY = {
+  font: { name: 'Segoe UI', italic: true, sz: 10, color: { rgb: 'DFE4EA' } },
+  fill: { fgColor: { rgb: '34495E' } },
+  alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+  border: BORDER_THIN,
+};
+const STYLE_SPEC_KEY = { ...STYLE_CORE_KEY, fill: { fgColor: { rgb: '16A085' } } };
+const STYLE_DATA_TEXT = {
+  font: { name: 'Segoe UI', sz: 10, color: { rgb: '2C3E50' } },
+  alignment: { horizontal: 'left', vertical: 'center' },
+  border: BORDER_THIN,
+};
+const STYLE_DATA_NUM = {
+  font: { name: 'Segoe UI', sz: 10, color: { rgb: '2C3E50' } },
+  alignment: { horizontal: 'right', vertical: 'center' },
+  border: BORDER_THIN,
+  numFmt: '#,##0',
+};
+const STYLE_GUIDE_TITLE = {
+  font: { name: 'Segoe UI', bold: true, sz: 13, color: { rgb: '2C3E50' } },
+  alignment: { horizontal: 'left', vertical: 'center' },
+};
+const STYLE_GUIDE_SUB = {
+  font: { name: 'Segoe UI', italic: true, sz: 10, color: { rgb: '566573' } },
+  alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+};
+const STYLE_GUIDE_CELL = {
+  font: { name: 'Segoe UI', sz: 10, color: { rgb: '2C3E50' } },
+  alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+  border: BORDER_THIN,
+};
+
 const UPLOAD_CONCURRENCY = 5;
 
 type Phase = 'idle' | 'parsed' | 'importing' | 'uploading' | 'done';
@@ -334,8 +381,11 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
     try {
       const tpl = specTemplates.templates[code];
       const fields = [...(tpl?.fields ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-      const XLSX = await import('xlsx');
+      // xlsx-js-style = SheetJS + cell-style support, so the template keeps the
+      // navy/teal header palette of the original V4 file (plain `xlsx` cannot write fills).
+      const XLSX = await import('xlsx-js-style');
       const wb = XLSX.utils.book_new();
+      const coreCount = V4_CORE_COLUMNS.length;
 
       // ── Sheet 1: ProductTemplate (row 1 = VI label, row 2 = tech key, row 3 = sample) ──
       const viHeaders = [...V4_CORE_COLUMNS.map(coreLabel), ...fields.map(specLabel)];
@@ -345,7 +395,20 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
         ...fields.map(specExample),
       ];
       const ws = XLSX.utils.aoa_to_sheet([viHeaders, techKeys, exampleRow]);
+      const totalCols = viHeaders.length;
       ws['!cols'] = [...V4_CORE_COLUMNS, ...fields].map(() => ({ wch: 22 }));
+      ws['!rows'] = [{ hpx: 34 }, { hpx: 22 }, { hpx: 24 }];
+
+      // Two-tone header palette: navy for core columns, teal for spec columns.
+      for (let c = 0; c < totalCols; c++) {
+        const isSpec = c >= coreCount;
+        const headRef = XLSX.utils.encode_cell({ r: 0, c });
+        const keyRef = XLSX.utils.encode_cell({ r: 1, c });
+        const dataRef = XLSX.utils.encode_cell({ r: 2, c });
+        if (ws[headRef]) ws[headRef].s = isSpec ? STYLE_SPEC_HEAD : STYLE_CORE_HEAD;
+        if (ws[keyRef]) ws[keyRef].s = isSpec ? STYLE_SPEC_KEY : STYLE_CORE_KEY;
+        if (ws[dataRef]) ws[dataRef].s = ws[dataRef].t === 'n' ? STYLE_DATA_NUM : STYLE_DATA_TEXT;
+      }
       XLSX.utils.book_append_sheet(wb, ws, 'ProductTemplate');
 
       // ── Sheet 2: Hướng dẫn (human-readable column guide) ──
@@ -354,7 +417,7 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
         i + 1, c.vi, c.key, c.required ? 'Bắt buộc' : 'Tùy chọn', '', '', '', c.note,
       ]);
       const specGuide = fields.map((f, i) => [
-        V4_CORE_COLUMNS.length + i + 1,
+        coreCount + i + 1,
         f.label,
         `spec.${f.key}`,
         f.required ? 'Bắt buộc' : 'Tùy chọn',
@@ -363,7 +426,7 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
         (f.options ?? []).join(' / '),
         f.type === 'select' || f.type === 'multi_select' ? 'Chỉ nhập đúng một trong các giá trị cho phép.' : '',
       ]);
-      const guideWs = XLSX.utils.aoa_to_sheet([
+      const guideAoa = [
         [`HƯỚNG DẪN NHẬP — Loại sản phẩm: ${tpl?.label ?? code} (${code})`],
         ['Dòng 1 = nhãn tiếng Việt · Dòng 2 = khoá kỹ thuật (GIỮ NGUYÊN, không sửa) · Nhập dữ liệu từ dòng 3.'],
         ['Ảnh: tạo thư mục con tên = Mã sản phẩm (SKU), bỏ ảnh vào trong; ưu tiên ảnh đại diện cover.*'],
@@ -371,8 +434,27 @@ export function ImportClient({ specTemplates }: ImportClientProps) {
         guideHeader,
         ...coreGuide,
         ...specGuide,
-      ]);
+      ];
+      const guideWs = XLSX.utils.aoa_to_sheet(guideAoa);
       guideWs['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 26 }, { wch: 12 }, { wch: 11 }, { wch: 9 }, { wch: 42 }, { wch: 52 }];
+      guideWs['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 7 } },
+      ];
+      if (guideWs['A1']) guideWs['A1'].s = STYLE_GUIDE_TITLE;
+      if (guideWs['A2']) guideWs['A2'].s = STYLE_GUIDE_SUB;
+      if (guideWs['A3']) guideWs['A3'].s = STYLE_GUIDE_SUB;
+      for (let c = 0; c < guideHeader.length; c++) {
+        const ref = XLSX.utils.encode_cell({ r: 4, c });
+        if (guideWs[ref]) guideWs[ref].s = STYLE_CORE_HEAD;
+      }
+      for (let r = 5; r < guideAoa.length; r++) {
+        for (let c = 0; c < guideHeader.length; c++) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          if (guideWs[ref]) guideWs[ref].s = STYLE_GUIDE_CELL;
+        }
+      }
       XLSX.utils.book_append_sheet(wb, guideWs, 'Hướng dẫn');
 
       XLSX.writeFile(wb, `MauFileSanPham_Gnest_V4_${code}.xlsx`);
