@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { randomInt } from 'node:crypto';
+
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { USER_MANAGER_ROLES } from '@/lib/services/admin/permissions';
 import { createServiceRoleClient } from '@/lib/supabase/server';
@@ -56,7 +58,7 @@ export interface AdminUserActionResult<T = unknown> {
 const ADMIN_USER_COLUMNS = 'id, email, role, is_active, created_at, updated_at';
 const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,30}[a-z0-9])?$/;
 const ADMIN_EMAIL_DOMAIN = 'gnest.com';
-const DEFAULT_ADMIN_PASSWORD = 'abc@123';
+const TEMPORARY_PASSWORD_LENGTH = 16;
 
 function normalizeNullableText(value: string | null | undefined) {
   const trimmed = value?.trim() ?? '';
@@ -80,8 +82,31 @@ function buildAdminLoginEmail(localPart: string) {
   return `${localPart}@${ADMIN_EMAIL_DOMAIN}`;
 }
 
-function getDefaultAdminPassword() {
-  return DEFAULT_ADMIN_PASSWORD;
+/**
+ * Generates a cryptographically-random temporary password for new/reset admin accounts.
+ * Guarantees at least one upper, lower, digit and special char, then shuffles so the
+ * guaranteed characters are not in fixed positions. The value is shown once to the
+ * super_admin for secure hand-off; users are forced to change it on first login.
+ * Ambiguous characters (0/O, 1/l/I) are excluded to ease manual transcription.
+ */
+function generateTemporaryPassword() {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const special = '!@#$%^&*?-_';
+  const all = upper + lower + digits + special;
+
+  const pick = (set: string) => set[randomInt(set.length)];
+  const chars = [pick(upper), pick(lower), pick(digits), pick(special)];
+  while (chars.length < TEMPORARY_PASSWORD_LENGTH) {
+    chars.push(pick(all));
+  }
+  // Fisher-Yates shuffle using a CSPRNG.
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
 }
 
 function readAuthMetadata(value: unknown) {
@@ -180,7 +205,7 @@ export async function inviteAdminUser(
       return { ok: false, error: 'Tên email này đã tồn tại trong hệ thống.' };
     }
 
-    const temporaryPassword = getDefaultAdminPassword();
+    const temporaryPassword = generateTemporaryPassword();
     const { data: createdAuthUser, error: createAuthError } = await supabase.auth.admin.createUser({
       email: loginEmail,
       password: temporaryPassword,
@@ -499,7 +524,7 @@ export async function resetAdminUserPassword(
       return { ok: false, error: 'Không tìm thấy thông tin đăng nhập của tài khoản này.' };
     }
 
-    const temporaryPassword = getDefaultAdminPassword();
+    const temporaryPassword = generateTemporaryPassword();
     const currentMetadata = authData.user.user_metadata || {};
 
     const { error: updateAuthError } = await supabase.auth.admin.updateUserById(userId, {

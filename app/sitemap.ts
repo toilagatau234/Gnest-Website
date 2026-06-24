@@ -1,11 +1,13 @@
 import { MetadataRoute } from 'next';
 import { siteConfig } from '@/lib/config/site';
-import { createServiceRoleClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { getVisibleCategoryIds } from '@/lib/services/category-visibility';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = siteConfig.url;
-  const supabase = createServiceRoleClient();
+  // Use the anon client so the public sitemap only ever sees public (is_active) rows via RLS —
+  // never inactive products/categories the service-role client would expose.
+  const supabase = await createClient();
 
   // 1. Fetch categories
   const { data: rawCategories } = await supabase

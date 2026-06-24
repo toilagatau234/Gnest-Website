@@ -31,10 +31,20 @@ function parseLimit(value: string | null) {
   return Math.min(MAX_LIMIT, Math.max(1, Math.floor(parsed)));
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Strict ISO-8601 timestamp (matches Postgres timestamptz output), e.g.
+// 2026-06-23T12:00:00.123456+00:00 or ...Z. Deliberately narrow: no commas, parentheses or
+// other PostgREST operator characters can slip through.
+const ISO_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?([+-]\d{2}:?\d{2}|Z)?$/;
+
 function parseCursor(cursor: string | null) {
   if (!cursor) return null;
   const [createdAt, id] = cursor.split('|');
   if (!createdAt || !id) return null;
+  // These parts are interpolated into a PostgREST `.or()` filter below, so they MUST be strictly
+  // validated to prevent filter injection. createdAt must be an ISO timestamp and id a UUID;
+  // anything else is treated as "no cursor" (first page).
+  if (!ISO_TIMESTAMP_RE.test(createdAt) || !UUID_RE.test(id)) return null;
   return { createdAt, id };
 }
 

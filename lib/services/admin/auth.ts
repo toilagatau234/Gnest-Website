@@ -184,6 +184,13 @@ export async function requireAdminAuth(
     redirect('/admin/access-denied');
   }
 
+  // Enforce the forced first-login password change on every gated action/page, not just the
+  // dashboard layout. The flag is cleared only by changeOwnPasswordAction (which does not call
+  // this helper), so an account still on its temporary password cannot perform admin work.
+  if (requiresAdminPasswordReset(sessionState.user)) {
+    redirect('/admin/password-reset');
+  }
+
   return sessionState.adminUser;
 }
 

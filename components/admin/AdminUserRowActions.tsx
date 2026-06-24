@@ -236,10 +236,10 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
 
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Mật khẩu mặc định mới</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Mật khẩu tạm mới (hiển thị một lần)</p>
                     <p className="mt-1 break-all font-mono text-sm font-bold text-amber-950">{temporaryPassword}</p>
                     <p className="mt-1 text-[10px] font-medium text-amber-800">
-                      Đây là mật khẩu mặc định mới cần gửi cho người dùng.
+                      Sao chép ngay và gửi cho người dùng — mật khẩu này sẽ không hiển thị lại.
                     </p>
                   </div>
                   <button
@@ -274,7 +274,7 @@ export function AdminUserRowActions({ user, currentAdminId, currentUserRole }: A
               </div>
 
               <p className="text-xs leading-relaxed text-slate-500">
-                Sau khi đặt lại, mật khẩu hiện tại sẽ bị vô hiệu hóa ngay lập tức. Mật khẩu mới sẽ được đặt về mật khẩu mặc định <strong className="font-bold text-amber-700">abc@123</strong> và người dùng buộc phải đổi mật khẩu khi đăng nhập lần đầu.
+                Sau khi đặt lại, mật khẩu hiện tại sẽ bị vô hiệu hóa ngay lập tức. Hệ thống sẽ sinh một <strong className="font-bold text-amber-700">mật khẩu tạm ngẫu nhiên</strong> (hiển thị một lần) và người dùng buộc phải đổi mật khẩu khi đăng nhập lần đầu.
               </p>
 
               {resetError ? (

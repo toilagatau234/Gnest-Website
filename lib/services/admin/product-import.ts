@@ -4,8 +4,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import type { Json } from '@/lib/types/database';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { getActiveSpecTemplates } from '@/lib/services/admin/product-spec-templates';
-import { normalizeNumericByUnit } from '@/lib/utils/import-normalizers';
-import type { SpecField } from '@/lib/product-spec-templates';
+import { parseSpecValue, normalizeRowSpecs } from '@/lib/utils/spec-normalizer';
 
 const PRODUCT_IMPORT_ROLES = ['super_admin', 'admin', 'editor'] as const;
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -92,54 +91,6 @@ export interface V4ImportResult {
 }
 
 
-
-/**
- * Schema-driven parse/validate of a single spec field value.
- * Normalization (numbers) is driven by the field's declared `unit`, and
- * enum membership is checked against the field's `options` — so new fields
- * and new product types work without code changes.
- */
-function parseSpecValue(field: SpecField, rawVal: unknown): { error?: string; value?: unknown } {
-  if (rawVal === undefined || rawVal === null || String(rawVal).trim() === '') {
-    return { value: null };
-  }
-  const strVal = String(rawVal).trim();
-
-  switch (field.type) {
-    case 'number': {
-      const normalized = normalizeNumericByUnit(field.unit, strVal);
-      const num = Number(normalized);
-      if (isNaN(num) || num < 0) {
-        return { error: `phải là số không âm (nhận được: "${strVal}")` };
-      }
-      return { value: num };
-    }
-    case 'boolean': {
-      const v = strVal.toLowerCase();
-      if (['true', 'yes', '1', 'có'].includes(v)) return { value: true };
-      if (['false', 'no', '0', 'không'].includes(v)) return { value: false };
-      return { error: `phải là Có/Không (nhận được: "${strVal}")` };
-    }
-    case 'select': {
-      if (field.options && field.options.length > 0 && !field.options.includes(strVal)) {
-        return { error: `giá trị "${strVal}" không hợp lệ. Cho phép: ${field.options.join(', ')}` };
-      }
-      return { value: strVal };
-    }
-    case 'multi_select': {
-      const parts = strVal.split(',').map((p) => p.trim()).filter(Boolean);
-      if (field.options && field.options.length > 0) {
-        const bad = parts.filter((p) => !field.options!.includes(p));
-        if (bad.length > 0) {
-          return { error: `giá trị "${bad.join(', ')}" không hợp lệ. Cho phép: ${field.options.join(', ')}` };
-        }
-      }
-      return { value: parts.join(', ') };
-    }
-    default:
-      return { value: strVal };
-  }
-}
 
 /**
  * Validates Excel V4 rows against the database and template schema rules.
@@ -385,20 +336,7 @@ export async function importV4Upsert(
     const templateCode = String(row.template_code ?? '').trim();
     const template = templateCode ? registry.templates[templateCode] : undefined;
 
-    const normalizedSpecs: Record<string, unknown> = {};
-    if (template && row.specs) {
-      for (const field of template.fields) {
-        const parsed = parseSpecValue(field, row.specs[field.key]);
-        if (parsed.value !== undefined && parsed.value !== null) {
-          normalizedSpecs[field.key] = parsed.value;
-        }
-      }
-    } else if (row.specs) {
-      for (const [k, v] of Object.entries(row.specs)) {
-        if (v !== null && v !== undefined && String(v).trim() !== '') normalizedSpecs[k] = v;
-      }
-    }
-    if (templateCode) normalizedSpecs._template = templateCode;
+    const normalizedSpecs = normalizeRowSpecs(template, row.specs, templateCode);
 
     const catInput = String(row.category ?? '').trim().toLowerCase();
     upsertPayloads.push({

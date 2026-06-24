@@ -1,3 +1,5 @@
+import { cache } from 'react';
+
 import { createClient } from '@/lib/supabase/server';
 
 export interface FilterableField {
@@ -20,8 +22,9 @@ export interface FilterDef {
 
 /**
  * Queries active, filterable fields from active templates.
+ * Memoized per request (React cache) so repeated catalog calls in one render share one query.
  */
-export async function getActiveFilterableFields(): Promise<FilterableField[]> {
+export const getActiveFilterableFields = cache(async (): Promise<FilterableField[]> => {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -58,7 +61,7 @@ export async function getActiveFilterableFields(): Promise<FilterableField[]> {
     console.error('Failed to get active filterable fields:', err);
     return [];
   }
-}
+});
 
 /**
  * Filters products based on specs in memory on the server side.

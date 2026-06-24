@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+import { changeOwnPasswordAction } from '@/app/admin/password-reset/actions';
 import { useAuth } from '@/lib/auth-context';
 
 export function AdminPasswordResetForm() {
   const router = useRouter();
-  const { updatePassword, logout } = useAuth();
+  const { logout } = useAuth();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -51,7 +52,11 @@ export function AdminPasswordResetForm() {
     try {
       setIsSubmitting(true);
       setError(null);
-      await updatePassword(password);
+      const result = await changeOwnPasswordAction(password);
+      if (!result.ok) {
+        setError(result.error ?? 'Không thể đổi mật khẩu. Vui lòng thử lại.');
+        return;
+      }
       router.replace('/admin/dashboard');
       router.refresh();
     } catch (submitError) {

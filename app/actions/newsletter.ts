@@ -58,15 +58,15 @@ export async function submitNewsletterAction(
     const rawIp = reqHeaders.get('x-forwarded-for') || reqHeaders.get('x-real-ip') || '127.0.0.1';
     const ip = rawIp.split(',')[0].trim();
 
-    if (isRateLimited('ip', ip)) {
+    if (await isRateLimited('ip', ip)) {
       return { status: 'error', message: 'Bạn gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.' };
     }
 
-    if (phoneClean && isRateLimited('phone', phoneClean)) {
+    if (phoneClean && (await isRateLimited('phone', phoneClean))) {
       return { status: 'error', message: 'Bạn gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.' };
     }
 
-    if (!phoneClean && email && isRateLimited('phone', email)) {
+    if (!phoneClean && email && (await isRateLimited('phone', email))) {
       return { status: 'error', message: 'Bạn gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.' };
     }
 

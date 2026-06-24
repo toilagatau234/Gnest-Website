@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { cache } from 'react';
+
 import { createClient } from '@/lib/supabase/server';
 import type { Tables } from '@/lib/types/database';
 
@@ -119,7 +121,9 @@ function toPublicProductDetail(raw: RawPublicProduct): PublicProductDetail {
   };
 }
 
-async function getVisibleCategorySet() {
+// Memoized per request (React cache): several catalog functions resolve the visible-category
+// set in one render; this shares a single categories query across them.
+const getVisibleCategorySet = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('categories')
@@ -130,7 +134,7 @@ async function getVisibleCategorySet() {
   }
 
   return getVisibleCategoryIds(data ?? []);
-}
+});
 
 export async function getPublicProductBySlug(slug: string): Promise<PublicProductDetail | null> {
   const supabase = await createClient();
@@ -293,6 +297,8 @@ export async function getPublicProductsPage({
   const safePageSize = Math.min(48, Math.max(1, pageSize));
 
   const supabase = await createClient();
+  // Filterable fields are independent of category resolution — fetch them in parallel.
+  const filterableFieldsPromise = getActiveFilterableFields();
   const visibleCategoryIds = await getVisibleCategorySet();
 
   // Resolve category if slug is not 'all'
@@ -354,7 +360,7 @@ export async function getPublicProductsPage({
   }
 
   const rawProducts = (data ?? []) as unknown as PublicProductQueryRow[];
-  const filterableFields = await getActiveFilterableFields();
+  const filterableFields = await filterableFieldsPromise;
 
   // Dynamically build filter configurations based on ALL products present in the category
   const filterDefs = buildFilterConfig(rawProducts, filterableFields);

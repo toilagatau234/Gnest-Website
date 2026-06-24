@@ -10,9 +10,8 @@ import {
   updateAdminUserRole,
   type CreatedAdminUserPayload,
 } from '@/lib/services/admin/admin-users';
-import { requireAdminAuth } from '@/lib/services/admin/auth';
+import { isAdminRole, requireAdminAuth } from '@/lib/services/admin/auth';
 import { USER_MANAGER_ROLES } from '@/lib/services/admin/permissions';
-import type { AdminRole } from '@/lib/types/database';
 
 export type AdminFormState = {
   ok: boolean;
@@ -58,7 +57,7 @@ export async function inviteAdminUserAction(
     const displayName = readString(formData, 'display_name');
     const username = readString(formData, 'username');
     const contactEmail = readString(formData, 'contact_email');
-    const role = readString(formData, 'role') as AdminRole;
+    const role = readString(formData, 'role');
 
     if (!displayName) {
       return { ok: false, error: 'Tên hiển thị là bắt buộc.' };
@@ -82,6 +81,10 @@ export async function inviteAdminUserAction(
 
     if (!role) {
       return { ok: false, error: 'Vai trò là bắt buộc.' };
+    }
+
+    if (!isAdminRole(role)) {
+      return { ok: false, error: 'Vai trò không hợp lệ.' };
     }
 
     const { ok, data, error } = await inviteAdminUser({
@@ -112,7 +115,7 @@ export async function updateAdminUserRoleAction(
   try {
     const actor = await requireAdminAuth(USER_MANAGER_ROLES);
     const userId = readString(formData, 'userId');
-    const role = readString(formData, 'role') as AdminRole;
+    const role = readString(formData, 'role');
 
     if (!userId) {
       return { ok: false, error: 'Thiếu ID người dùng.' };
@@ -120,6 +123,10 @@ export async function updateAdminUserRoleAction(
 
     if (!role) {
       return { ok: false, error: 'Vai trò là bắt buộc.' };
+    }
+
+    if (!isAdminRole(role)) {
+      return { ok: false, error: 'Vai trò không hợp lệ.' };
     }
     const { ok, error } = await updateAdminUserRole({
       userId,
