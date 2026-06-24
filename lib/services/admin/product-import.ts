@@ -142,6 +142,35 @@ function parseSpecValue(field: SpecField, rawVal: unknown): { error?: string; va
 }
 
 /**
+ * Builds the normalized specs JSONB for a row. Template-driven fields are parsed/normalized via
+ * parseSpecValue; for template-less rows, arbitrary keys are copied as-is (skipping
+ * prototype-polluting keys). The active template code is tagged as `_template`.
+ */
+function normalizeRowSpecs(
+  template: { fields: SpecField[] } | undefined,
+  specs: Record<string, unknown> | null | undefined,
+  templateCode: string,
+): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+  if (template && specs) {
+    for (const field of template.fields) {
+      const parsed = parseSpecValue(field, specs[field.key]);
+      if (parsed.value !== undefined && parsed.value !== null) {
+        normalized[field.key] = parsed.value;
+      }
+    }
+  } else if (specs) {
+    for (const [k, v] of Object.entries(specs)) {
+      // Skip prototype-polluting keys when copying arbitrary (template-less) spec keys.
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+      if (v !== null && v !== undefined && String(v).trim() !== '') normalized[k] = v;
+    }
+  }
+  if (templateCode) normalized._template = templateCode;
+  return normalized;
+}
+
+/**
  * Validates Excel V4 rows against the database and template schema rules.
  */
 export async function validateV4Import(rows: V4ImportRow[]): Promise<V4ValidationResult> {
@@ -385,22 +414,7 @@ export async function importV4Upsert(
     const templateCode = String(row.template_code ?? '').trim();
     const template = templateCode ? registry.templates[templateCode] : undefined;
 
-    const normalizedSpecs: Record<string, unknown> = {};
-    if (template && row.specs) {
-      for (const field of template.fields) {
-        const parsed = parseSpecValue(field, row.specs[field.key]);
-        if (parsed.value !== undefined && parsed.value !== null) {
-          normalizedSpecs[field.key] = parsed.value;
-        }
-      }
-    } else if (row.specs) {
-      for (const [k, v] of Object.entries(row.specs)) {
-        // Skip prototype-polluting keys when copying arbitrary (template-less) spec keys.
-        if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
-        if (v !== null && v !== undefined && String(v).trim() !== '') normalizedSpecs[k] = v;
-      }
-    }
-    if (templateCode) normalizedSpecs._template = templateCode;
+    const normalizedSpecs = normalizeRowSpecs(template, row.specs, templateCode);
 
     const catInput = String(row.category ?? '').trim().toLowerCase();
     upsertPayloads.push({

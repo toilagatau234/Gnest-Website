@@ -13,47 +13,14 @@ export async function createInquiry(input: CreateInquiryInput) {
   // no admin details or personal data are returned to the client.
   const adminSupabase = createServiceRoleClient();
 
-  // Find active sale/admin to assign the inquiry (round-robin / least active new inquiry strategy)
+  // Assign to the active agent with the fewest open inquiries via a single set-based query
+  // (pick_least_loaded_agent RPC). This avoids fetching every open inquiry to count in JS and
+  // narrows the race window between concurrent submissions.
   let assignedTo: string | null = null;
   try {
-    const { data: adminUsers, error: adminErr } = await adminSupabase
-      .from('admin_users')
-      .select('id')
-      .eq('is_active', true)
-      .in('role', ['super_admin', 'admin', 'editor']);
-
-    if (!adminErr && adminUsers && adminUsers.length > 0) {
-      // Find count of new/active inquiries assigned to each active admin
-      const { data: counts, error: countErr } = await adminSupabase
-        .from('inquiries')
-        .select('assigned_to')
-        .in('status', ['new', 'contacted', 'quoted'])
-        .not('assigned_to', 'is', null);
-
-      const countMap: Record<string, number> = {};
-      adminUsers.forEach((u) => {
-        countMap[u.id] = 0;
-      });
-
-      if (!countErr && counts) {
-        counts.forEach((c) => {
-          if (c.assigned_to && countMap[c.assigned_to] !== undefined) {
-            countMap[c.assigned_to]++;
-          }
-        });
-      }
-
-      // Find the admin user with the lowest active inquiry count
-      let minCount = Infinity;
-      let minAdminId = adminUsers[0].id;
-      for (const admin of adminUsers) {
-        const c = countMap[admin.id];
-        if (c < minCount) {
-          minCount = c;
-          minAdminId = admin.id;
-        }
-      }
-      assignedTo = minAdminId;
+    const { data: agentId, error: assignErr } = await adminSupabase.rpc('pick_least_loaded_agent');
+    if (!assignErr && agentId) {
+      assignedTo = agentId;
     }
   } catch (err) {
     // Graceful fallback: assignment lookup failure must never block inquiry creation

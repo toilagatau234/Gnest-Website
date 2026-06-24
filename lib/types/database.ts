@@ -707,6 +707,10 @@ export interface Database {
         };
         Returns: boolean;
       };
+      pick_least_loaded_agent: {
+        Args: Record<string, never>;
+        Returns: string | null;
+      };
     };
     Enums: {
       admin_role: AdminRole;
