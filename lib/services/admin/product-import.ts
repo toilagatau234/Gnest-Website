@@ -395,6 +395,8 @@ export async function importV4Upsert(
       }
     } else if (row.specs) {
       for (const [k, v] of Object.entries(row.specs)) {
+        // Skip prototype-polluting keys when copying arbitrary (template-less) spec keys.
+        if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
         if (v !== null && v !== undefined && String(v).trim() !== '') normalizedSpecs[k] = v;
       }
     }
