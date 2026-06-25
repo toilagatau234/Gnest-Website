@@ -1,6 +1,7 @@
 'use client';
 
 import { MapPin, Phone, Mail, ChevronRight, Settings, Award } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 
@@ -48,15 +49,14 @@ export function SiteFooter({
 
           {/* About */}
           <div>
-            <svg width="130" height="86" viewBox="0 0 264 174" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="mb-4">
-              <rect x="0" y="0" width="78" height="108" rx="8" fill="#E31E24"/>
-              <text x="39" y="78" textAnchor="middle" dominantBaseline="auto" fill="white" fontSize="64" fontFamily="Arial Black,Arial" fontWeight="900">Đ</text>
-              <rect x="93" y="0" width="78" height="108" rx="8" fill="#E31E24"/>
-              <text x="132" y="78" textAnchor="middle" dominantBaseline="auto" fill="white" fontSize="64" fontFamily="Arial Black,Arial" fontWeight="900">T</text>
-              <rect x="186" y="0" width="78" height="108" rx="8" fill="#E31E24"/>
-              <text x="225" y="78" textAnchor="middle" dominantBaseline="auto" fill="white" fontSize="64" fontFamily="Arial Black,Arial" fontWeight="900">L</text>
-              <text x="132" y="158" textAnchor="middle" fill="#E31E24" fontSize="22" fontFamily="var(--font-be-vietnam-pro), Arial" fontWeight="700" letterSpacing="1">Đại Tài Lợi</text>
-            </svg>
+            <Image
+              src="/images/logo-dtl.svg"
+              alt="Đại Tài Lợi"
+              width={1276}
+              height={1242}
+              className="h-[82px] w-auto"
+              unoptimized
+            />
             <p className="text-[13px] mt-4 leading-[1.75]">{companyName} – Chuyên cung cấp bao bì, chai lọ thủy tinh, hộp nhựa, phụ kiện ngành yến, in ấn phẩm và gia công CNC chất lượng cao.</p>
             <div className="text-xs text-white/45 mt-2">MST: 1401969516</div>
           </div>
@@ -129,6 +129,33 @@ export function SiteFooter({
             </div>
           </div>
 
+        </div>
+
+        {/* Hệ sinh thái thương hiệu */}
+        <div className="border-t border-white/[0.07] py-7">
+          <div className="flex flex-col sm:flex-row items-center gap-5">
+            <p className="text-[11px] font-semibold text-white/50 leading-relaxed shrink-0 text-center sm:text-left sm:pr-7 sm:border-r sm:border-white/15">
+              Hệ sinh thái<br className="hidden sm:block" />thương hiệu
+            </p>
+            <div className="flex items-center justify-center sm:justify-start flex-wrap gap-x-8 gap-y-3">
+              {[
+                { src: '/images/logo-gnest.svg',   alt: 'Gnest',   w: 301,  h: 236 },
+                { src: '/images/logo-g-glass.svg', alt: 'G Glass', w: 301,  h: 236 },
+                { src: '/images/logo-g-home.svg',  alt: 'G Home',  w: 151,  h: 141 },
+                { src: '/images/logo-gmart.svg',   alt: 'G Mart',  w: 1049, h: 765 },
+              ].map(({ src, alt, w, h }) => (
+                <Image
+                  key={alt}
+                  src={src}
+                  alt={alt}
+                  width={w}
+                  height={h}
+                  className="h-[30px] w-auto [filter:brightness(0)_invert(1)] opacity-40 hover:opacity-95 hover:[filter:none] transition-all duration-300 cursor-pointer"
+                  unoptimized
+                />
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col md:flex-row items-center justify-between py-4 text-xs text-white/35 gap-4">

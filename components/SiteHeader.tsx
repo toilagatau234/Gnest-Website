@@ -1,6 +1,7 @@
 'use client';
 
 import { Phone, Menu, X, ChevronDown, Award, Sparkles } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { SiteSearch } from './SiteSearch';
@@ -75,16 +76,20 @@ export function SiteHeader() {
       <div className="py-3 relative">
         <div className="max-w-[1220px] mx-auto px-5 flex items-center justify-between gap-5">
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0 flex items-center gap-0 group" aria-label="Đại Tài Lợi – Trang chủ">
-            <svg width="132" height="87" viewBox="0 0 264 174" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-[48px] md:h-[56px] w-auto transition-transform hover:scale-[1.02]">
-              <rect x="0" y="0" width="78" height="108" rx="8" fill="#E31E24"/>
-              <text x="39" y="58" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="66" fontFamily="Arial Black,Arial" fontWeight="900">Đ</text>
-              <rect x="93" y="0" width="78" height="108" rx="8" fill="#E31E24"/>
-              <text x="132" y="58" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="66" fontFamily="Arial Black,Arial" fontWeight="900">T</text>
-              <rect x="186" y="0" width="78" height="108" rx="8" fill="#E31E24"/>
-              <text x="225" y="58" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="66" fontFamily="Arial Black,Arial" fontWeight="900">L</text>
-              <text x="132" y="156" textAnchor="middle" fill="#E31E24" fontSize="24" fontFamily="var(--font-be-vietnam-pro), Arial" fontWeight="800" letterSpacing="1">Đại Tài Lợi</text>
-            </svg>
+          <Link
+            href="/"
+            className="flex-shrink-0 flex items-center transition-transform duration-200 hover:scale-[1.02] active:scale-[0.99]"
+            aria-label="Đại Tài Lợi – Trang chủ"
+          >
+            <Image
+              src="/images/logo-dtl.svg"
+              alt="Đại Tài Lợi"
+              width={1276}
+              height={1242}
+              className="h-[52px] md:h-[64px] w-auto"
+              priority
+              unoptimized
+            />
           </Link>
 
           {/* Desktop Navigation */}
