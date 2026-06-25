@@ -139,10 +139,10 @@ export function SiteFooter({
             </p>
             <div className="flex items-center justify-center sm:justify-start flex-wrap gap-x-8 gap-y-3">
               {[
-                { src: '/images/logo-gnest.svg',   alt: 'Gnest',   w: 301,  h: 236 },
-                { src: '/images/logo-g-glass.svg', alt: 'G Glass', w: 301,  h: 236 },
-                { src: '/images/logo-g-home.svg',  alt: 'G Home',  w: 151,  h: 141 },
-                { src: '/images/logo-gmart.svg',   alt: 'G Mart',  w: 1049, h: 765 },
+                { src: '/public/images/logo-gnest.svg',   alt: 'Gnest',   w: 301,  h: 236 },
+                { src: '/public/images/logo-g-glass.svg', alt: 'G Glass', w: 301,  h: 236 },
+                { src: '/public/images/logo-g-home.svg',  alt: 'G Home',  w: 151,  h: 141 },
+                { src: '/public/images/logo-gmart.svg',   alt: 'G Mart',  w: 1049, h: 765 },
               ].map(({ src, alt, w, h }) => (
                 <Image
                   key={alt}
