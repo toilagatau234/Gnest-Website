@@ -84,8 +84,8 @@ export function SiteHeader() {
             <Image
               src="/images/logo-dtl.svg"
               alt="Đại Tài Lợi"
-              width={1276}
-              height={1242}
+              width={900}
+              height={690}
               className="h-[52px] md:h-[64px] w-auto"
               priority
               unoptimized

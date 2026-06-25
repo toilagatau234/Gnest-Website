@@ -52,8 +52,8 @@ export function SiteFooter({
             <Image
               src="/images/logo-dtl.svg"
               alt="Đại Tài Lợi"
-              width={1276}
-              height={1242}
+              width={900}
+              height={690}
               className="h-[82px] w-auto"
               unoptimized
             />
@@ -139,19 +139,17 @@ export function SiteFooter({
             </p>
             <div className="flex items-center justify-center sm:justify-start flex-wrap gap-x-8 gap-y-3">
               {[
-                { src: '/public/images/logo-gnest.svg',   alt: 'Gnest',   w: 501,  h: 436 },
-                { src: '/public/images/logo-g-glass.svg', alt: 'G Glass', w: 501,  h: 436 },
-                { src: '/public/images/logo-g-home.svg',  alt: 'G Home',  w: 351,  h: 341 },
-                { src: '/public/images/logo-gmart.svg',   alt: 'G Mart',  w: 1249, h: 965 },
-              ].map(({ src, alt, w, h }) => (
-                <Image
+                { src: '/images/logo-gnest.svg',   alt: 'Gnest' },
+                { src: '/images/logo-g-glass.svg', alt: 'G Glass' },
+                { src: '/images/logo-g-home.svg',  alt: 'G Home' },
+                { src: '/images/logo-gmart.svg',   alt: 'G Mart' },
+              ].map(({ src, alt }) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
                   key={alt}
                   src={src}
                   alt={alt}
-                  width={w}
-                  height={h}
-                  className="h-[30px] w-auto [filter:brightness(0)_invert(1)] opacity-40 hover:opacity-95 hover:[filter:none] transition-all duration-300 cursor-pointer"
-                  unoptimized
+                  className="h-[34px] w-auto opacity-60 hover:opacity-100 transition-opacity duration-300"
                 />
               ))}
             </div>

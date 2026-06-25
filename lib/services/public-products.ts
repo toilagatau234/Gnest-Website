@@ -264,7 +264,10 @@ export async function getHotProductInquiryCounts(productIds: string[], days = 30
       .not('product_id', 'is', null);
 
     if (error) {
-      console.error(`Failed to fetch inquiries for hot product counts: ${error.message}`);
+      // RLS intentionally blocks anon access to inquiries; degrade silently.
+      if (error.code !== 'PGRST301' && !error.message.includes('permission denied')) {
+        console.error(`Failed to fetch inquiries for hot product counts: ${error.message}`);
+      }
       return counts;
     }
 
