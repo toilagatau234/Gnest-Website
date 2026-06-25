@@ -132,27 +132,25 @@ export function SiteFooter({
         </div>
 
         {/* Hệ sinh thái thương hiệu */}
-        <div className="border-t border-white/[0.07] py-7">
-          <div className="flex flex-col sm:flex-row items-center gap-5">
-            <p className="text-[11px] font-semibold text-white/50 leading-relaxed shrink-0 text-center sm:text-left sm:pr-7 sm:border-r sm:border-white/15">
-              Hệ sinh thái<br className="hidden sm:block" />thương hiệu
-            </p>
-            <div className="flex items-center justify-center sm:justify-start flex-wrap gap-x-8 gap-y-3">
-              {[
-                { src: '/images/logo-gnest.svg',   alt: 'Gnest' },
-                { src: '/images/logo-g-glass.svg', alt: 'G Glass' },
-                { src: '/images/logo-g-home.svg',  alt: 'G Home' },
-                { src: '/images/logo-gmart.svg',   alt: 'G Mart' },
-              ].map(({ src, alt }) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={alt}
-                  src={src}
-                  alt={alt}
-                  className="h-[34px] w-auto opacity-60 hover:opacity-100 transition-opacity duration-300"
-                />
-              ))}
-            </div>
+        <div className="border-t border-white/[0.07] py-8">
+          <p className="text-[11px] font-semibold text-white/45 tracking-wide text-center mb-6">
+            Hệ sinh thái thương hiệu
+          </p>
+          <div className="flex items-center justify-center flex-wrap gap-x-10 gap-y-6">
+            {[
+              { src: '/images/logo-gnest.svg',   alt: 'Gnest' },
+              { src: '/images/logo-g-glass.svg', alt: 'G Glass' },
+              { src: '/images/logo-g-home.svg',  alt: 'G Home' },
+              { src: '/images/logo-gmart.svg',   alt: 'G Mart' },
+            ].map(({ src, alt }) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={alt}
+                src={src}
+                alt={alt}
+                className="h-[82px] w-auto opacity-80 hover:opacity-100 transition-opacity duration-300 drop-shadow-[0_2px_8px_rgba(255,255,255,0.12)]"
+              />
+            ))}
           </div>
         </div>
 
