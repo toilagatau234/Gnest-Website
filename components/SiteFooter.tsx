@@ -139,10 +139,10 @@ export function SiteFooter({
             </p>
             <div className="flex items-center justify-center sm:justify-start flex-wrap gap-x-8 gap-y-3">
               {[
-                { src: '/public/images/logo-gnest.svg',   alt: 'Gnest',   w: 301,  h: 236 },
-                { src: '/public/images/logo-g-glass.svg', alt: 'G Glass', w: 301,  h: 236 },
-                { src: '/public/images/logo-g-home.svg',  alt: 'G Home',  w: 151,  h: 141 },
-                { src: '/public/images/logo-gmart.svg',   alt: 'G Mart',  w: 1049, h: 765 },
+                { src: '/public/images/logo-gnest.svg',   alt: 'Gnest',   w: 501,  h: 436 },
+                { src: '/public/images/logo-g-glass.svg', alt: 'G Glass', w: 501,  h: 436 },
+                { src: '/public/images/logo-g-home.svg',  alt: 'G Home',  w: 351,  h: 341 },
+                { src: '/public/images/logo-gmart.svg',   alt: 'G Mart',  w: 1249, h: 965 },
               ].map(({ src, alt, w, h }) => (
                 <Image
                   key={alt}
@@ -161,7 +161,7 @@ export function SiteFooter({
         <div className="flex flex-col md:flex-row items-center justify-between py-4 text-xs text-white/35 gap-4">
           <div>© 2025 {companyName}. MST: 1401969516. All rights reserved.</div>
 
-          <div className="flex items-center gap-4">
+          {/* <div className="flex items-center gap-4">
             <Link
               href={user ? '/admin' : '/admin/login'}
               className="flex items-center gap-1.5 font-medium text-white/40 transition-colors hover:text-dtl-red"
@@ -169,7 +169,7 @@ export function SiteFooter({
               <Settings className="w-3.5 h-3.5" />
               Khu vực quản trị
             </Link>
-          </div>
+          </div> */}
         </div>
       </div>
     </footer>
