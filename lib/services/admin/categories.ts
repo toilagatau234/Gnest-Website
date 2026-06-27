@@ -10,7 +10,7 @@ import { sortCategoriesDeterministically } from '@/lib/services/category-visibil
 
 export type AdminCategory = Pick<
   Tables<'categories'>,
-  'id' | 'name' | 'slug' | 'type' | 'parent_id' | 'sort_order' | 'rank_key' | 'has_filters' | 'is_active'
+  'id' | 'name' | 'slug' | 'type' | 'parent_id' | 'sort_order' | 'rank_key' | 'has_filters' | 'is_active' | 'image_url'
 >;
 
 export interface CategoryPayload {
@@ -20,6 +20,7 @@ export interface CategoryPayload {
   parent_id: string | null;
   has_filters: boolean;
   is_active: boolean;
+  image_url?: string | null;
 }
 
 export interface CategoryReorderScope {
@@ -29,13 +30,13 @@ export interface CategoryReorderScope {
 
 const CATEGORY_MUTATION_ROLES = ['super_admin', 'admin', 'editor'] as const;
 const ADMIN_CATEGORY_SELECT =
-  'id, name, slug, type, parent_id, sort_order, rank_key, has_filters, is_active';
+  'id, name, slug, type, parent_id, sort_order, rank_key, has_filters, is_active, image_url';
 const SHOULD_LOG_ADMIN_TIMINGS =
   process.env.NODE_ENV === 'development' && process.env.ADMIN_TIMING_LOGS === '1';
 
 type CategoryAuditRow = Pick<
   Tables<'categories'>,
-  'id' | 'name' | 'slug' | 'type' | 'parent_id' | 'sort_order' | 'rank_key' | 'has_filters' | 'is_active'
+  'id' | 'name' | 'slug' | 'type' | 'parent_id' | 'sort_order' | 'rank_key' | 'has_filters' | 'is_active' | 'image_url'
 >;
 
 function now() {
@@ -57,6 +58,7 @@ function normalizeCategoryPayload(payload: CategoryPayload): {
   parent_id: string | null;
   has_filters: boolean;
   is_active: boolean;
+  image_url: string | null;
 } {
   const isService = payload.type === 'service';
   return {
@@ -66,6 +68,7 @@ function normalizeCategoryPayload(payload: CategoryPayload): {
     parent_id: isService ? null : (payload.parent_id || null),
     has_filters: isService ? false : payload.has_filters,
     is_active: payload.is_active,
+    image_url: payload.image_url?.trim() || null,
   };
 }
 
@@ -79,6 +82,7 @@ function toCategoryAuditSnapshot(category: CategoryAuditRow) {
     rank_key: category.rank_key,
     has_filters: category.has_filters,
     is_active: category.is_active,
+    image_url: category.image_url,
   };
 }
 

@@ -15,8 +15,53 @@ import { getRequestContext } from '@/lib/services/admin/audit-metadata';
 import { requireAdminAuth } from '@/lib/services/admin/auth';
 import { CONTENT_EDITOR_ROLES } from '@/lib/services/admin/permissions';
 import type { CategoryType } from '@/lib/types/database';
+import { createServiceRoleClient } from '@/lib/supabase/server';
+
+const CATEGORY_IMAGES_BUCKET = 'category-images';
+
+export type CategoryImageUploadState = { ok: boolean; url?: string; error?: string };
 
 export type AdminFormState = { ok: boolean; error?: string };
+
+export async function uploadCategoryImageAction(
+  _prevState: CategoryImageUploadState,
+  formData: FormData,
+): Promise<CategoryImageUploadState> {
+  await requireAdminAuth(CONTENT_EDITOR_ROLES);
+
+  const categoryId = (formData.get('category_id') as string | null)?.trim() ?? '';
+  const file = formData.get('file');
+
+  if (!categoryId) return { ok: false, error: 'Thiếu ID dịch vụ.' };
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'Vui lòng chọn hình ảnh.' };
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) return { ok: false, error: 'Chỉ chấp nhận ảnh JPG, PNG, WebP.' };
+  if (file.size > 5 * 1024 * 1024) return { ok: false, error: 'Ảnh không được vượt quá 5MB.' };
+
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const path = `services/${categoryId}.${ext}`;
+  const supabase = createServiceRoleClient();
+
+  const { error: uploadError } = await supabase.storage
+    .from(CATEGORY_IMAGES_BUCKET)
+    .upload(path, file, { upsert: true, contentType: file.type });
+
+  if (uploadError) return { ok: false, error: uploadError.message };
+
+  const { data: urlData } = supabase.storage.from(CATEGORY_IMAGES_BUCKET).getPublicUrl(path);
+  const publicUrl = urlData.publicUrl;
+
+  const { error: updateError } = await supabase
+    .from('categories')
+    .update({ image_url: publicUrl })
+    .eq('id', categoryId);
+
+  if (updateError) return { ok: false, error: updateError.message };
+
+  revalidateCategories();
+  return { ok: true, url: publicUrl };
+}
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -49,6 +94,7 @@ function readCategoryPayload(formData: FormData): CategoryPayload {
     parent_id: type === 'service' ? null : (parentId || null),
     has_filters: type === 'service' ? false : readBoolean(formData, 'has_filters'),
     is_active: readBoolean(formData, 'is_active'),
+    image_url: type === 'service' ? (readString(formData, 'image_url') || null) : null,
   };
 }
 

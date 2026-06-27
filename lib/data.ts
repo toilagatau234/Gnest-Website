@@ -48,6 +48,7 @@ export interface DbCategory {
   hasFilters: boolean;
   parentId?: string | null;
   sortOrder: number;
+  imageUrl?: string | null;
 }
 
 export interface CatalogCategory {

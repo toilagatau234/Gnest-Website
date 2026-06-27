@@ -57,6 +57,7 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
             hasFilters: c.has_filters,
             parentId: parentSlug,
             sortOrder: c.sort_order,
+            imageUrl: c.image_url ?? null,
           };
         });
 

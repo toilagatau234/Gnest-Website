@@ -74,6 +74,7 @@ export interface Database {
           rank_key: string;
           has_filters: boolean;
           is_active: boolean;
+          image_url: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -87,6 +88,7 @@ export interface Database {
           rank_key?: string;
           has_filters?: boolean;
           is_active?: boolean;
+          image_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -99,6 +101,7 @@ export interface Database {
           rank_key?: string;
           has_filters?: boolean;
           is_active?: boolean;
+          image_url?: string | null;
           updated_at?: string;
         };
         Relationships: [];
