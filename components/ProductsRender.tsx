@@ -165,40 +165,65 @@ export function ProductsRender({ overviewProducts }: ProductsRenderProps = {}) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {serviceCategories.map((srv) => {
-              const cat = catalog[srv.id];
+              const hasImage = !!srv.imageUrl;
               return (
-                <Interactive3DTilt 
+                <Interactive3DTilt
                   key={srv.id}
-                  className="bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col group relative overflow-hidden"
+                  className="rounded-xl shadow-sm border border-slate-100 flex flex-col group relative overflow-hidden min-h-[220px]"
                   maxTilt={8}
                 >
-                  <div className="p-6 flex flex-col justify-between h-full w-full">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-dtl-red/5 rounded-bl-[100px] transition-all group-hover:bg-dtl-red/10 pointer-events-none"></div>
-                    
+                  {/* Background image (blurred) when available */}
+                  {hasImage && (
+                    <>
+                      <div
+                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+                        style={{
+                          backgroundImage: `url(${srv.imageUrl})`,
+                          filter: 'blur(3px) brightness(0.40)',
+                          transform: 'scale(1.08)',
+                        }}
+                      />
+                      {/* Dark overlay for readability */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20 group-hover:from-black/80 transition-all duration-300" />
+                    </>
+                  )}
+
+                  {/* Decorative corner when no image */}
+                  {!hasImage && (
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-dtl-red/5 rounded-bl-[100px] transition-all group-hover:bg-dtl-red/10 pointer-events-none" />
+                  )}
+
+                  <div className={`relative z-10 p-6 flex flex-col justify-between h-full w-full ${hasImage ? 'text-white' : ''}`}>
                     <div>
-                      <div className="w-10 h-10 bg-slate-100 text-dtl-red rounded-lg flex items-center justify-center mb-4.5 font-black shrink-0">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 font-black shrink-0 ${hasImage ? 'bg-white/20 text-white' : 'bg-slate-100 text-dtl-red'}`}>
                         <Quote className="w-5 h-5 opacity-80" />
                       </div>
-                      <h3 className="text-[16px] font-bold text-dtl-navy mb-2">{srv.title}</h3>
-                      <p className="text-[13px] text-slate-500 leading-relaxed mb-5">
+                      <h3 className={`text-[16px] font-bold mb-2 ${hasImage ? 'text-white' : 'text-dtl-navy'}`}>
+                        {srv.title}
+                      </h3>
+                      <p className={`text-[13px] leading-relaxed mb-5 ${hasImage ? 'text-white/80' : 'text-slate-500'}`}>
                         Cam kết quy trình chất lượng cao bậc nhất, giao nhận nhanh chóng tận xưởng, giá xuất xưởng tốt nhất cho các đại lý kinh doanh toàn quốc.
                       </p>
                       <div className="space-y-1.5 mb-6">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                          <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                        <div className={`flex items-center gap-2 text-xs font-semibold ${hasImage ? 'text-white/90' : 'text-slate-600'}`}>
+                          <CheckCircle className={`w-4 h-4 shrink-0 ${hasImage ? 'text-green-300' : 'text-green-500'}`} />
                           <span>Kỹ thuật hiện đại hàng đầu</span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                          <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                        <div className={`flex items-center gap-2 text-xs font-semibold ${hasImage ? 'text-white/90' : 'text-slate-600'}`}>
+                          <CheckCircle className={`w-4 h-4 shrink-0 ${hasImage ? 'text-green-300' : 'text-green-500'}`} />
                           <span>Bản vẽ duyệt nhanh trong ngày</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="mt-auto w-full pt-1">
-                      <button 
+                      <button
                         onClick={openContactModal}
-                        className="w-full bg-[#f8f9fa] group-hover:bg-dtl-red font-bold text-xs py-2.5 rounded text-dtl-navy group-hover:text-white transition-all border border-dtl-border group-hover:border-dtl-red flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                        className={`w-full font-bold text-xs py-2.5 rounded flex items-center justify-center gap-1.5 shadow-sm cursor-pointer transition-all border ${
+                          hasImage
+                            ? 'bg-white/15 text-white border-white/30 hover:bg-white hover:text-dtl-navy'
+                            : 'bg-[#f8f9fa] text-dtl-navy border-dtl-border group-hover:bg-dtl-red group-hover:text-white group-hover:border-dtl-red'
+                        }`}
                       >
                         Liên Hệ Tư Vấn
                       </button>
